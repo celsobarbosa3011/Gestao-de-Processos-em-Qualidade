@@ -17,9 +17,12 @@ const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'rejected', title: 'Rejeitados' },
 ];
 
+import { CreateProcessDialog } from "@/components/create-process-dialog";
+
 export default function KanbanPage() {
   const { processes, moveProcess, currentUser } = useStore();
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
 
@@ -80,7 +83,10 @@ export default function KanbanPage() {
                </SelectContent>
              </Select>
            )}
-           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm">
+           <Button 
+             className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+             onClick={() => setIsCreateOpen(true)}
+           >
              <Plus className="w-4 h-4 mr-2" />
              Novo Processo
            </Button>
@@ -136,6 +142,11 @@ export default function KanbanPage() {
         process={selectedProcess} 
         open={!!selectedProcess} 
         onOpenChange={(open) => !open && setSelectedProcess(null)} 
+      />
+      
+      <CreateProcessDialog 
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
       />
     </div>
   );

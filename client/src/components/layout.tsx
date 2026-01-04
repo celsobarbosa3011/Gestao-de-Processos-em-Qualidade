@@ -7,7 +7,8 @@ import {
   Settings, 
   LogOut, 
   Bell, 
-  Menu
+  Menu,
+  FileClock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -89,6 +90,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Settings className="w-4 h-4" />
                 Configurações
+              </Button>
+              <Button 
+                variant={location === '/admin/logs' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => setLocation('/admin/logs')}
+              >
+                <FileClock className="w-4 h-4" />
+                Logs de Auditoria
               </Button>
             </>
           )}

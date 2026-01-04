@@ -68,6 +68,7 @@ interface AppState {
   updateSettings: (settings: Partial<AlertSettings>) => void;
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
+  addProcess: (process: Omit<Process, 'id' | 'createdAt'>) => void;
 }
 
 const MOCK_USERS: User[] = [
@@ -200,6 +201,25 @@ export const useStore = create<AppState>()(
       updateUser: (id, updates) => set(state => ({
         users: state.users.map(u => u.id === id ? { ...u, ...updates } : u)
       })),
+
+      addProcess: (processData) => set(state => {
+        const currentUser = state.currentUser;
+        const newProcess: Process = {
+          ...processData,
+          id: `P-${Math.floor(Math.random() * 10000)}`,
+          createdAt: new Date().toISOString(),
+          comments: [],
+          history: [{
+             id: Math.random().toString(36).substr(2, 9),
+             userId: currentUser?.id || 'system',
+             action: 'created',
+             details: 'Processo criado',
+             timestamp: new Date().toISOString()
+          }],
+          attachments: []
+        };
+        return { processes: [newProcess, ...state.processes] };
+      }),
     }),
     {
       name: 'mediflow-storage',
