@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
   insertProfileSchema,
+  insertProfileSchemaForApi,
   adminUpdateProfileSchema,
   insertProcessSchema, 
   updateProcessSchema,
@@ -294,9 +295,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/profiles", async (req, res) => {
+  app.post("/api/profiles", authMiddleware, adminMiddleware, async (req, res) => {
     try {
-      const validatedData = insertProfileSchema.parse(req.body);
+      const validatedData = insertProfileSchemaForApi.parse(req.body);
       
       // Generate provisional password for new users
       const provisionalPassword = Math.random().toString(36).slice(-8).toUpperCase();

@@ -66,6 +66,16 @@ export const insertProfileSchema = createInsertSchema(profiles).omit({
   createdAt: true,
 });
 
+export const insertProfileSchemaForApi = createInsertSchema(profiles).omit({
+  id: true,
+  createdAt: true,
+  password: true,
+  provisionalPassword: true,
+  provisionalPasswordExpiresAt: true,
+  mustChangePassword: true,
+  profileCompleted: true,
+});
+
 export const updateProfileSchema = insertProfileSchema.partial().omit({
   password: true,
   email: true,
