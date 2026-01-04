@@ -54,8 +54,10 @@ export const useStore = create<AppState>()(
         mustChangePassword: state.mustChangePassword,
         authToken: state.authToken,
       }),
-      onRehydrateStorage: () => () => {
-        useStore.setState({ _hasHydrated: true });
+      onRehydrateStorage: () => (state, error) => {
+        if (!error) {
+          useStore.setState({ _hasHydrated: true });
+        }
       },
     }
   )
