@@ -1,0 +1,214 @@
+Entendi. Vou fazer uma “auditoria de arquitetura + produto” bem minuciosa do que você já definiu (requisitos + SQL/RLS + trechos de Next/Supabase/Kanban) e transformar isso em um **mapa de decisões** para começar o mega-sistema de Gestão de Processos em Saúde com o pé direito (sem alucinação, sem brecha de acesso, sem retrabalho).
+
+---
+
+## 1) Leitura crítica do seu cenário (o que realmente importa)
+
+Você não está criando “um Kanban”. Você está criando um **sistema operacional remoto** para uma empresa que vai **administrar unidades de saúde** com equipe indo à cidade **a cada 15 dias**.
+
+Isso cria 4 necessidades inevitáveis:
+
+1. **Rastreabilidade** (quem fez o quê, quando, e por quê)
+2. **Controle de acesso absoluto** (usuário só enxerga o dele; admin vê tudo; sem “gambiarra de front-end”)
+3. **Ritmo operacional** (SLA, alertas por “parado há X dias”, fila de pendências antes da visita quinzenal)
+4. **Relatório para gestão pública** (exportações, indicadores, evidências)
+
+---
+
+## 2) Problemas e riscos nas informações/códigos que você colou (pontos que quebram na prática)
+
+### 2.1. RLS/Segurança: seu modelo “admin via user_metadata” é frágil do jeito que está
+
+Você propôs esta policy:
+
+* Admin vê tudo: `raw_user_meta_data->>'role' = 'admin'`
+
+Riscos comuns aqui:
+
+* **Como esse `role` vai ser setado com segurança?** Se não existir um fluxo seguro (ex.: só admin promove, via função privilegiada), vira vetor de escalada de privilégio.
+* Em vários setups, **consultar `auth.users` dentro de RLS** pode dar problema ou ficar inconsistente; o mais robusto é usar **claims do JWT** ou uma tabela `profiles` com role e uma função `is_admin()`.
+
+**Conclusão:** para “prefeitura/saúde”, o RBAC tem que ser **impossível de burlar**, mesmo que alguém tente chamar a API direto.
+
+### 2.2. Next.js + Supabase Auth: faltam peças essenciais
+
+Você usou login Google com redirect para `/auth/callback`, mas não incluiu:
+
+* a rota de callback implementada
+* configuração do provider Google no Supabase
+* tratamento de sessão e refresh confiável no App Router
+
+**Resultado:** o usuário pode “logar” e cair em loop, ou logar e não persistir sessão.
+
+### 2.3. Kanban: import/uso do react-beautiful-dnd está incorreto no trecho
+
+No trecho do Kanban você importou DnD “de react”, o que quebra. Na prática, sem um Kanban funcionando 100% (drag-drop + persistência + atualização em tempo real), você perde o “core” do sistema.
+
+### 2.4. Regras de negócio ausentes (essas são as que viram dor em produção)
+
+Você já colocou “validações antes de mover para Concluído” e “alerta >15 dias”. Ainda faltam regras típicas de gestão de saúde:
+
+* “Concluído” exige **evidência** (arquivo, comentário, número de protocolo, etc.)
+* mudanças de status precisam de **justificativa** em certas transições
+* processos precisam ter **tipo**, **unidade**, **prioridade**, **responsável**, **prazo da prefeitura** e **data da próxima visita** (ou “ciclo quinzenal”) para virar operação de verdade
+
+---
+
+## 3) O que o “sistema ideal” precisa ter (obrigatório de verdade, nível produção)
+
+### 3.1. RBAC e Segurança (nível “não dá para dar ruim”)
+
+**Obrigatório:**
+
+* Admin único (ou poucos) com **visão global**
+* Usuário comum **nunca** consegue ler/alterar processo de outro usuário nem por API
+* Auditoria imutável de ações (log)
+* Trava de alteração de campos sensíveis (ex.: `admin_notes` só admin)
+
+**Decisão arquitetural recomendada:**
+
+* Criar `profiles` (id do auth + role + status do usuário)
+* RLS baseado em `profiles.role` (ou JWT claim) e função `is_admin()`
+
+### 3.2. Modelo de dados mínimo correto (para não virar planilha gigante)
+
+Seu `processes` é um bom começo, mas o “mega sistema” exige separar responsabilidades:
+
+**Tabelas mínimas recomendadas (MVP forte):**
+
+* `profiles` (role, nome, ativo/inativo)
+* `processes` (o card)
+* `process_events` (log de auditoria por card: status mudou, campo editado, comentário, anexo)
+* `process_comments`
+* `process_attachments` (metadata + link storage)
+* `units` (unidades de saúde)
+* `process_types` (tipos padronizados)
+* `sla_rules` (ex.: parada > 15 dias; por tipo; por unidade)
+
+Isso destrava:
+
+* relatório de produtividade
+* trilha de evidências
+* compliance e transparência
+
+### 3.3. Kanban real (não só colunas)
+
+**Obrigatório no card:**
+
+* Título, descrição
+* Unidade, tipo, prioridade
+* Responsável (owner) + colaboradores opcionais
+* Status + “motivo da mudança”
+* Prazo e alerta
+* Comentários e anexos
+* Histórico completo
+
+**Obrigatório na board:**
+
+* filtros (unidade, tipo, prioridade, prazo, atrasado)
+* busca rápida
+* “minhas pendências para a próxima visita” (visão quinzenal)
+
+### 3.4. Admin Console de verdade
+
+Admin não é “ver tudo numa tabela”. Admin precisa:
+
+* aprovar/criar usuários e revogar acesso
+* ver gargalos (por unidade, por tipo, por usuário, por status)
+* ver “parados > X dias” e “atrasados”
+* exportar relatórios com filtros
+* trilha de auditoria
+
+### 3.5. Automação (mínimo que dá ROI rápido)
+
+* Alerta automático: parado >15 dias (e também “atrasado do prazo”)
+* Regra: não move para concluído sem evidência (checklist)
+* Notificação: comentário do admin, mudança de status, prazo chegando
+* Rotina quinzenal: “pacote de visita” (lista priorizada do que precisa ser resolvido presencialmente)
+
+---
+
+## 4) Onde você está hoje vs. o que falta para “Mega Sistema”
+
+### O que você já tem (bom)
+
+* Conceito claro: Admin global + User “Meu Kanban”
+* Colunas base corretas
+* Campos iniciais úteis (unidade, tipo, orçamento, prazo)
+* Intenção de RLS (isso é ótimo)
+
+### O que falta (crítico)
+
+1. RBAC robusto e seguro (sem depender de metadata solta)
+2. Auditoria e evidência (logs, comentários, anexos)
+3. Painéis e filtros (sem isso, vira caos com 100+ usuários)
+4. Regras de fluxo (validações por transição)
+5. Modo operação quinzenal (visão “pré-visita”)
+
+---
+
+## 5) Blueprint do Mega Sistema (fatiado para você construir sem travar)
+
+### Fase 1 — MVP “Operável” (o mínimo que já roda a operação)
+
+* Login
+* RBAC robusto (admin/user)
+* Kanban usuário
+* Admin vê tudo
+* Comentários
+* Auditoria (eventos)
+* Alertas >15 dias
+* Export CSV/PDF simples
+
+### Fase 2 — Gestão pública “profissional”
+
+* Unidades e tipos padronizados
+* Relatórios por unidade/tipo/status/atraso
+* Checklists por tipo de processo
+* Evidências obrigatórias em certas transições
+* Trilhas e relatórios para reunião
+
+### Fase 3 — “Sistema nervoso” (alto valor)
+
+* Rotina quinzenal (pacote de visita)
+* Score de prioridade e risco
+* Inteligência: sugestão de próximos passos e resumo automático do card
+* Integrações futuras (e-mail, WhatsApp corporativo, etc.)
+
+---
+
+## 6) Requisitos não-funcionais (onde 90% dos sistemas falham)
+
+**Obrigatório para 100+ usuários:**
+
+* Paginação e queries eficientes
+* Realtime só onde faz sentido (kanban e comentários)
+* Controle de concorrência (duas pessoas mexendo no mesmo card)
+* Backup
+* Logs de erro e rastreabilidade
+* Padronização de campos para relatórios
+
+---
+
+## 7) Definição final do “Sistema Ideal” (lista objetiva de obrigatórios)
+
+Se você fizer apenas isto, você já estará acima de Pipefy/ClickUp no seu nicho (saúde pública remota):
+
+1. **RBAC sólido** (admin global, user isolado por RLS real)
+2. **Kanban drag-drop** com persistência confiável
+3. **Card completo** (campos, checklist, anexos, comentários)
+4. **Auditoria imutável** (eventos)
+5. **Admin Console** (usuários, visão global, gargalos, atrasos)
+6. **Alertas** (parado >15 dias, atrasado, pré-visita)
+7. **Relatórios e exportações** (por unidade/tipo/status/período)
+8. **Padronização** (unidades e tipos como cadastros, não texto livre)
+9. **Performance** (paginação, filtros, busca)
+10. **Evidência para “Concluído”** (sem isso, “concluído” vira fantasia)
+
+---
+
+## 8) Pronto para iniciar no Replit do jeito certo
+
+Agora que a análise está fechada, a forma mais eficiente de começar é criar o app no Replit já com esses “pilares” como requisitos de implementação (principalmente RBAC + auditoria + anexos).
+
+Se você disser “vai”, eu inicio o app no Replit com a descrição completa do **Mega Sistema** (já incorporando todas as correções críticas acima) e a estrutura necessária para evoluir por fases, sem retrabalho.
