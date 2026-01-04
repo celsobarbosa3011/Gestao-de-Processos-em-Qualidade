@@ -36,6 +36,18 @@ import type {
   ProcessTemplate,
   InsertProcessTemplate,
   FeatureToggle,
+  TimeEntry,
+  InsertTimeEntry,
+  CustomField,
+  InsertCustomField,
+  CustomFieldValue,
+  InsertCustomFieldValue,
+  Automation,
+  InsertAutomation,
+  Notification,
+  InsertNotification,
+  Swimlane,
+  InsertSwimlane,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -520,6 +532,205 @@ export class DatabaseStorage implements IStorage {
       .values({ featureKey, name: featureKey, enabled })
       .returning();
     return result[0];
+  }
+
+  // Time Entry methods
+  async getTimeEntriesByProcess(processId: number): Promise<TimeEntry[]> {
+    return await db.select().from(schema.timeEntries)
+      .where(eq(schema.timeEntries.processId, processId))
+      .orderBy(desc(schema.timeEntries.date));
+  }
+
+  async createTimeEntry(entry: InsertTimeEntry): Promise<TimeEntry> {
+    const result = await db.insert(schema.timeEntries).values(entry).returning();
+    return result[0];
+  }
+
+  async deleteTimeEntry(id: number): Promise<boolean> {
+    const result = await db.delete(schema.timeEntries)
+      .where(eq(schema.timeEntries.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getTotalTimeByProcess(processId: number): Promise<number> {
+    const result = await db.select({ total: sql<number>`COALESCE(SUM(${schema.timeEntries.minutes}), 0)` })
+      .from(schema.timeEntries)
+      .where(eq(schema.timeEntries.processId, processId));
+    return result[0]?.total || 0;
+  }
+
+  // Custom Field methods
+  async getAllCustomFields(): Promise<CustomField[]> {
+    return await db.select().from(schema.customFields)
+      .orderBy(schema.customFields.order);
+  }
+
+  async createCustomField(field: InsertCustomField): Promise<CustomField> {
+    const result = await db.insert(schema.customFields).values(field).returning();
+    return result[0];
+  }
+
+  async updateCustomField(id: number, updates: Partial<InsertCustomField>): Promise<CustomField | undefined> {
+    const result = await db.update(schema.customFields)
+      .set(updates)
+      .where(eq(schema.customFields.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCustomField(id: number): Promise<boolean> {
+    const result = await db.delete(schema.customFields)
+      .where(eq(schema.customFields.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getCustomFieldValues(processId: number): Promise<CustomFieldValue[]> {
+    return await db.select().from(schema.customFieldValues)
+      .where(eq(schema.customFieldValues.processId, processId));
+  }
+
+  async setCustomFieldValue(processId: number, fieldId: number, value: string | null): Promise<CustomFieldValue> {
+    const existing = await db.select().from(schema.customFieldValues)
+      .where(and(
+        eq(schema.customFieldValues.processId, processId),
+        eq(schema.customFieldValues.fieldId, fieldId)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      const result = await db.update(schema.customFieldValues)
+        .set({ value })
+        .where(eq(schema.customFieldValues.id, existing[0].id))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(schema.customFieldValues)
+      .values({ processId, fieldId, value })
+      .returning();
+    return result[0];
+  }
+
+  // Automation methods
+  async getAllAutomations(): Promise<Automation[]> {
+    return await db.select().from(schema.automations)
+      .orderBy(schema.automations.name);
+  }
+
+  async createAutomation(automation: InsertAutomation): Promise<Automation> {
+    const result = await db.insert(schema.automations).values(automation).returning();
+    return result[0];
+  }
+
+  async updateAutomation(id: number, updates: Partial<InsertAutomation>): Promise<Automation | undefined> {
+    const result = await db.update(schema.automations)
+      .set(updates)
+      .where(eq(schema.automations.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteAutomation(id: number): Promise<boolean> {
+    const result = await db.delete(schema.automations)
+      .where(eq(schema.automations.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getEnabledAutomations(): Promise<Automation[]> {
+    return await db.select().from(schema.automations)
+      .where(eq(schema.automations.enabled, true));
+  }
+
+  // Notification methods
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    return await db.select().from(schema.notifications)
+      .where(eq(schema.notifications.userId, userId))
+      .orderBy(desc(schema.notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const result = await db.insert(schema.notifications).values(notification).returning();
+    return result[0];
+  }
+
+  async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+    const result = await db.update(schema.notifications)
+      .set({ isRead: true })
+      .where(eq(schema.notifications.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db.update(schema.notifications)
+      .set({ isRead: true })
+      .where(eq(schema.notifications.userId, userId));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.notifications)
+      .where(and(
+        eq(schema.notifications.userId, userId),
+        eq(schema.notifications.isRead, false)
+      ));
+    return result[0]?.count || 0;
+  }
+
+  async deleteNotification(id: number): Promise<boolean> {
+    const result = await db.delete(schema.notifications)
+      .where(eq(schema.notifications.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Swimlane methods
+  async getAllSwimlanes(): Promise<Swimlane[]> {
+    return await db.select().from(schema.swimlanes)
+      .orderBy(schema.swimlanes.order);
+  }
+
+  async createSwimlane(swimlane: InsertSwimlane): Promise<Swimlane> {
+    const result = await db.insert(schema.swimlanes).values(swimlane).returning();
+    return result[0];
+  }
+
+  async updateSwimlane(id: number, updates: Partial<InsertSwimlane>): Promise<Swimlane | undefined> {
+    const result = await db.update(schema.swimlanes)
+      .set(updates)
+      .where(eq(schema.swimlanes.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSwimlane(id: number): Promise<boolean> {
+    const result = await db.delete(schema.swimlanes)
+      .where(eq(schema.swimlanes.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getActiveSwimlane(): Promise<Swimlane | undefined> {
+    const result = await db.select().from(schema.swimlanes)
+      .where(eq(schema.swimlanes.enabled, true))
+      .limit(1);
+    return result[0];
+  }
+
+  // Analytics methods for Cumulative Flow
+  async getProcessCountByStatusAndDate(): Promise<{ status: string; date: string; count: number }[]> {
+    const result = await db.select({
+      status: schema.processes.status,
+      date: sql<string>`DATE(${schema.processes.createdAt})`,
+      count: sql<number>`count(*)`,
+    })
+    .from(schema.processes)
+    .groupBy(schema.processes.status, sql`DATE(${schema.processes.createdAt})`)
+    .orderBy(sql`DATE(${schema.processes.createdAt})`);
+    return result;
   }
 }
 

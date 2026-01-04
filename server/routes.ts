@@ -14,7 +14,12 @@ import {
   insertProcessChecklistSchema,
   insertProcessAttachmentSchema,
   insertProcessLabelSchema,
-  insertChatMessageSchema
+  insertChatMessageSchema,
+  insertTimeEntrySchema,
+  insertCustomFieldSchema,
+  insertAutomationSchema,
+  insertNotificationSchema,
+  insertSwimlaneSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import multer from "multer";
@@ -898,6 +903,301 @@ export async function registerRoutes(
       res.json(feature);
     } catch (error) {
       res.status(500).json({ error: "Failed to update feature" });
+    }
+  });
+
+  // ===== TIME ENTRY ROUTES =====
+  app.get("/api/processes/:id/time-entries", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.id);
+      const entries = await storage.getTimeEntriesByProcess(processId);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch time entries" });
+    }
+  });
+
+  app.post("/api/processes/:id/time-entries", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.id);
+      const userId = req.auth!.userId;
+      const validatedData = insertTimeEntrySchema.parse({
+        ...req.body,
+        processId,
+        userId
+      });
+      const entry = await storage.createTimeEntry(validatedData);
+      res.status(201).json(entry);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create time entry" });
+    }
+  });
+
+  app.delete("/api/time-entries/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteTimeEntry(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Time entry not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete time entry" });
+    }
+  });
+
+  app.get("/api/processes/:id/total-time", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.id);
+      const totalMinutes = await storage.getTotalTimeByProcess(processId);
+      res.json({ totalMinutes });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get total time" });
+    }
+  });
+
+  // ===== CUSTOM FIELD ROUTES =====
+  app.get("/api/custom-fields", authMiddleware, async (req, res) => {
+    try {
+      const fields = await storage.getAllCustomFields();
+      res.json(fields);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch custom fields" });
+    }
+  });
+
+  app.post("/api/custom-fields", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const validatedData = insertCustomFieldSchema.parse(req.body);
+      const field = await storage.createCustomField(validatedData);
+      res.status(201).json(field);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create custom field" });
+    }
+  });
+
+  app.patch("/api/custom-fields/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const field = await storage.updateCustomField(id, req.body);
+      if (!field) {
+        return res.status(404).json({ error: "Custom field not found" });
+      }
+      res.json(field);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update custom field" });
+    }
+  });
+
+  app.delete("/api/custom-fields/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteCustomField(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Custom field not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete custom field" });
+    }
+  });
+
+  app.get("/api/processes/:id/custom-field-values", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.id);
+      const values = await storage.getCustomFieldValues(processId);
+      res.json(values);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch custom field values" });
+    }
+  });
+
+  app.post("/api/processes/:id/custom-field-values", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.id);
+      const { fieldId, value } = req.body;
+      if (typeof fieldId !== 'number') {
+        return res.status(400).json({ error: "fieldId is required and must be a number" });
+      }
+      const fieldValue = await storage.setCustomFieldValue(processId, fieldId, value ?? null);
+      res.json(fieldValue);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to set custom field value" });
+    }
+  });
+
+  // ===== AUTOMATION ROUTES =====
+  app.get("/api/automations", authMiddleware, async (req, res) => {
+    try {
+      const automations = await storage.getAllAutomations();
+      res.json(automations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch automations" });
+    }
+  });
+
+  app.post("/api/automations", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const createdBy = req.auth!.userId;
+      const validatedData = insertAutomationSchema.parse({
+        ...req.body,
+        createdBy
+      });
+      const automation = await storage.createAutomation(validatedData);
+      res.status(201).json(automation);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create automation" });
+    }
+  });
+
+  app.patch("/api/automations/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const automation = await storage.updateAutomation(id, req.body);
+      if (!automation) {
+        return res.status(404).json({ error: "Automation not found" });
+      }
+      res.json(automation);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update automation" });
+    }
+  });
+
+  app.delete("/api/automations/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteAutomation(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Automation not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete automation" });
+    }
+  });
+
+  // ===== NOTIFICATION ROUTES =====
+  app.get("/api/notifications", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      const notifications = await storage.getNotificationsByUser(userId);
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notification = await storage.markNotificationAsRead(id);
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteNotification(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete notification" });
+    }
+  });
+
+  // ===== SWIMLANE ROUTES =====
+  app.get("/api/swimlanes", authMiddleware, async (req, res) => {
+    try {
+      const swimlanes = await storage.getAllSwimlanes();
+      res.json(swimlanes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch swimlanes" });
+    }
+  });
+
+  app.post("/api/swimlanes", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const validatedData = insertSwimlaneSchema.parse(req.body);
+      const swimlane = await storage.createSwimlane(validatedData);
+      res.status(201).json(swimlane);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create swimlane" });
+    }
+  });
+
+  app.patch("/api/swimlanes/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const swimlane = await storage.updateSwimlane(id, req.body);
+      if (!swimlane) {
+        return res.status(404).json({ error: "Swimlane not found" });
+      }
+      res.json(swimlane);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update swimlane" });
+    }
+  });
+
+  app.delete("/api/swimlanes/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteSwimlane(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Swimlane not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete swimlane" });
+    }
+  });
+
+  // ===== ANALYTICS ROUTES =====
+  app.get("/api/analytics/cumulative-flow", authMiddleware, async (req, res) => {
+    try {
+      const data = await storage.getProcessCountByStatusAndDate();
+      res.json(data);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cumulative flow data" });
     }
   });
 

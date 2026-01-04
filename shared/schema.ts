@@ -305,3 +305,116 @@ export const featureToggles = pgTable("feature_toggles", {
 });
 
 export type FeatureToggle = typeof featureToggles.$inferSelect;
+
+// Time Tracking Table
+export const timeEntries = pgTable("time_entries", {
+  id: serial("id").primaryKey(),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => profiles.id),
+  description: text("description"),
+  minutes: integer("minutes").notNull(),
+  date: timestamp("date").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+
+// Custom Fields Definition Table
+export const customFields = pgTable("custom_fields", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'text', 'number', 'date', 'select', 'checkbox'
+  options: text("options").array(), // For select type
+  required: boolean("required").notNull().default(false),
+  showOnCard: boolean("show_on_card").notNull().default(false),
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertCustomFieldSchema = createInsertSchema(customFields).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCustomField = z.infer<typeof insertCustomFieldSchema>;
+export type CustomField = typeof customFields.$inferSelect;
+
+// Custom Field Values Table
+export const customFieldValues = pgTable("custom_field_values", {
+  id: serial("id").primaryKey(),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  fieldId: integer("field_id").notNull().references(() => customFields.id, { onDelete: 'cascade' }),
+  value: text("value"),
+});
+
+export const insertCustomFieldValueSchema = createInsertSchema(customFieldValues).omit({
+  id: true,
+});
+
+export type InsertCustomFieldValue = z.infer<typeof insertCustomFieldValueSchema>;
+export type CustomFieldValue = typeof customFieldValues.$inferSelect;
+
+// Automations Table
+export const automations = pgTable("automations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  trigger: text("trigger").notNull(), // 'status_change', 'deadline_approaching', 'new_process', 'field_update'
+  triggerConfig: text("trigger_config"), // JSON config for trigger conditions
+  action: text("action").notNull(), // 'change_status', 'assign_user', 'add_label', 'send_notification', 'add_checklist'
+  actionConfig: text("action_config"), // JSON config for action params
+  enabled: boolean("enabled").notNull().default(true),
+  createdBy: varchar("created_by").references(() => profiles.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAutomationSchema = createInsertSchema(automations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAutomation = z.infer<typeof insertAutomationSchema>;
+export type Automation = typeof automations.$inferSelect;
+
+// Notifications Table (persistent notifications)
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  type: text("type").notNull(), // 'process_assigned', 'deadline', 'mention', 'status_change', 'comment'
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  processId: integer("process_id").references(() => processes.id, { onDelete: 'cascade' }),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+// Swimlane Configuration Table
+export const swimlanes = pgTable("swimlanes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  field: text("field").notNull(), // 'unit', 'type', 'priority', 'responsible'
+  order: integer("order").notNull().default(0),
+  collapsed: boolean("collapsed").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(true),
+});
+
+export const insertSwimlaneSchema = createInsertSchema(swimlanes).omit({
+  id: true,
+});
+
+export type InsertSwimlane = z.infer<typeof insertSwimlaneSchema>;
+export type Swimlane = typeof swimlanes.$inferSelect;
