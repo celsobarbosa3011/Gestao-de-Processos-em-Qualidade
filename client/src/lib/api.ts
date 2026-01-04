@@ -3,7 +3,7 @@ import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, Ins
 const API_BASE = "/api";
 
 // Auth
-export async function login(email: string, password: string): Promise<Profile> {
+export async function login(email: string, password: string): Promise<Profile & { mustChangePassword?: boolean }> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -11,7 +11,38 @@ export async function login(email: string, password: string): Promise<Profile> {
   });
   
   if (!response.ok) {
-    throw new Error("Invalid credentials");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Invalid credentials");
+  }
+  
+  return response.json();
+}
+
+export async function changePassword(userId: string, currentPassword: string | null, newPassword: string): Promise<Profile> {
+  const response = await fetch(`${API_BASE}/auth/change-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, currentPassword, newPassword }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to change password");
+  }
+  
+  return response.json();
+}
+
+export async function generateProvisionalPassword(userId: string, adminUserId: string): Promise<{ provisionalPassword: string; expiresAt: string; message: string }> {
+  const response = await fetch(`${API_BASE}/profiles/${userId}/provisional-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adminUserId }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to generate provisional password");
   }
   
   return response.json();

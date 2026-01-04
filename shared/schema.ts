@@ -13,6 +13,9 @@ export const profiles = pgTable("profiles", {
   unit: text("unit").notNull(),
   avatar: text("avatar"),
   status: text("status").notNull().default('active'), // 'active' or 'suspended'
+  provisionalPassword: text("provisional_password"),
+  provisionalPasswordExpiresAt: timestamp("provisional_password_expires_at"),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, MoreVertical, Ban, CheckCircle, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreVertical, Ban, CheckCircle, Pencil, Trash2, Key, Copy } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
@@ -22,7 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllProfiles, createProfile, updateProfile, deleteProfile } from "@/lib/api";
+import { getAllProfiles, createProfile, updateProfile, deleteProfile, generateProvisionalPassword } from "@/lib/api";
 import type { Profile } from "@shared/schema";
 
 const userSchema = z.object({
@@ -36,7 +36,9 @@ export default function AdminUsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -180,6 +182,38 @@ export default function AdminUsersPage() {
     });
   };
 
+  const { currentUser } = useStore();
+
+  const handleGeneratePassword = async (user: Profile) => {
+    if (!currentUser?.id) return;
+    setSelectedUser(user);
+    try {
+      const result = await generateProvisionalPassword(user.id, currentUser.id);
+      setGeneratedPassword(result.provisionalPassword);
+      setIsPasswordDialogOpen(true);
+      toast({
+        title: "Senha provisória gerada",
+        description: "A senha expira em 24 horas.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível gerar a senha provisória.",
+      });
+    }
+  };
+
+  const copyPassword = () => {
+    if (generatedPassword) {
+      navigator.clipboard.writeText(generatedPassword);
+      toast({
+        title: "Senha copiada",
+        description: "A senha provisória foi copiada para a área de transferência.",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -318,11 +352,15 @@ export default function AdminUsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                        <DropdownMenuItem onClick={() => openEditDialog(user)} data-testid={`menu-edit-${user.id}`}>
                           <Pencil className="w-4 h-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toggleStatus(user)}>
+                        <DropdownMenuItem onClick={() => handleGeneratePassword(user)} data-testid={`menu-password-${user.id}`}>
+                          <Key className="w-4 h-4 mr-2" />
+                          Gerar Senha Provisória
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => toggleStatus(user)} data-testid={`menu-status-${user.id}`}>
                           {user.status === 'active' ? (
                             <>
                               <Ban className="w-4 h-4 mr-2" />
@@ -335,7 +373,7 @@ export default function AdminUsersPage() {
                             </>
                           )}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openDeleteDialog(user)} className="text-destructive">
+                        <DropdownMenuItem onClick={() => openDeleteDialog(user)} className="text-destructive" data-testid={`menu-delete-${user.id}`}>
                           <Trash2 className="w-4 h-4 mr-2" />
                           Excluir
                         </DropdownMenuItem>
@@ -446,6 +484,45 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Provisional Password Dialog */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={(open) => {
+        setIsPasswordDialogOpen(open);
+        if (!open) {
+          setGeneratedPassword(null);
+          setSelectedUser(null);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-primary" />
+              Senha Provisória Gerada
+            </DialogTitle>
+            <DialogDescription>
+              Compartilhe esta senha com <strong>{selectedUser?.name}</strong>. A senha expira em 24 horas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
+              <code className="text-xl font-mono font-bold flex-1 text-center" data-testid="text-provisional-password">
+                {generatedPassword}
+              </code>
+              <Button variant="outline" size="icon" onClick={copyPassword} data-testid="button-copy-password">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              O usuário deverá trocar a senha no próximo login.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsPasswordDialogOpen(false)} data-testid="button-close-password-dialog">
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

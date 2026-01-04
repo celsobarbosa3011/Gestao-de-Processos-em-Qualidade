@@ -68,16 +68,147 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
-      // In production, use bcrypt to compare hashed passwords
-      if (profile.password !== password) {
+      let isValidPassword = false;
+      let usedProvisionalPassword = false;
+      
+      // Check regular password first
+      if (profile.password === password) {
+        isValidPassword = true;
+      }
+      
+      // Check provisional password if regular failed
+      if (!isValidPassword && profile.provisionalPassword) {
+        const now = new Date();
+        const expiresAt = profile.provisionalPasswordExpiresAt;
+        
+        if (profile.provisionalPassword === password) {
+          if (expiresAt && now > expiresAt) {
+            return res.status(401).json({ error: "Senha provisória expirada. Contate o administrador." });
+          }
+          isValidPassword = true;
+          usedProvisionalPassword = true;
+        }
+      }
+      
+      if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
       // Don't send password back
-      const { password: _, ...profileWithoutPassword } = profile;
-      res.json(profileWithoutPassword);
+      const { password: _, provisionalPassword: __, ...profileWithoutPassword } = profile;
+      res.json({
+        ...profileWithoutPassword,
+        mustChangePassword: profile.mustChangePassword || usedProvisionalPassword
+      });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Change password endpoint (requires current password or valid provisional password)
+  app.post("/api/auth/change-password", async (req, res) => {
+    try {
+      const { userId, currentPassword, newPassword } = req.body;
+      
+      if (!userId || !newPassword || !currentPassword) {
+        return res.status(400).json({ error: "ID do usuário, senha atual e nova senha são obrigatórios" });
+      }
+      
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "A nova senha deve ter pelo menos 8 caracteres" });
+      }
+      
+      const profile = await storage.getProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+      
+      // Must validate current password or provisional password
+      let isValidCredential = false;
+      
+      // Check regular password
+      if (profile.password === currentPassword) {
+        isValidCredential = true;
+      }
+      
+      // Check provisional password (must not be expired)
+      if (!isValidCredential && profile.provisionalPassword === currentPassword) {
+        const now = new Date();
+        const expiresAt = profile.provisionalPasswordExpiresAt;
+        if (expiresAt && now <= expiresAt) {
+          isValidCredential = true;
+        } else if (expiresAt && now > expiresAt) {
+          return res.status(401).json({ error: "Senha provisória expirada. Contate o administrador." });
+        }
+      }
+      
+      if (!isValidCredential) {
+        return res.status(401).json({ error: "Senha atual incorreta" });
+      }
+      
+      // Update password and clear provisional password fields
+      const updatedProfile = await storage.updateProfile(userId, {
+        password: newPassword,
+        provisionalPassword: null,
+        provisionalPasswordExpiresAt: null,
+        mustChangePassword: false,
+      } as any);
+      
+      if (!updatedProfile) {
+        return res.status(500).json({ error: "Falha ao atualizar senha" });
+      }
+      
+      const { password: _, provisionalPassword: __, provisionalPasswordExpiresAt: ___, ...sanitizedProfile } = updatedProfile;
+      res.json(sanitizedProfile);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Generate provisional password for user (admin only - requires adminUserId in body)
+  app.post("/api/profiles/:id/provisional-password", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { adminUserId } = req.body;
+      
+      // Verify admin authorization
+      if (!adminUserId) {
+        return res.status(401).json({ error: "Autorização necessária" });
+      }
+      
+      const adminProfile = await storage.getProfile(adminUserId);
+      if (!adminProfile || adminProfile.role !== 'admin') {
+        return res.status(403).json({ error: "Apenas administradores podem gerar senhas provisórias" });
+      }
+      
+      const profile = await storage.getProfile(id);
+      
+      if (!profile) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      // Generate random provisional password
+      const provisionalPassword = Math.random().toString(36).slice(-8).toUpperCase();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      const updatedProfile = await storage.updateProfile(id, {
+        provisionalPassword,
+        provisionalPasswordExpiresAt: expiresAt,
+        mustChangePassword: true,
+      } as any);
+      
+      if (!updatedProfile) {
+        return res.status(500).json({ error: "Failed to generate provisional password" });
+      }
+      
+      // Return the provisional password to the admin (one-time display)
+      res.json({ 
+        provisionalPassword,
+        expiresAt,
+        message: "Senha provisória gerada. O usuário deve trocá-la em até 24 horas."
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate provisional password" });
     }
   });
 
@@ -85,8 +216,8 @@ export async function registerRoutes(
   app.get("/api/profiles", async (req, res) => {
     try {
       const profiles = await storage.getAllProfiles();
-      const profilesWithoutPasswords = profiles.map(({ password, ...profile }) => profile);
-      res.json(profilesWithoutPasswords);
+      const sanitizedProfiles = profiles.map(({ password, provisionalPassword, provisionalPasswordExpiresAt, ...profile }) => profile);
+      res.json(sanitizedProfiles);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch profiles" });
     }
@@ -96,8 +227,8 @@ export async function registerRoutes(
     try {
       const validatedData = insertProfileSchema.parse(req.body);
       const profile = await storage.createProfile(validatedData);
-      const { password: _, ...profileWithoutPassword } = profile;
-      res.status(201).json(profileWithoutPassword);
+      const { password: _, provisionalPassword: __, provisionalPasswordExpiresAt: ___, ...sanitizedProfile } = profile;
+      res.status(201).json(sanitizedProfile);
     } catch (error: any) {
       if (error.name === "ZodError") {
         return res.status(400).json({ error: fromError(error).toString() });
@@ -116,8 +247,8 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Profile not found" });
       }
       
-      const { password: _, ...profileWithoutPassword } = profile;
-      res.json(profileWithoutPassword);
+      const { password: _, provisionalPassword: __, provisionalPasswordExpiresAt: ___, ...sanitizedProfile } = profile;
+      res.json(sanitizedProfile);
     } catch (error: any) {
       if (error.name === "ZodError") {
         return res.status(400).json({ error: fromError(error).toString() });
