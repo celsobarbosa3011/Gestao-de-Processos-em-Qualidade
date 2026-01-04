@@ -7,16 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { useBrandingConfig, useUpdateBrandingConfig, usePreviewColors } from "@/hooks/use-branding";
-import { Palette, Type, Globe } from "lucide-react";
+import { Palette, Type, Globe, Upload, X, Image } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useEffect, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useStore } from "@/lib/store";
+import { useToast } from "@/hooks/use-toast";
 
 const brandingSchema = z.object({
   appName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   tagline: z.string().optional(),
-  logoUrl: z.string().url("URL inválida").optional().or(z.literal('')),
-  faviconUrl: z.string().url("URL inválida").optional().or(z.literal('')),
+  logoUrl: z.string().optional(),
+  faviconUrl: z.string().optional(),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal (#RRGGBB)"),
   primaryForeground: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal"),
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal").optional().or(z.literal('')),
@@ -32,6 +33,9 @@ export default function BrandingPage() {
   const updateBranding = useUpdateBrandingConfig();
   const previewColors = usePreviewColors();
   const { currentUser } = useStore();
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<BrandingFormValues>({
     resolver: zodResolver(brandingSchema),
@@ -68,12 +72,64 @@ export default function BrandingPage() {
 
   const watchedPrimaryColor = form.watch("primaryColor");
   const watchedAccentColor = form.watch("accentColor");
+  const watchedLogoUrl = form.watch("logoUrl");
 
   useEffect(() => {
     if (watchedPrimaryColor) {
       previewColors(watchedPrimaryColor, watchedAccentColor || undefined);
     }
   }, [watchedPrimaryColor, watchedAccentColor, previewColors]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Arquivo muito grande",
+        description: "O tamanho máximo é 5MB.",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha no upload');
+      }
+
+      const data = await response.json();
+      form.setValue('logoUrl', data.url);
+      toast({
+        title: "Logo enviado",
+        description: "A imagem foi carregada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro no upload",
+        description: "Não foi possível enviar a imagem.",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    form.setValue('logoUrl', '');
+  };
 
   const onSubmit = async (values: BrandingFormValues) => {
     if (!currentUser) return;
@@ -106,7 +162,6 @@ export default function BrandingPage() {
 
   const watchedPrimaryForeground = form.watch("primaryForeground");
   const watchedAppName = form.watch("appName");
-  const watchedLogoUrl = form.watch("logoUrl");
 
   return (
     <div className="space-y-6">
@@ -159,16 +214,99 @@ export default function BrandingPage() {
                   )}
                 />
 
+                {/* Logo Upload */}
                 <FormField
                   control={form.control}
                   name="logoUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL do Logo</FormLabel>
-                      <FormControl>
-                        <Input data-testid="input-logo-url" placeholder="https://..." {...field} />
-                      </FormControl>
-                      <FormDescription className="text-xs">URL de uma imagem PNG ou SVG</FormDescription>
+                      <FormLabel>Logo do Sistema</FormLabel>
+                      <div className="space-y-3">
+                        {watchedLogoUrl ? (
+                          <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg border">
+                            <img 
+                              src={watchedLogoUrl} 
+                              alt="Logo atual" 
+                              className="w-16 h-16 object-contain rounded-lg bg-white p-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{watchedLogoUrl}</p>
+                              <p className="text-xs text-muted-foreground">Logo atual</p>
+                            </div>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={handleRemoveLogo}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-full">
+                            <label 
+                              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                <Image className="w-8 h-8 mb-2 text-muted-foreground" />
+                                <p className="mb-2 text-sm text-muted-foreground">
+                                  <span className="font-semibold">Clique para enviar</span> ou arraste
+                                </p>
+                                <p className="text-xs text-muted-foreground">PNG, JPG, SVG (máx. 5MB)</p>
+                              </div>
+                              <input 
+                                ref={fileInputRef}
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={handleFileUpload}
+                                disabled={isUploading}
+                                data-testid="input-logo-upload"
+                              />
+                            </label>
+                          </div>
+                        )}
+                        
+                        {!watchedLogoUrl && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={isUploading}
+                              className="gap-2"
+                            >
+                              <Upload className="w-4 h-4" />
+                              {isUploading ? "Enviando..." : "Fazer Upload"}
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {watchedLogoUrl && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                            className="gap-2"
+                          >
+                            <Upload className="w-4 h-4" />
+                            {isUploading ? "Enviando..." : "Trocar Logo"}
+                          </Button>
+                        )}
+                        
+                        <input 
+                          ref={fileInputRef}
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploading}
+                        />
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
