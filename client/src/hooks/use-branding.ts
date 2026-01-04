@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getBrandingConfig, updateBrandingConfig } from "@/lib/api";
 import type { BrandingConfig } from "@shared/schema";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 import { useEffect, useCallback } from "react";
 
 const DEFAULT_PRIMARY_COLOR = "#0F766E";
@@ -40,24 +40,16 @@ export function useBrandingConfig() {
 
 export function useUpdateBrandingConfig() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   return useMutation({
     mutationFn: (config: Partial<BrandingConfig> & { userId: string }) => updateBrandingConfig(config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branding"] });
-      toast({
-        title: "Marca atualizada",
-        description: "As configurações de marca foram atualizadas com sucesso.",
-      });
+      toast.success("Marca atualizada");
     },
     onError: (error: any) => {
       const message = error?.message || "Não foi possível atualizar as configurações.";
-      toast({
-        variant: "destructive",
-        title: "Erro ao atualizar marca",
-        description: message.includes("403") ? "Acesso de administrador necessário." : message,
-      });
+      toast.error(message.includes("403") ? "Acesso de administrador necessário" : "Erro ao atualizar marca");
     },
   });
 }

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getProcessComments, createComment } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 export function useProcessComments(processId: number | null) {
   return useQuery({
@@ -14,7 +14,6 @@ export function useProcessComments(processId: number | null) {
 export function useCreateComment() {
   const queryClient = useQueryClient();
   const { currentUser } = useStore();
-  const { toast } = useToast();
   
   return useMutation({
     mutationFn: ({ processId, text }: { processId: number; text: string }) => {
@@ -24,17 +23,10 @@ export function useCreateComment() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["comments", variables.processId] });
       queryClient.invalidateQueries({ queryKey: ["events", variables.processId] });
-      toast({
-        title: "Comentário adicionado",
-        description: "Seu comentário foi adicionado com sucesso.",
-      });
+      toast.success("Comentário adicionado");
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Erro ao adicionar comentário",
-        description: "Não foi possível adicionar o comentário.",
-      });
+      toast.error("Erro ao adicionar comentário");
     },
   });
 }

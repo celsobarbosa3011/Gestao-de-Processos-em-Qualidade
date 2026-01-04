@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllProcesses, createProcess, updateProcess } from "@/lib/api";
 import type { InsertProcess, UpdateProcess, Process } from "@shared/schema";
 import { useStore } from "@/lib/store";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 export function useProcesses() {
   const { currentUser } = useStore();
@@ -29,30 +29,21 @@ export function useProcesses() {
 
 export function useCreateProcess() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   
   return useMutation({
     mutationFn: (data: InsertProcess) => createProcess(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["processes"] });
-      toast({
-        title: "Processo criado",
-        description: "O processo foi criado com sucesso.",
-      });
+      toast.success("Processo criado");
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Erro ao criar processo",
-        description: "Não foi possível criar o processo.",
-      });
+      toast.error("Erro ao criar processo");
     },
   });
 }
 
 export function useUpdateProcess() {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const { currentUser } = useStore();
   
   return useMutation({
@@ -60,17 +51,10 @@ export function useUpdateProcess() {
       updateProcess(id, { ...updates, userId: currentUser?.id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["processes"] });
-      toast({
-        title: "Processo atualizado",
-        description: "O processo foi atualizado com sucesso.",
-      });
+      toast.success("Processo atualizado");
     },
     onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Erro ao atualizar processo",
-        description: "Não foi possível atualizar o processo.",
-      });
+      toast.error("Erro ao atualizar processo");
     },
   });
 }
