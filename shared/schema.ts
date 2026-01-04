@@ -471,6 +471,50 @@ export const insertSwimlaneSchema = createInsertSchema(swimlanes).omit({
 export type InsertSwimlane = z.infer<typeof insertSwimlaneSchema>;
 export type Swimlane = typeof swimlanes.$inferSelect;
 
+// Process Types Table (for dynamic type selection)
+export const processTypes = pgTable("process_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  color: text("color").default('#6B7280'),
+  order: integer("order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProcessTypeSchema = createInsertSchema(processTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateProcessTypeSchema = insertProcessTypeSchema.partial();
+
+export type InsertProcessType = z.infer<typeof insertProcessTypeSchema>;
+export type UpdateProcessType = z.infer<typeof updateProcessTypeSchema>;
+export type ProcessType = typeof processTypes.$inferSelect;
+
+// Priorities Table (for dynamic priority selection)
+export const priorities = pgTable("priorities", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  level: integer("level").notNull().default(0), // Higher = more urgent
+  color: text("color").default('#6B7280'),
+  order: integer("order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPrioritySchema = createInsertSchema(priorities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updatePrioritySchema = insertPrioritySchema.partial();
+
+export type InsertPriority = z.infer<typeof insertPrioritySchema>;
+export type UpdatePriority = z.infer<typeof updatePrioritySchema>;
+export type Priority = typeof priorities.$inferSelect;
+
 // Dashboard Widget Configuration Table
 export const dashboardWidgets = pgTable("dashboard_widgets", {
   id: serial("id").primaryKey(),
