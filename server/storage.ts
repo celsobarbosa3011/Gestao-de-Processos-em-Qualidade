@@ -219,7 +219,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProcess(process: InsertProcess): Promise<Process> {
-    const result = await db.insert(schema.processes).values(process).returning();
+    const data = { ...process };
+    if (data.deadline && typeof data.deadline === 'string') {
+      data.deadline = new Date(data.deadline);
+    }
+    const result = await db.insert(schema.processes).values(data).returning();
     return result[0];
   }
 

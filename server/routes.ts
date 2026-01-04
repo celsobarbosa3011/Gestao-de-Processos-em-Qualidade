@@ -594,7 +594,11 @@ export async function registerRoutes(
 
   app.post("/api/processes", async (req, res) => {
     try {
-      const validatedData = insertProcessSchema.parse(req.body);
+      const data = { ...req.body };
+      if (data.deadline && typeof data.deadline === 'string') {
+        data.deadline = new Date(data.deadline);
+      }
+      const validatedData = insertProcessSchema.parse(data);
       const process = await storage.createProcess(validatedData);
       
       // Create initial event
