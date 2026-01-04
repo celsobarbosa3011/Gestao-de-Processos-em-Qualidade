@@ -453,25 +453,26 @@ export default function AdminUsersPage() {
                 name="cep"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CEP</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+                    <FormLabel htmlFor="user-cep-input">CEP</FormLabel>
+                    <div className="relative">
+                      <FormControl>
                         <Input 
+                          {...field}
+                          id="user-cep-input"
                           data-testid="input-cep"
                           placeholder="00000-000" 
-                          {...field}
                           onChange={(e) => field.onChange(formatCep(e.target.value))}
                           onBlur={(e) => searchCep(e.target.value, formInstance)}
                           maxLength={9}
                         />
-                        {isSearchingCep && (
-                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                        {!isSearchingCep && (
-                          <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
-                    </FormControl>
+                      </FormControl>
+                      {isSearchingCep && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      {!isSearchingCep && (
+                        <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
