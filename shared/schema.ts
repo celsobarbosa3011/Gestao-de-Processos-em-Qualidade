@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, serial, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, serial, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -140,3 +140,23 @@ export const updateBrandingConfigSchema = createInsertSchema(brandingConfig).omi
 
 export type UpdateBrandingConfig = z.infer<typeof updateBrandingConfigSchema>;
 export type BrandingConfig = typeof brandingConfig.$inferSelect;
+
+// WIP (Work In Progress) Limits per Column
+export const wipLimits = pgTable("wip_limits", {
+  id: serial("id").primaryKey(),
+  columnId: text("column_id").notNull().unique(), // 'new', 'analysis', 'pending', 'approved', 'rejected'
+  maxItems: integer("max_items").notNull().default(10),
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertWipLimitSchema = createInsertSchema(wipLimits).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const updateWipLimitSchema = insertWipLimitSchema.partial();
+
+export type InsertWipLimit = z.infer<typeof insertWipLimitSchema>;
+export type UpdateWipLimit = z.infer<typeof updateWipLimitSchema>;
+export type WipLimit = typeof wipLimits.$inferSelect;

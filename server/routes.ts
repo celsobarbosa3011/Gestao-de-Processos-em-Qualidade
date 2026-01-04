@@ -9,7 +9,8 @@ import {
   insertProcessCommentSchema,
   insertProcessEventSchema,
   updateAlertSettingsSchema,
-  updateBrandingConfigSchema 
+  updateBrandingConfigSchema,
+  updateWipLimitSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import multer from "multer";
@@ -469,6 +470,30 @@ export async function registerRoutes(
         return res.status(400).json({ error: fromError(error).toString() });
       }
       res.status(500).json({ error: "Failed to update branding config" });
+    }
+  });
+
+  // ===== WIP LIMITS ROUTES =====
+  app.get("/api/settings/wip-limits", async (req, res) => {
+    try {
+      const limits = await storage.getAllWipLimits();
+      res.json(limits);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch WIP limits" });
+    }
+  });
+
+  app.patch("/api/settings/wip-limits/:columnId", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const { columnId } = req.params;
+      const validatedData = updateWipLimitSchema.parse(req.body);
+      const limit = await storage.upsertWipLimit(columnId, validatedData);
+      res.json(limit);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to update WIP limit" });
     }
   });
 

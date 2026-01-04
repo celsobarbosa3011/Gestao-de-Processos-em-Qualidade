@@ -17,6 +17,9 @@ import type {
   UpdateAlertSettings,
   BrandingConfig,
   UpdateBrandingConfig,
+  WipLimit,
+  InsertWipLimit,
+  UpdateWipLimit,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -57,6 +60,11 @@ export interface IStorage {
   // Branding Config methods
   getBrandingConfig(): Promise<BrandingConfig>;
   updateBrandingConfig(config: UpdateBrandingConfig): Promise<BrandingConfig>;
+  
+  // WIP Limits methods
+  getAllWipLimits(): Promise<WipLimit[]>;
+  getWipLimit(columnId: string): Promise<WipLimit | undefined>;
+  upsertWipLimit(columnId: string, updates: UpdateWipLimit): Promise<WipLimit>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -191,6 +199,34 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.brandingConfig.id, existing.id))
       .returning();
     return result[0];
+  }
+
+  // WIP Limits methods
+  async getAllWipLimits(): Promise<WipLimit[]> {
+    return await db.select().from(schema.wipLimits);
+  }
+
+  async getWipLimit(columnId: string): Promise<WipLimit | undefined> {
+    const result = await db.select().from(schema.wipLimits)
+      .where(eq(schema.wipLimits.columnId, columnId))
+      .limit(1);
+    return result[0];
+  }
+
+  async upsertWipLimit(columnId: string, updates: UpdateWipLimit): Promise<WipLimit> {
+    const existing = await this.getWipLimit(columnId);
+    if (existing) {
+      const result = await db.update(schema.wipLimits)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(schema.wipLimits.columnId, columnId))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(schema.wipLimits)
+        .values({ columnId, ...updates })
+        .returning();
+      return result[0];
+    }
   }
 }
 

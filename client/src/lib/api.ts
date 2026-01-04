@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -185,6 +185,26 @@ export async function updateBrandingConfig(config: Partial<BrandingConfig> & { u
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `Failed to update branding config (${response.status})`);
+  }
+  return response.json();
+}
+
+// WIP Limits
+export async function getWipLimits(): Promise<WipLimit[]> {
+  const response = await fetch(`${API_BASE}/settings/wip-limits`);
+  if (!response.ok) throw new Error("Failed to fetch WIP limits");
+  return response.json();
+}
+
+export async function updateWipLimit(columnId: string, updates: UpdateWipLimit): Promise<WipLimit> {
+  const response = await fetch(`${API_BASE}/settings/wip-limits/${columnId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to update WIP limit (${response.status})`);
   }
   return response.json();
 }

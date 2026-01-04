@@ -3,22 +3,74 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Clock, AlertOctagon } from "lucide-react";
-import { useState } from "react";
+import { AlertTriangle, Clock, AlertOctagon, Layers } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useWipLimits, useUpdateWipLimit } from "@/hooks/use-wip-limits";
+import { useAlertSettings, useUpdateAlertSettings } from "@/hooks/use-alert-settings";
+
+const COLUMNS = [
+  { id: 'new', title: 'Novos' },
+  { id: 'analysis', title: 'Em Análise' },
+  { id: 'pending', title: 'Pendentes' },
+  { id: 'approved', title: 'Aprovados' },
+  { id: 'rejected', title: 'Rejeitados' },
+];
 
 export default function AdminSettingsPage() {
-  const { alertSettings, updateSettings } = useStore();
+  const { currentUser } = useStore();
   const { toast } = useToast();
+  const { data: alertSettings } = useAlertSettings();
+  const updateAlertSettingsMutation = useUpdateAlertSettings();
+  const { data: wipLimits = [] } = useWipLimits();
+  const updateWipLimit = useUpdateWipLimit();
   
-  const [values, setValues] = useState(alertSettings);
+  const [values, setValues] = useState({ warningDays: 5, criticalDays: 2, stalledDays: 15 });
+  const [wipValues, setWipValues] = useState<Record<string, { maxItems: number; enabled: boolean }>>({});
+  
+  useEffect(() => {
+    if (alertSettings) {
+      setValues({
+        warningDays: alertSettings.warningDays,
+        criticalDays: alertSettings.criticalDays,
+        stalledDays: alertSettings.stalledDays,
+      });
+    }
+  }, [alertSettings]);
+  
+  useEffect(() => {
+    const initial: Record<string, { maxItems: number; enabled: boolean }> = {};
+    COLUMNS.forEach(col => {
+      const limit = wipLimits.find(l => l.columnId === col.id);
+      initial[col.id] = { maxItems: limit?.maxItems ?? 10, enabled: limit?.enabled ?? false };
+    });
+    setWipValues(initial);
+  }, [wipLimits]);
 
   const handleSave = () => {
-    updateSettings(values);
-    toast({
-      title: "Configurações salvas",
-      description: "Os parâmetros de alerta foram atualizados com sucesso.",
-    });
+    updateAlertSettingsMutation.mutate(values);
+  };
+
+  const handleSaveWipLimits = async () => {
+    try {
+      for (const [columnId, wipValue] of Object.entries(wipValues)) {
+        await updateWipLimit.mutateAsync({ 
+          columnId, 
+          updates: { maxItems: wipValue.maxItems, enabled: wipValue.enabled } 
+        });
+      }
+      toast({
+        title: "Limites WIP salvos",
+        description: "Os limites de trabalho em progresso foram atualizados.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível salvar os limites WIP.",
+      });
+    }
   };
 
   return (
@@ -107,6 +159,72 @@ export default function AdminSettingsPage() {
         <CardFooter className="bg-muted/20 border-t px-6 py-4 flex justify-end">
           <Button onClick={handleSave} className="min-w-[140px]">
             Salvar Alterações
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Card className="shadow-md border-t-4 border-t-primary">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary" />
+            Limites WIP (Work In Progress)
+          </CardTitle>
+          <CardDescription>
+            Defina limites máximos de itens por coluna no Kanban. Quando o limite é atingido,
+            novos cards não poderão ser movidos para essa coluna.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {COLUMNS.map(column => (
+            <div key={column.id} className="flex items-center justify-between gap-4 py-3 border-b last:border-0">
+              <div className="flex-1">
+                <Label className="font-medium">{column.title}</Label>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`wip-${column.id}`} className="text-sm text-muted-foreground">
+                    Máx:
+                  </Label>
+                  <Input 
+                    id={`wip-${column.id}`}
+                    type="number" 
+                    min={1}
+                    max={100}
+                    value={wipValues[column.id]?.maxItems || 10}
+                    onChange={(e) => setWipValues(prev => ({
+                      ...prev,
+                      [column.id]: { ...prev[column.id], maxItems: parseInt(e.target.value) || 10 }
+                    }))}
+                    className="w-20" 
+                    data-testid={`input-wip-${column.id}`}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`wip-enabled-${column.id}`}
+                    checked={wipValues[column.id]?.enabled || false}
+                    onCheckedChange={(checked) => setWipValues(prev => ({
+                      ...prev,
+                      [column.id]: { ...prev[column.id], enabled: checked }
+                    }))}
+                    data-testid={`switch-wip-${column.id}`}
+                  />
+                  <Label htmlFor={`wip-enabled-${column.id}`} className="text-sm">
+                    {wipValues[column.id]?.enabled ? 'Ativo' : 'Inativo'}
+                  </Label>
+                </div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+        <CardFooter className="bg-muted/20 border-t px-6 py-4 flex justify-end">
+          <Button 
+            onClick={handleSaveWipLimits} 
+            className="min-w-[140px]"
+            disabled={updateWipLimit.isPending}
+            data-testid="button-save-wip"
+          >
+            {updateWipLimit.isPending ? 'Salvando...' : 'Salvar Limites WIP'}
           </Button>
         </CardFooter>
       </Card>
