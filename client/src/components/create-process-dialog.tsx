@@ -5,17 +5,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useStore } from "@/lib/store";
 import { useCreateProcess } from "@/hooks/use-processes";
+import { useUnits } from "@/hooks/use-units";
+import { useProcessTypes } from "@/hooks/use-process-types";
+import { usePriorities } from "@/hooks/use-priorities";
 
 const processSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
   description: z.string().min(5, "Descrição necessária"),
   unit: z.string().min(1, "Unidade é obrigatória"),
   type: z.string().min(1, "Tipo é obrigatório"),
-  priority: z.enum(["low", "medium", "high", "critical"]),
+  priority: z.string().min(1, "Prioridade é obrigatória"),
   deadline: z.string().optional(),
 });
 
@@ -27,6 +30,9 @@ interface CreateProcessDialogProps {
 export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogProps) {
   const { currentUser } = useStore();
   const createProcess = useCreateProcess();
+  const { data: units = [], isLoading: unitsLoading } = useUnits();
+  const { data: processTypes = [], isLoading: typesLoading } = useProcessTypes();
+  const { data: priorities = [], isLoading: prioritiesLoading } = usePriorities();
   
   const form = useForm<z.infer<typeof processSchema>>({
     resolver: zodResolver(processSchema),
@@ -34,10 +40,31 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
       title: "",
       description: "",
       unit: currentUser?.unit || "",
-      type: "Administrativo",
-      priority: "medium",
+      type: "",
+      priority: "",
     },
   });
+
+  const unitOptions = units.map((unit) => ({
+    value: unit.razaoSocial,
+    label: unit.nomeFantasia || unit.razaoSocial,
+  }));
+
+  const typeOptions = processTypes
+    .filter((t) => t.active)
+    .map((type) => ({
+      value: type.name,
+      label: type.name,
+      color: type.color || undefined,
+    }));
+
+  const priorityOptions = priorities
+    .filter((p) => p.active)
+    .map((priority) => ({
+      value: priority.name,
+      label: priority.name,
+      color: priority.color || undefined,
+    }));
 
   const onSubmit = async (values: z.infer<typeof processSchema>) => {
     if (!currentUser) return;
@@ -97,7 +124,16 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                   <FormItem>
                     <FormLabel>Tipo</FormLabel>
                     <FormControl>
-                      <Input data-testid="input-type" placeholder="Ex: RH, Financeiro" {...field} />
+                      <SearchableSelect
+                        options={typeOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Selecione o tipo"
+                        searchPlaceholder="Pesquisar tipo..."
+                        emptyMessage="Nenhum tipo encontrado"
+                        isLoading={typesLoading}
+                        data-testid="select-type"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,19 +146,18 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Prioridade</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-priority">
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="low">Baixa</SelectItem>
-                        <SelectItem value="medium">Média</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
-                        <SelectItem value="critical">Crítica</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchableSelect
+                        options={priorityOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Selecione"
+                        searchPlaceholder="Pesquisar..."
+                        emptyMessage="Nenhuma prioridade"
+                        isLoading={prioritiesLoading}
+                        data-testid="select-priority"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -136,7 +171,16 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 <FormItem>
                   <FormLabel>Unidade</FormLabel>
                   <FormControl>
-                    <Input data-testid="input-unit" {...field} />
+                    <SearchableSelect
+                      options={unitOptions}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione a unidade"
+                      searchPlaceholder="Pesquisar unidade..."
+                      emptyMessage="Nenhuma unidade encontrada"
+                      isLoading={unitsLoading}
+                      data-testid="select-unit"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -16,6 +16,8 @@ import AdminBrandingPage from "@/pages/admin/branding";
 import AdminCustomFieldsPage from "@/pages/admin/custom-fields";
 import AdminAutomationsPage from "@/pages/admin/automations";
 import AdminTemplatesPage from "@/pages/admin/templates";
+import AdminProcessTypesPage from "@/pages/admin/process-types";
+import AdminPrioritiesPage from "@/pages/admin/priorities";
 import CalendarPage from "@/pages/calendar";
 import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
@@ -78,6 +80,8 @@ function Router() {
         <Route path="/admin/custom-fields" component={AdminCustomFieldsPage} />
         <Route path="/admin/automations" component={AdminAutomationsPage} />
         <Route path="/admin/templates" component={AdminTemplatesPage} />
+        <Route path="/admin/process-types" component={AdminProcessTypesPage} />
+        <Route path="/admin/priorities" component={AdminPrioritiesPage} />
         <Route path="/">
           <Redirect to={currentUser.role === 'admin' ? "/dashboard" : "/kanban"} />
         </Route>

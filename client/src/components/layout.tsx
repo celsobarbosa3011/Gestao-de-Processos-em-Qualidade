@@ -185,6 +185,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <FileText className="w-4 h-4" />
                 Templates
               </Button>
+              <Button 
+                variant={location === '/admin/process-types' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/process-types'); setIsMobileOpen(false); }}
+                data-testid="nav-process-types"
+              >
+                <Layers className="w-4 h-4" />
+                Tipos de Processo
+              </Button>
+              <Button 
+                variant={location === '/admin/priorities' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/priorities'); setIsMobileOpen(false); }}
+                data-testid="nav-priorities"
+              >
+                <Zap className="w-4 h-4" />
+                Prioridades
+              </Button>
             </>
           )}
         </nav>
