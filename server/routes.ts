@@ -20,7 +20,9 @@ import {
   insertAutomationSchema,
   insertNotificationSchema,
   insertSwimlaneSchema,
-  insertDashboardWidgetSchema
+  insertDashboardWidgetSchema,
+  insertUnitSchema,
+  updateUnitSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import multer from "multer";
@@ -326,6 +328,81 @@ export async function registerRoutes(
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete profile" });
+    }
+  });
+
+  // ===== UNIT ROUTES =====
+  app.get("/api/units", authMiddleware, async (req, res) => {
+    try {
+      const units = await storage.getAllUnits();
+      res.json(units);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch units" });
+    }
+  });
+
+  app.get("/api/units/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const unit = await storage.getUnit(id);
+      
+      if (!unit) {
+        return res.status(404).json({ error: "Unit not found" });
+      }
+      
+      res.json(unit);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch unit" });
+    }
+  });
+
+  app.post("/api/units", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const validatedData = insertUnitSchema.parse(req.body);
+      const unit = await storage.createUnit(validatedData);
+      res.status(201).json(unit);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "CNPJ já cadastrado" });
+      }
+      res.status(500).json({ error: "Failed to create unit" });
+    }
+  });
+
+  app.patch("/api/units/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = updateUnitSchema.parse(req.body);
+      const unit = await storage.updateUnit(id, validatedData);
+      
+      if (!unit) {
+        return res.status(404).json({ error: "Unit not found" });
+      }
+      
+      res.json(unit);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to update unit" });
+    }
+  });
+
+  app.delete("/api/units/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteUnit(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Unit not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete unit" });
     }
   });
 

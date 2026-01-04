@@ -15,7 +15,8 @@ import {
   GanttChart,
   Layers,
   Zap,
-  FileText
+  FileText,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -120,6 +121,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <Users className="w-4 h-4" />
                 Usuários
+              </Button>
+              <Button 
+                variant={location === '/admin/units' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/units'); setIsMobileOpen(false); }}
+                data-testid="nav-units"
+              >
+                <Building2 className="w-4 h-4" />
+                Unidades
               </Button>
               <Button 
                 variant={location === '/admin/branding' ? 'secondary' : 'ghost'} 

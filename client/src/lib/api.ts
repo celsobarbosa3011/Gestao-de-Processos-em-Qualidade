@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -92,6 +92,54 @@ export async function deleteProfile(id: string): Promise<void> {
     method: "DELETE",
   });
   if (!response.ok) throw new Error("Failed to delete profile");
+}
+
+// Units
+export async function getAllUnits(): Promise<Unit[]> {
+  const response = await fetch(`${API_BASE}/units`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch units");
+  return response.json();
+}
+
+export async function getUnit(id: number): Promise<Unit> {
+  const response = await fetch(`${API_BASE}/units/${id}`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch unit");
+  return response.json();
+}
+
+export async function createUnit(data: InsertUnit): Promise<Unit> {
+  const response = await fetch(`${API_BASE}/units`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to create unit");
+  }
+  return response.json();
+}
+
+export async function updateUnit(id: number, updates: UpdateUnit): Promise<Unit> {
+  const response = await fetch(`${API_BASE}/units/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update unit");
+  return response.json();
+}
+
+export async function deleteUnit(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/units/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete unit");
 }
 
 // Processes
