@@ -19,7 +19,6 @@ const formSchema = z.object({
 });
 
 export default function AuthPage() {
-  console.log("AuthPage rendering...");
   const [, setLocation] = useLocation();
   const { setCurrentUser } = useStore();
   const { data: branding, isLoading: brandingLoading } = useBrandingConfig();

@@ -32,10 +32,8 @@ const Placeholder = ({ title }: { title: string }) => (
 
 function Router() {
   const { currentUser, _hasHydrated } = useStore();
-  console.log("Router rendering - hasHydrated:", _hasHydrated, "currentUser:", !!currentUser);
 
   if (!_hasHydrated) {
-    console.log("Showing loading spinner...");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -44,13 +42,10 @@ function Router() {
   }
 
   if (!currentUser) {
-    console.log("No user - showing auth routes, current path:", window.location.pathname);
     if (window.location.pathname !== "/auth") {
-      console.log("Redirecting to /auth...");
       window.location.href = "/auth";
       return null;
     }
-    console.log("Rendering AuthPage directly");
     return <AuthPage />;
   }
 
@@ -96,7 +91,6 @@ function Router() {
 }
 
 function App() {
-  console.log("App component rendering...");
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
