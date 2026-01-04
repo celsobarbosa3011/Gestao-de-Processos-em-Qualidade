@@ -44,14 +44,14 @@ function Router() {
   }
 
   if (!currentUser) {
-    return (
-      <Switch>
-        <Route path="/auth" component={AuthPage} />
-        <Route path="/:rest*">
-          <Redirect to="/auth" />
-        </Route>
-      </Switch>
-    );
+    console.log("No user - showing auth routes, current path:", window.location.pathname);
+    if (window.location.pathname !== "/auth") {
+      console.log("Redirecting to /auth...");
+      window.location.href = "/auth";
+      return null;
+    }
+    console.log("Rendering AuthPage directly");
+    return <AuthPage />;
   }
 
   if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
