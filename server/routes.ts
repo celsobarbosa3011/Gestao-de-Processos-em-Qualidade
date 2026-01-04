@@ -7,7 +7,8 @@ import {
   updateProcessSchema,
   insertProcessCommentSchema,
   insertProcessEventSchema,
-  updateAlertSettingsSchema 
+  updateAlertSettingsSchema,
+  updateBrandingConfigSchema 
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 
@@ -234,6 +235,40 @@ export async function registerRoutes(
         return res.status(400).json({ error: fromError(error).toString() });
       }
       res.status(500).json({ error: "Failed to update alert settings" });
+    }
+  });
+
+  // ===== BRANDING CONFIG ROUTES =====
+  app.get("/api/settings/branding", async (req, res) => {
+    try {
+      const config = await storage.getBrandingConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch branding config" });
+    }
+  });
+
+  app.patch("/api/settings/branding", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const user = await storage.getProfile(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required to modify branding" });
+      }
+      
+      const { userId: _, ...brandingData } = req.body;
+      const validatedData = updateBrandingConfigSchema.parse(brandingData);
+      const config = await storage.updateBrandingConfig(validatedData);
+      res.json(config);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to update branding config" });
     }
   });
 

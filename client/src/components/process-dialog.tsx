@@ -112,7 +112,7 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                     <h3 className="text-sm font-medium text-muted-foreground">Responsável</h3>
                     <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={responsible?.avatar} />
+                        <AvatarImage src={responsible?.avatar || undefined} />
                         <AvatarFallback>{responsible?.name.slice(0,2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="text-sm">

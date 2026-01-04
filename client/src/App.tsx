@@ -11,6 +11,7 @@ import DashboardPage from "@/pages/dashboard";
 import AdminUsersPage from "@/pages/admin/users";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminLogsPage from "@/pages/admin/logs";
+import AdminBrandingPage from "@/pages/admin/branding";
 import { useStore } from "@/lib/store";
 
 // Temporary placeholders for missing pages
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/kanban" component={KanbanPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/admin/users" component={AdminUsersPage} />
+        <Route path="/admin/branding" component={AdminBrandingPage} />
         <Route path="/admin/settings" component={AdminSettingsPage} />
         <Route path="/admin/logs" component={AdminLogsPage} />
         <Route path="/">

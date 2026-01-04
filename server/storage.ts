@@ -15,6 +15,8 @@ import type {
   InsertProcessEvent,
   AlertSettings,
   UpdateAlertSettings,
+  BrandingConfig,
+  UpdateBrandingConfig,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -50,6 +52,10 @@ export interface IStorage {
   // Alert Settings methods
   getAlertSettings(): Promise<AlertSettings | undefined>;
   updateAlertSettings(settings: UpdateAlertSettings): Promise<AlertSettings>;
+  
+  // Branding Config methods
+  getBrandingConfig(): Promise<BrandingConfig>;
+  updateBrandingConfig(config: UpdateBrandingConfig): Promise<BrandingConfig>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -155,6 +161,28 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(schema.alertSettings)
       .set({ ...settings, updatedAt: new Date() })
       .where(eq(schema.alertSettings.id, existing.id))
+      .returning();
+    return result[0];
+  }
+
+  // Branding Config methods
+  async getBrandingConfig(): Promise<BrandingConfig> {
+    const result = await db.select().from(schema.brandingConfig).limit(1);
+    if (result.length === 0) {
+      // Create default branding if none exists
+      const defaultBranding = await db.insert(schema.brandingConfig)
+        .values({})
+        .returning();
+      return defaultBranding[0];
+    }
+    return result[0];
+  }
+
+  async updateBrandingConfig(config: UpdateBrandingConfig): Promise<BrandingConfig> {
+    const existing = await this.getBrandingConfig();
+    const result = await db.update(schema.brandingConfig)
+      .set({ ...config, updatedAt: new Date() })
+      .where(eq(schema.brandingConfig.id, existing.id))
       .returning();
     return result[0];
   }

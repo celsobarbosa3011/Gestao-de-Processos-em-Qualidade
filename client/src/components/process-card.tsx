@@ -83,7 +83,7 @@ export function ProcessCard({ process, index, onClick, profiles, alertSettings }
                       {responsible.name.split(' ')[0]}
                     </span>
                     <Avatar className="h-6 w-6 border-2 border-background">
-                      <AvatarImage src={responsible.avatar} />
+                      <AvatarImage src={responsible.avatar || undefined} />
                       <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-bold">
                         {responsible.name.substring(0, 2).toUpperCase()}
                       </AvatarFallback>

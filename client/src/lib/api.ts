@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig } from "@shared/schema";
 
 const API_BASE = "/api";
 
@@ -111,5 +111,25 @@ export async function updateAlertSettings(settings: Partial<AlertSettings>): Pro
     body: JSON.stringify(settings),
   });
   if (!response.ok) throw new Error("Failed to update alert settings");
+  return response.json();
+}
+
+// Branding Config
+export async function getBrandingConfig(): Promise<BrandingConfig> {
+  const response = await fetch(`${API_BASE}/settings/branding`);
+  if (!response.ok) throw new Error("Failed to fetch branding config");
+  return response.json();
+}
+
+export async function updateBrandingConfig(config: Partial<BrandingConfig> & { userId: string }): Promise<BrandingConfig> {
+  const response = await fetch(`${API_BASE}/settings/branding`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to update branding config (${response.status})`);
+  }
   return response.json();
 }

@@ -102,3 +102,27 @@ export const updateAlertSettingsSchema = createInsertSchema(alertSettings).omit(
 
 export type UpdateAlertSettings = z.infer<typeof updateAlertSettingsSchema>;
 export type AlertSettings = typeof alertSettings.$inferSelect;
+
+// White Label / Branding Configuration Table
+export const brandingConfig = pgTable("branding_config", {
+  id: serial("id").primaryKey(),
+  appName: text("app_name").notNull().default('MediFlow'),
+  tagline: text("tagline").default('Gestão Administrativa para Unidades de Saúde'),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  primaryColor: text("primary_color").notNull().default('#0F766E'), // Teal-700
+  primaryForeground: text("primary_foreground").notNull().default('#FFFFFF'),
+  accentColor: text("accent_color").default('#14B8A6'), // Teal-500
+  footerText: text("footer_text").default('© 2025 Todos os direitos reservados'),
+  supportEmail: text("support_email"),
+  customDomain: text("custom_domain"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const updateBrandingConfigSchema = createInsertSchema(brandingConfig).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type UpdateBrandingConfig = z.infer<typeof updateBrandingConfigSchema>;
+export type BrandingConfig = typeof brandingConfig.$inferSelect;
