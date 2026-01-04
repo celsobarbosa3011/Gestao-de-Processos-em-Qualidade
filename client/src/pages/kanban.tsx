@@ -7,6 +7,7 @@ import { Plus, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'new', title: 'Novos' },
