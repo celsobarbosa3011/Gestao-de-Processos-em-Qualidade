@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ShieldCheck } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { login as apiLogin } from "@/lib/api";
 import { useBrandingConfig } from "@/hooks/use-branding";
 import { useState } from "react";
@@ -21,7 +21,6 @@ const formSchema = z.object({
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { setCurrentUser } = useStore();
-  const { toast } = useToast();
   const { data: branding, isLoading: brandingLoading } = useBrandingConfig();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,17 +40,10 @@ export default function AuthPage() {
     try {
       const user = await apiLogin(values.email, values.password);
       setCurrentUser(user);
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${user.name}!`,
-      });
+      toast.success(`Bem-vindo, ${user.name}!`);
       setLocation("/kanban");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro no login",
-        description: "Credenciais inválidas.",
-      });
+      toast.error("Credenciais inválidas");
     } finally {
       setIsLoading(false);
     }

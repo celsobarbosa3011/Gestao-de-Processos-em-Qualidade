@@ -20,7 +20,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAllProfiles, createProfile, updateProfile, deleteProfile, generateProvisionalPassword } from "@/lib/api";
 import type { Profile } from "@shared/schema";
@@ -39,7 +39,6 @@ export default function AdminUsersPage() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: users = [] } = useQuery({
@@ -87,17 +86,10 @@ export default function AdminUsersPage() {
       onSuccess: () => {
         setIsDialogOpen(false);
         form.reset();
-        toast({
-          title: "Usuário criado",
-          description: `${values.name} foi adicionado com sucesso.`,
-        });
+        toast.success(`${values.name} foi adicionado com sucesso`);
       },
       onError: () => {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Não foi possível criar o usuário.",
-        });
+        toast.error("Não foi possível criar o usuário");
       }
     });
   };
@@ -106,10 +98,7 @@ export default function AdminUsersPage() {
     const newStatus = user.status === 'active' ? 'suspended' : 'active';
     updateMutation.mutate({ id: user.id, updates: { status: newStatus } }, {
       onSuccess: () => {
-        toast({
-          title: `Status atualizado`,
-          description: `Usuário ${user.name} agora está ${newStatus === 'active' ? 'ativo' : 'suspenso'}.`,
-        });
+        toast.success(`Usuário ${user.name} agora está ${newStatus === 'active' ? 'ativo' : 'suspenso'}`);
       }
     });
   };
@@ -141,17 +130,10 @@ export default function AdminUsersPage() {
       onSuccess: () => {
         setIsEditDialogOpen(false);
         setSelectedUser(null);
-        toast({
-          title: "Usuário atualizado",
-          description: `${values.name} foi atualizado com sucesso.`,
-        });
+        toast.success(`${values.name} foi atualizado com sucesso`);
       },
       onError: () => {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Não foi possível atualizar o usuário.",
-        });
+        toast.error("Não foi possível atualizar o usuário");
       }
     });
   };
@@ -167,17 +149,10 @@ export default function AdminUsersPage() {
       onSuccess: () => {
         setIsDeleteDialogOpen(false);
         setSelectedUser(null);
-        toast({
-          title: "Usuário excluído",
-          description: "O usuário foi removido com sucesso.",
-        });
+        toast.success("Usuário excluído com sucesso");
       },
       onError: () => {
-        toast({
-          variant: "destructive",
-          title: "Erro",
-          description: "Não foi possível excluir o usuário.",
-        });
+        toast.error("Não foi possível excluir o usuário");
       }
     });
   };
@@ -188,26 +163,16 @@ export default function AdminUsersPage() {
       const result = await generateProvisionalPassword(user.id);
       setGeneratedPassword(result.provisionalPassword);
       setIsPasswordDialogOpen(true);
-      toast({
-        title: "Senha provisória gerada",
-        description: "A senha expira em 24 horas.",
-      });
+      toast.success("Senha provisória gerada - expira em 24 horas");
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message || "Não foi possível gerar a senha provisória.",
-      });
+      toast.error(error.message || "Não foi possível gerar a senha provisória");
     }
   };
 
   const copyPassword = () => {
     if (generatedPassword) {
       navigator.clipboard.writeText(generatedPassword);
-      toast({
-        title: "Senha copiada",
-        description: "A senha provisória foi copiada para a área de transferência.",
-      });
+      toast.success("Senha copiada para a área de transferência");
     }
   };
 

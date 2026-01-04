@@ -11,7 +11,7 @@ import { Palette, Type, Globe, Upload, X, Image } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEffect, useState, useRef } from "react";
 import { useStore } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 const brandingSchema = z.object({
   appName: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -33,7 +33,6 @@ export default function BrandingPage() {
   const updateBranding = useUpdateBrandingConfig();
   const previewColors = usePreviewColors();
   const { currentUser } = useStore();
-  const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -85,11 +84,7 @@ export default function BrandingPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: "Arquivo muito grande",
-        description: "O tamanho máximo é 5MB.",
-      });
+      toast.error("Arquivo muito grande - máximo 5MB");
       return;
     }
 
@@ -109,16 +104,9 @@ export default function BrandingPage() {
 
       const data = await response.json();
       form.setValue('logoUrl', data.url);
-      toast({
-        title: "Logo enviado",
-        description: "A imagem foi carregada com sucesso.",
-      });
+      toast.success("Logo enviado com sucesso");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro no upload",
-        description: "Não foi possível enviar a imagem.",
-      });
+      toast.error("Não foi possível enviar a imagem");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

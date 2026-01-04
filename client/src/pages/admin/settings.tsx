@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { AlertTriangle, Clock, AlertOctagon, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useWipLimits, useUpdateWipLimit } from "@/hooks/use-wip-limits";
@@ -20,7 +20,6 @@ const COLUMNS = [
 
 export default function AdminSettingsPage() {
   const { currentUser } = useStore();
-  const { toast } = useToast();
   const { data: alertSettings } = useAlertSettings();
   const updateAlertSettingsMutation = useUpdateAlertSettings();
   const { data: wipLimits = [] } = useWipLimits();
@@ -60,16 +59,9 @@ export default function AdminSettingsPage() {
           updates: { maxItems: wipValue.maxItems, enabled: wipValue.enabled } 
         });
       }
-      toast({
-        title: "Limites WIP salvos",
-        description: "Os limites de trabalho em progresso foram atualizados.",
-      });
+      toast.success("Limites WIP salvos");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível salvar os limites WIP.",
-      });
+      toast.error("Não foi possível salvar os limites WIP");
     }
   };
 
