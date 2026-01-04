@@ -21,34 +21,39 @@ import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { useStore } from "@/lib/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 function Router() {
   const { currentUser } = useStore();
-  const [location, setLocation] = useLocation();
+  const [isReady, setIsReady] = useState(false);
+  const [, setLocation] = useLocation();
 
-  // Redirect to auth if not logged in and not on auth page
+  // Wait for store to be ready on client side
   useEffect(() => {
-    if (!currentUser && location !== "/auth") {
-      setLocation("/auth");
-    }
-  }, [currentUser, location, setLocation]);
+    setIsReady(true);
+  }, []);
 
+  // Show loading while waiting for hydration
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Not logged in - show auth page
   if (!currentUser) {
     return <AuthPage />;
   }
 
+  // Needs to complete profile
   if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
-    return (
-      <Switch>
-        <Route path="/profile-completion" component={ProfileCompletionPage} />
-        <Route path="/:rest*">
-          <Redirect to="/profile-completion" />
-        </Route>
-      </Switch>
-    );
+    return <ProfileCompletionPage />;
   }
 
+  // Logged in - show main app
   return (
     <Layout>
       <Switch>
