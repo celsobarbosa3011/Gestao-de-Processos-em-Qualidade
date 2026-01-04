@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, MoreVertical, Ban, CheckCircle } from "lucide-react";
+import { Plus, MoreVertical, Ban, CheckCircle, Pencil, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -21,7 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllProfiles, createProfile, updateProfile } from "@/lib/api";
+import { getAllProfiles, createProfile, updateProfile, deleteProfile } from "@/lib/api";
 import type { Profile } from "@shared/schema";
 
 const userSchema = z.object({
@@ -33,6 +34,9 @@ const userSchema = z.object({
 
 export default function AdminUsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -50,6 +54,13 @@ export default function AdminUsersPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Profile> }) => updateProfile(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProfile,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
@@ -96,6 +107,74 @@ export default function AdminUsersPage() {
         toast({
           title: `Status atualizado`,
           description: `Usuário ${user.name} agora está ${newStatus === 'active' ? 'ativo' : 'suspenso'}.`,
+        });
+      }
+    });
+  };
+
+  const editForm = useForm<z.infer<typeof userSchema>>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "user",
+      unit: "",
+    },
+  });
+
+  const openEditDialog = (user: Profile) => {
+    setSelectedUser(user);
+    editForm.reset({
+      name: user.name,
+      email: user.email,
+      role: user.role as "admin" | "user",
+      unit: user.unit,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const onEditSubmit = (values: z.infer<typeof userSchema>) => {
+    if (!selectedUser) return;
+    updateMutation.mutate({ id: selectedUser.id, updates: values }, {
+      onSuccess: () => {
+        setIsEditDialogOpen(false);
+        setSelectedUser(null);
+        toast({
+          title: "Usuário atualizado",
+          description: `${values.name} foi atualizado com sucesso.`,
+        });
+      },
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Não foi possível atualizar o usuário.",
+        });
+      }
+    });
+  };
+
+  const openDeleteDialog = (user: Profile) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!selectedUser) return;
+    deleteMutation.mutate(selectedUser.id, {
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        setSelectedUser(null);
+        toast({
+          title: "Usuário excluído",
+          description: "O usuário foi removido com sucesso.",
+        });
+      },
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Não foi possível excluir o usuário.",
         });
       }
     });
@@ -239,6 +318,10 @@ export default function AdminUsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => toggleStatus(user)}>
                           {user.status === 'active' ? (
                             <>
@@ -252,6 +335,10 @@ export default function AdminUsersPage() {
                             </>
                           )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openDeleteDialog(user)} className="text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -261,6 +348,104 @@ export default function AdminUsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>Atualize as informações do usuário.</DialogDescription>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome Completo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Maria Silva" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Corporativo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="maria@mediflow.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Função</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="user">Usuário</SelectItem>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unidade</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ex: Unidade A" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter className="pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+                <Button type="submit">Salvar Alterações</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o usuário <strong>{selectedUser?.name}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

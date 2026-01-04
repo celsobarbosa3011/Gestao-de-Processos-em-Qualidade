@@ -44,6 +44,13 @@ export async function createProfile(data: { name: string; email: string; role: s
   return response.json();
 }
 
+export async function deleteProfile(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/profiles/${id}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Failed to delete profile");
+}
+
 // Processes
 export async function getAllProcesses(): Promise<Process[]> {
   const response = await fetch(`${API_BASE}/processes`);

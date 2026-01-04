@@ -21,7 +21,18 @@ export const insertProfileSchema = createInsertSchema(profiles).omit({
   createdAt: true,
 });
 
+export const updateProfileSchema = insertProfileSchema.partial().omit({
+  password: true,
+  email: true,
+});
+
+export const adminUpdateProfileSchema = insertProfileSchema.partial().omit({
+  password: true,
+});
+
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+export type AdminUpdateProfile = z.infer<typeof adminUpdateProfileSchema>;
 export type Profile = typeof profiles.$inferSelect;
 
 // Processes Table

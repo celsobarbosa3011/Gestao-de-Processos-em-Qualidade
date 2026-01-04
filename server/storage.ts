@@ -31,6 +31,7 @@ export interface IStorage {
   getProfileByEmail(email: string): Promise<Profile | undefined>;
   createProfile(profile: InsertProfile): Promise<Profile>;
   updateProfile(id: string, updates: Partial<InsertProfile>): Promise<Profile | undefined>;
+  deleteProfile(id: string): Promise<boolean>;
   getAllProfiles(): Promise<Profile[]>;
 
   // Process methods
@@ -82,6 +83,11 @@ export class DatabaseStorage implements IStorage {
 
   async getAllProfiles(): Promise<Profile[]> {
     return await db.select().from(schema.profiles);
+  }
+
+  async deleteProfile(id: string): Promise<boolean> {
+    const result = await db.delete(schema.profiles).where(eq(schema.profiles.id, id)).returning();
+    return result.length > 0;
   }
 
   // Process methods

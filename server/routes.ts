@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
-  insertProfileSchema, 
+  insertProfileSchema,
+  adminUpdateProfileSchema,
   insertProcessSchema, 
   updateProcessSchema,
   insertProcessCommentSchema,
@@ -108,8 +109,8 @@ export async function registerRoutes(
   app.patch("/api/profiles/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const updates = req.body;
-      const profile = await storage.updateProfile(id, updates);
+      const validatedData = adminUpdateProfileSchema.parse(req.body);
+      const profile = await storage.updateProfile(id, validatedData);
       
       if (!profile) {
         return res.status(404).json({ error: "Profile not found" });
@@ -117,8 +118,26 @@ export async function registerRoutes(
       
       const { password: _, ...profileWithoutPassword } = profile;
       res.json(profileWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
       res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.delete("/api/profiles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteProfile(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete profile" });
     }
   });
 
