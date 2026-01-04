@@ -86,7 +86,7 @@ export default function AuthPage() {
         </div>
         <div className="relative z-10 max-w-lg">
           <h2 className="text-4xl font-bold leading-tight mb-4" style={{ color: '#2ECC71' }}>
-            SAÚDE MENTAL
+            Gestão de Qualidade na Saúde
           </h2>
           <p className="text-xl opacity-90">
             Gestão eficiente para unidades de saúde com foco no que realmente importa.
