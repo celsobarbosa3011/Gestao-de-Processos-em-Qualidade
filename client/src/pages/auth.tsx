@@ -104,11 +104,10 @@ export default function AuthPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel htmlFor="email-input">Email</FormLabel>
+                        <FormLabel>Email</FormLabel>
                         <FormControl>
                           <Input 
                             {...field} 
-                            id="email-input"
                             autoComplete="email"
                             data-testid="input-email"
                             placeholder="seu@email.com" 
@@ -123,27 +122,25 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel htmlFor="password-input">Senha</FormLabel>
-                        <div className="relative">
-                          <FormControl>
-                            <Input 
-                              {...field}
-                              id="password-input"
-                              autoComplete="current-password"
-                              data-testid="input-password"
-                              type={showPassword ? "text" : "password"}
-                              placeholder="Sua senha" 
-                            />
-                          </FormControl>
-                          <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setShowPassword(!showPassword)}
-                            data-testid="toggle-password-visibility"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
+                        <FormLabel>Senha</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field}
+                            autoComplete="current-password"
+                            data-testid="input-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Sua senha" 
+                          />
+                        </FormControl>
+                        <button
+                          type="button"
+                          className="absolute right-3 top-9 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowPassword(!showPassword)}
+                          data-testid="toggle-password-visibility"
+                          style={{ position: 'relative', marginTop: '-30px', float: 'right', marginRight: '10px' }}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
                         <FormMessage />
                       </FormItem>
                     )}

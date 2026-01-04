@@ -289,27 +289,18 @@ export default function AdminUnitsPage() {
             name="cnpj"
             render={({ field }) => (
               <FormItem className="md:col-span-2">
-                <FormLabel htmlFor="unit-cnpj-input">CNPJ *</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input 
-                      {...field}
-                      id="unit-cnpj-input"
-                      data-testid="input-cnpj"
-                      placeholder="00.000.000/0000-00" 
-                      onChange={(e) => field.onChange(formatCnpj(e.target.value))}
-                      onBlur={(e) => searchCnpj(e.target.value, formInstance)}
-                      maxLength={18}
-                      disabled={isEdit}
-                    />
-                  </FormControl>
-                  {isSearchingCnpj && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  {!isSearchingCnpj && !isEdit && (
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
+                <FormLabel>CNPJ *</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field}
+                    data-testid="input-cnpj"
+                    placeholder="00.000.000/0000-00" 
+                    onChange={(e) => field.onChange(formatCnpj(e.target.value))}
+                    onBlur={(e) => searchCnpj(e.target.value, formInstance)}
+                    maxLength={18}
+                    disabled={isEdit}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -348,26 +339,17 @@ export default function AdminUnitsPage() {
             name="cep"
             render={({ field }) => (
               <FormItem>
-                <FormLabel htmlFor="unit-cep-input">CEP</FormLabel>
-                <div className="relative">
-                  <FormControl>
-                    <Input 
-                      {...field}
-                      id="unit-cep-input"
-                      data-testid="input-cep"
-                      placeholder="00000-000" 
-                      onChange={(e) => field.onChange(formatCep(e.target.value))}
-                      onBlur={(e) => searchCep(e.target.value, formInstance)}
-                      maxLength={9}
-                    />
-                  </FormControl>
-                  {isSearchingCep && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                  {!isSearchingCep && (
-                    <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
+                <FormLabel>CEP</FormLabel>
+                <FormControl>
+                  <Input 
+                    {...field}
+                    data-testid="input-cep"
+                    placeholder="00000-000" 
+                    onChange={(e) => field.onChange(formatCep(e.target.value))}
+                    onBlur={(e) => searchCep(e.target.value, formInstance)}
+                    maxLength={9}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
