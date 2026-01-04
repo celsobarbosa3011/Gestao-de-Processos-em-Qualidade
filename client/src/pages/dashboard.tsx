@@ -296,7 +296,7 @@ function WidgetRenderer({ widget, processes, events, alertSettings, cfdChartData
                 {recentEvents.map(e => (
                   <div key={e.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg" data-testid={`widget-activity-${e.id}`}>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">{e.description}</div>
+                      <div className="font-medium text-sm truncate">{e.details}</div>
                       <div className="text-xs text-muted-foreground">Processo #{e.processId}</div>
                     </div>
                     <div className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
