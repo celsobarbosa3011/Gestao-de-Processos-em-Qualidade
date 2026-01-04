@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -688,5 +688,60 @@ export async function getCumulativeFlowData(): Promise<{ status: string; date: s
     headers: getAuthHeaders(false),
   });
   if (!response.ok) throw new Error("Failed to fetch cumulative flow data");
+  return response.json();
+}
+
+// Dashboard Widgets
+export async function getDashboardWidgets(): Promise<DashboardWidget[]> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch dashboard widgets");
+  return response.json();
+}
+
+export async function createDashboardWidget(widget: Omit<InsertDashboardWidget, 'userId'>): Promise<DashboardWidget> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(widget),
+  });
+  if (!response.ok) throw new Error("Failed to create widget");
+  return response.json();
+}
+
+export async function updateDashboardWidget(id: number, updates: Partial<InsertDashboardWidget>): Promise<DashboardWidget> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update widget");
+  return response.json();
+}
+
+export async function deleteDashboardWidget(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete widget");
+}
+
+export async function reorderDashboardWidgets(positions: { id: number; position: number }[]): Promise<void> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets/reorder`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ positions }),
+  });
+  if (!response.ok) throw new Error("Failed to reorder widgets");
+}
+
+export async function resetDashboardWidgets(): Promise<DashboardWidget[]> {
+  const response = await fetch(`${API_BASE}/dashboard/widgets/reset`, {
+    method: "POST",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to reset widgets");
   return response.json();
 }

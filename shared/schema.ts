@@ -418,3 +418,27 @@ export const insertSwimlaneSchema = createInsertSchema(swimlanes).omit({
 
 export type InsertSwimlane = z.infer<typeof insertSwimlaneSchema>;
 export type Swimlane = typeof swimlanes.$inferSelect;
+
+// Dashboard Widget Configuration Table
+export const dashboardWidgets = pgTable("dashboard_widgets", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  widgetType: text("widget_type").notNull(), // 'process_count', 'status_chart', 'recent_processes', 'deadline_alerts', 'activity_feed', 'priority_chart', 'unit_breakdown', 'cumulative_flow'
+  title: text("title").notNull(),
+  config: text("config"), // JSON config for widget-specific settings
+  position: integer("position").notNull().default(0),
+  width: integer("width").notNull().default(1), // 1 = half width, 2 = full width
+  height: integer("height").notNull().default(1), // 1 = normal, 2 = tall
+  visible: boolean("visible").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
+export type DashboardWidget = typeof dashboardWidgets.$inferSelect;

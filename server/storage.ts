@@ -48,6 +48,8 @@ import type {
   InsertNotification,
   Swimlane,
   InsertSwimlane,
+  DashboardWidget,
+  InsertDashboardWidget,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -740,6 +742,62 @@ export class DatabaseStorage implements IStorage {
     .groupBy(schema.processes.status, sql`DATE(${schema.processes.createdAt})`)
     .orderBy(sql`DATE(${schema.processes.createdAt})`);
     return result;
+  }
+
+  // Dashboard Widget methods
+  async getDashboardWidgets(userId: string): Promise<DashboardWidget[]> {
+    return await db.select().from(schema.dashboardWidgets)
+      .where(eq(schema.dashboardWidgets.userId, userId))
+      .orderBy(schema.dashboardWidgets.position);
+  }
+
+  async createDashboardWidget(widget: InsertDashboardWidget): Promise<DashboardWidget> {
+    const result = await db.insert(schema.dashboardWidgets).values(widget).returning();
+    return result[0];
+  }
+
+  async updateDashboardWidget(id: number, updates: Partial<InsertDashboardWidget>): Promise<DashboardWidget | undefined> {
+    const result = await db.update(schema.dashboardWidgets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(schema.dashboardWidgets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteDashboardWidget(id: number): Promise<boolean> {
+    const result = await db.delete(schema.dashboardWidgets)
+      .where(eq(schema.dashboardWidgets.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async updateWidgetPositions(userId: string, positions: { id: number; position: number }[]): Promise<void> {
+    for (const { id, position } of positions) {
+      await db.update(schema.dashboardWidgets)
+        .set({ position, updatedAt: new Date() })
+        .where(and(
+          eq(schema.dashboardWidgets.id, id),
+          eq(schema.dashboardWidgets.userId, userId)
+        ));
+    }
+  }
+
+  async initializeDefaultWidgets(userId: string): Promise<DashboardWidget[]> {
+    const defaultWidgets: InsertDashboardWidget[] = [
+      { userId, widgetType: 'process_count', title: 'Total de Processos', position: 0, width: 1, height: 1, visible: true },
+      { userId, widgetType: 'status_chart', title: 'Por Status', position: 1, width: 1, height: 1, visible: true },
+      { userId, widgetType: 'priority_chart', title: 'Por Prioridade', position: 2, width: 1, height: 1, visible: true },
+      { userId, widgetType: 'deadline_alerts', title: 'Alertas de Prazo', position: 3, width: 1, height: 1, visible: true },
+      { userId, widgetType: 'recent_processes', title: 'Processos Recentes', position: 4, width: 2, height: 1, visible: true },
+      { userId, widgetType: 'activity_feed', title: 'Atividade Recente', position: 5, width: 2, height: 1, visible: true },
+    ];
+    
+    const widgets: DashboardWidget[] = [];
+    for (const widget of defaultWidgets) {
+      const created = await this.createDashboardWidget(widget);
+      widgets.push(created);
+    }
+    return widgets;
   }
 }
 
