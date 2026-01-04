@@ -19,6 +19,7 @@ import {
   SheetTrigger 
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ChatButton } from "@/components/chat";
 import { useState } from "react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -191,7 +192,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-semibold text-sm">{appName}</span>
           </div>
 
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-2 ml-auto">
+            <ChatButton />
             <Button variant="ghost" size="icon" className="relative text-muted-foreground" data-testid="button-notifications">
               <Bell className="w-5 h-5" />
               <span className="absolute top-3 right-3 w-2 h-2 bg-destructive rounded-full border-2 border-background" />

@@ -220,3 +220,88 @@ export const updateWipLimitSchema = insertWipLimitSchema.partial();
 export type InsertWipLimit = z.infer<typeof insertWipLimitSchema>;
 export type UpdateWipLimit = z.infer<typeof updateWipLimitSchema>;
 export type WipLimit = typeof wipLimits.$inferSelect;
+
+// Chat Messages Table
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  senderId: varchar("sender_id").notNull().references(() => profiles.id),
+  receiverId: varchar("receiver_id").references(() => profiles.id), // null = broadcast/global
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Permissions Table
+export const permissions = pgTable("permissions", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(), // e.g., 'admin.panel', 'users.read'
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default('general'),
+});
+
+export const insertPermissionSchema = createInsertSchema(permissions).omit({
+  id: true,
+});
+
+export type InsertPermission = z.infer<typeof insertPermissionSchema>;
+export type Permission = typeof permissions.$inferSelect;
+
+// Role Permissions Junction Table
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  role: text("role").notNull(), // 'admin' or 'user'
+  permissionKey: text("permission_key").notNull(),
+});
+
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+// User Permissions (overrides for specific users)
+export const userPermissions = pgTable("user_permissions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  permissionKey: text("permission_key").notNull(),
+  granted: boolean("granted").notNull().default(true),
+});
+
+export type UserPermission = typeof userPermissions.$inferSelect;
+
+// Process Templates Table
+export const processTemplates = pgTable("process_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  priority: text("priority").notNull().default('medium'),
+  defaultChecklist: text("default_checklist").array(),
+  createdBy: varchar("created_by").references(() => profiles.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProcessTemplateSchema = createInsertSchema(processTemplates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProcessTemplate = z.infer<typeof insertProcessTemplateSchema>;
+export type ProcessTemplate = typeof processTemplates.$inferSelect;
+
+// Feature Toggles (Admin controls which features are enabled)
+export const featureToggles = pgTable("feature_toggles", {
+  id: serial("id").primaryKey(),
+  featureKey: text("feature_key").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type FeatureToggle = typeof featureToggles.$inferSelect;

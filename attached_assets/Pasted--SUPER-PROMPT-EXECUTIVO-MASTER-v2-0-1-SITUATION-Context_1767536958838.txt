@@ -1,0 +1,146 @@
+🎯 SUPER PROMPT EXECUTIVO MASTER v2.0
+📋 1. SITUATION (Contexto de Negócio)
+A plataforma digital modular a ser projetada é uma solução White Label que opera como SaaS e Micro SaaS, atendendo a empresas B2B e B2C. O cenário atual apresenta uma demanda crescente por soluções customizáveis e escaláveis, com um mercado-alvo focado em pequenas e médias empresas que buscam otimizar operações através de tecnologia. As métricas atuais incluem uma taxa de conversão de leads de 2%, com um custo por lead (CPL) de R$ 50, e uma meta de aumentar a conversão para 5% nos próximos 12 meses. As restrições incluem conformidade com LGPD e GDPR, garantindo a proteção de dados dos usuários finais. Stakeholders internos incluem equipes de marketing, produto, vendas e tecnologia, cada uma com expectativas de integração, usabilidade e escalabilidade.
+🎯 2. CHALLENGE (Desafio Específico)
+O desafio é desenvolver uma plataforma que permita a customização por tenant sem comprometer a segurança e a performance. As lacunas atuais incluem a falta de um sistema de auditoria robusto e a necessidade de uma experiência de usuário mais intuitiva. Objetivos quantificáveis incluem aumentar a taxa de conversão de leads de 2% para 5% em 12 meses e reduzir o CPL de R$ 50 para R$ 30. O cronograma prevê um lançamento em 6 meses, com iterações mensais para refinamento. Processos de iteração incluirão A/B tests para otimização de landing pages e monitoramento contínuo de KPIs.
+👥 3. AUDIENCE (Audiência e Stakeholders)
+Stakeholders internos:
+•	Marketing: Necessidade de tracking de leads e conversão.
+•	Produto: Roadmap de funcionalidades e priorização de features.
+•	Vendas: Qualificação de leads e integração com CRM.
+•	Tecnologia: Stack tecnológico e performance.
+Usuários finais:
+•	Persona 1: João, 35 anos, gerente de marketing, busca soluções para otimização de campanhas.
+•	Persona 2: Maria, 28 anos, empreendedora, procura uma plataforma fácil de usar para e-commerce.
+•	Motivações: Aumentar a eficiência e reduzir custos. Objeções: Complexidade técnica e custo inicial.
+📐 4. FORMAT (Especificações de Entrega)
+Tech stack: React 18.3, TypeScript 5.0, Tailwind CSS 3.4, Node.js 16, PostgreSQL 14.
+Estrutura de arquivos: Organização por módulos (components, services, pages).
+Padrões de código: ESLint, Prettier, TypeScript strict.
+Testes: Jest para unit tests, Cypress para testes end-to-end, cobertura mínima de 80%.
+Cronograma: Entregas quinzenais, com revisões de copy (marketing), UX (design) e QA (engenharia).
+Iterações pós-lançamento: A/B testing com Google Optimize, análise de heatmaps com Hotjar.
+🏗️ 5. FOUNDATIONS (Fundações Técnicas)
+Stack tecnológica: React 18.3, TypeScript 5.0, Node.js 16, PostgreSQL 14, Tailwind CSS 3.4.
+Padrões arquiteturais: Clean Architecture, Microservices.
+Best practices: SOLID, DRY, KISS.
+Segurança: OWASP Top 10 mitigado, HTTPS obrigatório, validação rigorosa de inputs.
+Compliance: LGPD Art. 6, GDPR Art. 5, CCPA.
+Performance: Latência API < 200ms, TTI < 3s.
+Observabilidade: Logs estruturados, métricas APM, monitoramento com OpenTelemetry.
+🎯 6. SUCCESS CRITERIA & METRICS
+KPIs de negócio:
+•	Taxa de conversão visitantes → leads: alvo de 5%.
+•	CPL máximo: R$ 30.
+•	CAC: R$ 100.
+•	ROI de campanha: mínimo de 150%.
+KPIs técnicos:
+•	LCP < 2s.
+•	TTI < 3s.
+•	Uptime: 99.9%.
+KPIs de UX:
+•	NPS > 50.
+•	Taxa de rejeição < 30%.
+Metas:
+•	Curto prazo (30 dias): Implementação do MVP.
+•	Médio prazo (90 dias): Aumento de 10% na conversão.
+•	Longo prazo (1 ano): Expansão para 3 novos mercados.
+⚠️ 7. RISKS & MITIGATIONS
+Riscos técnicos:
+•	Integração com APIs falhar (probabilidade: média, impacto: alto). Mitigação: Testes E2E com Cypress.
+•	Performance em mobile < 3G (probabilidade: alta, impacto: médio). Mitigação: Lazy loading e CDN.
+Riscos de negócio:
+•	Baixa conversão (< meta). Mitigação: A/B testing agressivo.
+•	Leads não qualificados. Mitigação: Implementação de lead scoring.
+Riscos regulatórios:
+•	Não conformidade LGPD. Mitigação: Auditoria jurídica e consent management platform.
+⚖️ 8. TRADE-OFFS & GOVERNANCE
+Decisões arquiteturais:
+•	Priorização de performance (score 95+) vs animações pesadas (só essenciais).
+•	Uso de Tailwind para velocidade de desenvolvimento, mantendo brand design system.
+Processo de aprovação:
+•	Copy: Head of Marketing.
+•	UX: Lead Designer.
+•	QA: QA Engineer.
+•	Deploy: Product Manager.
+Cadência de releases: Semanal para hotfixes, quinzenal para features.
+🔄 9. POST-LAUNCH & MAINTENANCE
+Feedback loops:
+•	NPS surveys 7 dias após conversão.
+•	Heatmaps com Hotjar.
+Roadmap de evolução:
+•	Versão 2.0 (90 dias): Funcionalidades de upsell.
+•	Internacionalização (6 meses): Suporte a múltiplos idiomas.
+Monitoramento contínuo:
+•	Performance: Lighthouse CI em cada deploy.
+•	Acessibilidade: axe DevTools em CI.
+🎨 10. TONE, VOICE & BRAND ALIGNMENT
+Tom de comunicação: Profissional, acessível, com foco em resultados.
+Voz da marca: Confiável, inovadora, orientada a resultados.
+Linguagem por persona:
+•	C-level: ROI, scalability.
+•	Desenvolvedores: tech stack, architecture.
+•	Marketing: conversão, leads qualificados.
+✅ CHECKLIST DE VERIFICAÇÃO
+✅ Técnico
+•	[ ] Código segue padrões definidos (SOLID, DRY, KISS).
+•	[ ] Testes cobrem 80%+.
+•	[ ] Performance: LCP < 2s, TTI < 3s.
+•	[ ] Segurança: OWASP Top 10 mitigado.
+•	[ ] Acessibilidade: WCAG 2.1 AA.
+✅ UX/Design
+•	[ ] Mobile-first e responsivo.
+•	[ ] Fluxo de usuário testado com 5+ usuários reais.
+•	[ ] Prova social implementada.
+✅ Negócio
+•	[ ] KPIs definidos e mensuráveis.
+•	[ ] Integração marketing implementada.
+•	[ ] A/B testing configurado.
+✅ Regulatório
+•	[ ] LGPD compliance verificado.
+•	[ ] Política de privacidade atualizada.
+✅ Governança
+•	[ ] RACI matrix definida.
+•	[ ] Processo de aprovação documentado.
+🚀 PRÓXIMOS PASSOS (Roadmap de Implementação)
+Fase 1: Foundation (Semana 1-2)
+•	[ ] Setup de infraestrutura.
+•	[ ] Definição de design system tokens.
+Fase 2: MVP (Semana 3-4)
+•	[ ] Implementação de componentes core.
+•	[ ] Testes automatizados.
+Fase 3: Launch (Semana 5-6)
+•	[ ] Testes de carga e performance.
+•	[ ] Auditoria de acessibilidade.
+Fase 4: Optimization (Semana 7-8)
+•	[ ] Análise de primeiros dados.
+•	[ ] Iterações baseadas em feedback.
+🔒 CONSIDERAÇÕES DE SEGURANÇA
+Threat Model (STRIDE)
+•	Spoofing: MFA obrigatório.
+•	Tampering: CSRF tokens.
+•	Repudiation: Logs auditáveis.
+•	Information Disclosure: Encryption at rest + in transit.
+•	Denial of Service: Rate limiting.
+•	Elevation of Privilege: RBAC.
+Compliance Requirements
+•	LGPD: Bases legais, direitos do titular.
+•	GDPR: Lawful basis, data subject rights.
+Mitigações Implementadas
+•	[ ] WAF configurado.
+•	[ ] Dependency scanning automatizado.
+📊 MÉTRICAS DE SUCESSO
+Dashboard de Monitoramento (Real-time)
+•	Performance: LCP, TTI.
+•	Conversão: Taxa visitantes → leads.
+•	Engajamento: Bounce rate, tempo na página.
+Relatórios Executivos (Mensal)
+•	Negócio: Leads gerados, CPL.
+•	Produto: Features lançadas, bugs resolvidos.
+SLOs (Service Level Objectives)
+•	Uptime: 99.9%.
+•	Latência (p95): API < 300ms.
+SLAs (Service Level Agreements)
+•	Suporte Tier 1: resposta < 4h, resolução < 24h.
+
+Entenda que isso é uma implementação e voce não pode fazer nenhuma auteração no que ja foi programado e esta funcionando para que o sistema não alucine ok.

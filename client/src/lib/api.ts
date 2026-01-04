@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -60,7 +60,9 @@ export async function generateProvisionalPassword(userId: string): Promise<{ pro
 
 // Profiles
 export async function getAllProfiles(): Promise<Profile[]> {
-  const response = await fetch(`${API_BASE}/profiles`);
+  const response = await fetch(`${API_BASE}/profiles`, {
+    headers: getAuthHeaders(false),
+  });
   if (!response.ok) throw new Error("Failed to fetch profiles");
   return response.json();
 }
@@ -328,4 +330,138 @@ export async function removeLabelFromProcess(processId: number, labelId: number)
     headers: getAuthHeaders(false),
   });
   if (!response.ok) throw new Error("Failed to remove label from process");
+}
+
+// Chat
+export async function getChatMessages(): Promise<ChatMessage[]> {
+  const response = await fetch(`${API_BASE}/chat/messages`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch messages");
+  return response.json();
+}
+
+export async function getChatConversation(userId: string): Promise<ChatMessage[]> {
+  const response = await fetch(`${API_BASE}/chat/conversation/${userId}`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch conversation");
+  return response.json();
+}
+
+export async function sendChatMessage(receiverId: string | null, message: string): Promise<ChatMessage> {
+  const response = await fetch(`${API_BASE}/chat/messages`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ receiverId, message }),
+  });
+  if (!response.ok) throw new Error("Failed to send message");
+  return response.json();
+}
+
+export async function getUnreadCount(): Promise<{ count: number }> {
+  const response = await fetch(`${API_BASE}/chat/unread`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to get unread count");
+  return response.json();
+}
+
+// Permissions
+export async function getAllPermissions(): Promise<Permission[]> {
+  const response = await fetch(`${API_BASE}/permissions`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch permissions");
+  return response.json();
+}
+
+export async function getRolePermissions(role: string): Promise<RolePermission[]> {
+  const response = await fetch(`${API_BASE}/permissions/role/${role}`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch role permissions");
+  return response.json();
+}
+
+export async function setRolePermission(role: string, permissionKey: string): Promise<RolePermission> {
+  const response = await fetch(`${API_BASE}/permissions/role/${role}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ permissionKey }),
+  });
+  if (!response.ok) throw new Error("Failed to set role permission");
+  return response.json();
+}
+
+export async function removeRolePermission(role: string, permissionKey: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/permissions/role/${role}/${permissionKey}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to remove role permission");
+}
+
+export async function getUserPermissions(userId: string): Promise<UserPermission[]> {
+  const response = await fetch(`${API_BASE}/permissions/user/${userId}`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch user permissions");
+  return response.json();
+}
+
+export async function setUserPermission(userId: string, permissionKey: string, granted: boolean): Promise<UserPermission> {
+  const response = await fetch(`${API_BASE}/permissions/user/${userId}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ permissionKey, granted }),
+  });
+  if (!response.ok) throw new Error("Failed to set user permission");
+  return response.json();
+}
+
+// Templates
+export async function getAllTemplates(): Promise<ProcessTemplate[]> {
+  const response = await fetch(`${API_BASE}/templates`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch templates");
+  return response.json();
+}
+
+export async function createTemplate(template: Omit<ProcessTemplate, 'id' | 'createdAt' | 'createdBy'>): Promise<ProcessTemplate> {
+  const response = await fetch(`${API_BASE}/templates`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(template),
+  });
+  if (!response.ok) throw new Error("Failed to create template");
+  return response.json();
+}
+
+export async function deleteTemplate(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/templates/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete template");
+}
+
+// Feature Toggles
+export async function getFeatureToggles(): Promise<FeatureToggle[]> {
+  const response = await fetch(`${API_BASE}/features`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch features");
+  return response.json();
+}
+
+export async function updateFeatureToggle(featureKey: string, enabled: boolean): Promise<FeatureToggle> {
+  const response = await fetch(`${API_BASE}/features/${featureKey}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ enabled }),
+  });
+  if (!response.ok) throw new Error("Failed to update feature");
+  return response.json();
 }

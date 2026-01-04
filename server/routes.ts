@@ -13,13 +13,16 @@ import {
   updateWipLimitSchema,
   insertProcessChecklistSchema,
   insertProcessAttachmentSchema,
-  insertProcessLabelSchema
+  insertProcessLabelSchema,
+  insertChatMessageSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { generateToken, authMiddleware, adminMiddleware } from "./auth";
+import { hashPassword, verifyPassword, isHashed } from "./password";
+import { stripHtml } from "./sanitize";
 
 const uploadDir = path.join(process.cwd(), "client/public/uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -76,9 +79,18 @@ export async function registerRoutes(
       let isValidPassword = false;
       let usedProvisionalPassword = false;
       
-      // Check regular password first
-      if (profile.password === password) {
-        isValidPassword = true;
+      // Check regular password first (supports both hashed and plaintext for migration)
+      if (profile.password) {
+        if (isHashed(profile.password)) {
+          isValidPassword = await verifyPassword(password, profile.password);
+        } else {
+          isValidPassword = profile.password === password;
+          // Migrate to hashed password on successful login
+          if (isValidPassword) {
+            const hashedPassword = await hashPassword(password);
+            await storage.updateProfile(profile.id, { password: hashedPassword } as any);
+          }
+        }
       }
       
       // Check provisional password if regular failed
@@ -86,11 +98,16 @@ export async function registerRoutes(
         const now = new Date();
         const expiresAt = profile.provisionalPasswordExpiresAt;
         
-        if (profile.provisionalPassword === password) {
+        if (isHashed(profile.provisionalPassword)) {
+          isValidPassword = await verifyPassword(password, profile.provisionalPassword);
+        } else {
+          isValidPassword = profile.provisionalPassword === password;
+        }
+        
+        if (isValidPassword) {
           if (expiresAt && now > expiresAt) {
             return res.status(401).json({ error: "Senha provisória expirada. Contate o administrador." });
           }
-          isValidPassword = true;
           usedProvisionalPassword = true;
         }
       }
@@ -143,19 +160,32 @@ export async function registerRoutes(
       // Must validate current password or provisional password
       let isValidCredential = false;
       
-      // Check regular password
-      if (profile.password === currentPassword) {
-        isValidCredential = true;
+      // Check regular password (supports both hashed and plaintext)
+      if (profile.password) {
+        if (isHashed(profile.password)) {
+          isValidCredential = await verifyPassword(currentPassword, profile.password);
+        } else {
+          isValidCredential = profile.password === currentPassword;
+        }
       }
       
       // Check provisional password (must not be expired)
-      if (!isValidCredential && profile.provisionalPassword === currentPassword) {
-        const now = new Date();
-        const expiresAt = profile.provisionalPasswordExpiresAt;
-        if (expiresAt && now <= expiresAt) {
-          isValidCredential = true;
-        } else if (expiresAt && now > expiresAt) {
-          return res.status(401).json({ error: "Senha provisória expirada. Contate o administrador." });
+      if (!isValidCredential && profile.provisionalPassword) {
+        let provisionalMatch = false;
+        if (isHashed(profile.provisionalPassword)) {
+          provisionalMatch = await verifyPassword(currentPassword, profile.provisionalPassword);
+        } else {
+          provisionalMatch = profile.provisionalPassword === currentPassword;
+        }
+        
+        if (provisionalMatch) {
+          const now = new Date();
+          const expiresAt = profile.provisionalPasswordExpiresAt;
+          if (expiresAt && now <= expiresAt) {
+            isValidCredential = true;
+          } else if (expiresAt && now > expiresAt) {
+            return res.status(401).json({ error: "Senha provisória expirada. Contate o administrador." });
+          }
         }
       }
       
@@ -163,9 +193,12 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Senha atual incorreta" });
       }
       
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
       // Update password and clear provisional password fields
       const updatedProfile = await storage.updateProfile(userId, {
-        password: newPassword,
+        password: hashedPassword,
         provisionalPassword: null,
         provisionalPasswordExpiresAt: null,
         mustChangePassword: false,
@@ -205,8 +238,11 @@ export async function registerRoutes(
       const provisionalPassword = Math.random().toString(36).slice(-8).toUpperCase();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
+      // Hash the provisional password before storing
+      const hashedProvisionalPassword = await hashPassword(provisionalPassword);
+      
       const updatedProfile = await storage.updateProfile(id, {
-        provisionalPassword,
+        provisionalPassword: hashedProvisionalPassword,
         provisionalPasswordExpiresAt: expiresAt,
         mustChangePassword: true,
       } as any);
@@ -215,7 +251,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Failed to generate provisional password" });
       }
       
-      // Return the provisional password to the admin (one-time display)
+      // Return the plaintext provisional password to the admin (one-time display only)
       res.json({ 
         provisionalPassword,
         expiresAt,
@@ -227,7 +263,7 @@ export async function registerRoutes(
   });
 
   // ===== PROFILE/USER ROUTES =====
-  app.get("/api/profiles", async (req, res) => {
+  app.get("/api/profiles", authMiddleware, async (req, res) => {
     try {
       const profiles = await storage.getAllProfiles();
       const sanitizedProfiles = profiles.map(({ password, provisionalPassword, provisionalPasswordExpiresAt, ...profile }) => profile);
@@ -674,6 +710,194 @@ export async function registerRoutes(
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to remove label from process" });
+    }
+  });
+
+  // ===== CHAT ROUTES =====
+  app.get("/api/chat/messages", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      const messages = await storage.getChatMessages(userId);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  app.get("/api/chat/conversation/:userId", authMiddleware, async (req, res) => {
+    try {
+      const currentUserId = req.auth!.userId;
+      const otherUserId = req.params.userId;
+      const messages = await storage.getChatConversation(currentUserId, otherUserId);
+      
+      // Mark messages as read
+      await storage.markMessagesAsRead(otherUserId, currentUserId);
+      
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/chat/messages", authMiddleware, async (req, res) => {
+    try {
+      const senderId = req.auth!.userId;
+      
+      // Validate message payload
+      const result = insertChatMessageSchema.pick({ 
+        receiverId: true, 
+        message: true 
+      }).safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: fromError(result.error).message });
+      }
+      
+      const { receiverId, message } = result.data;
+      
+      // Sanitize message - strip HTML and limit length for XSS prevention
+      const sanitizedMessage = stripHtml(message).slice(0, 2000);
+      
+      if (!sanitizedMessage) {
+        return res.status(400).json({ error: "Message cannot be empty" });
+      }
+      
+      const chatMessage = await storage.sendChatMessage({
+        senderId,
+        receiverId: receiverId || null,
+        message: sanitizedMessage,
+        isRead: false,
+      });
+      
+      res.json(chatMessage);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+
+  app.get("/api/chat/unread", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      const count = await storage.getUnreadCount(userId);
+      res.json({ count });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  // ===== PERMISSION ROUTES =====
+  app.get("/api/permissions", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const permissions = await storage.getAllPermissions();
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch permissions" });
+    }
+  });
+
+  app.get("/api/permissions/role/:role", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const role = req.params.role;
+      const permissions = await storage.getRolePermissions(role);
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch role permissions" });
+    }
+  });
+
+  app.post("/api/permissions/role/:role", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const role = req.params.role;
+      const { permissionKey } = req.body;
+      const rolePermission = await storage.setRolePermission(role, permissionKey);
+      res.json(rolePermission);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to set role permission" });
+    }
+  });
+
+  app.delete("/api/permissions/role/:role/:permissionKey", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const { role, permissionKey } = req.params;
+      const deleted = await storage.removeRolePermission(role, permissionKey);
+      res.json({ success: deleted });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove role permission" });
+    }
+  });
+
+  app.get("/api/permissions/user/:userId", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const permissions = await storage.getUserPermissions(userId);
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch user permissions" });
+    }
+  });
+
+  app.post("/api/permissions/user/:userId", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { permissionKey, granted } = req.body;
+      const userPermission = await storage.setUserPermission(userId, permissionKey, granted);
+      res.json(userPermission);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to set user permission" });
+    }
+  });
+
+  // ===== TEMPLATE ROUTES =====
+  app.get("/api/templates", authMiddleware, async (req, res) => {
+    try {
+      const templates = await storage.getAllTemplates();
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  app.post("/api/templates", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const createdBy = req.auth!.userId;
+      const template = await storage.createTemplate({
+        ...req.body,
+        createdBy,
+      });
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  app.delete("/api/templates/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteTemplate(id);
+      res.json({ success: deleted });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
+  // ===== FEATURE TOGGLES ROUTES =====
+  app.get("/api/features", authMiddleware, async (req, res) => {
+    try {
+      const features = await storage.getAllFeatureToggles();
+      res.json(features);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch features" });
+    }
+  });
+
+  app.patch("/api/features/:featureKey", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const { featureKey } = req.params;
+      const { enabled } = req.body;
+      const feature = await storage.updateFeatureToggle(featureKey, enabled);
+      res.json(feature);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update feature" });
     }
   });
 

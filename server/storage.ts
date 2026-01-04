@@ -27,6 +27,15 @@ import type {
   ProcessLabel,
   InsertProcessLabel,
   ProcessToLabel,
+  ChatMessage,
+  InsertChatMessage,
+  Permission,
+  InsertPermission,
+  RolePermission,
+  UserPermission,
+  ProcessTemplate,
+  InsertProcessTemplate,
+  FeatureToggle,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -91,6 +100,31 @@ export interface IStorage {
   getLabelsByProcess(processId: number): Promise<ProcessLabel[]>;
   addLabelToProcess(processId: number, labelId: number): Promise<ProcessToLabel>;
   removeLabelFromProcess(processId: number, labelId: number): Promise<boolean>;
+  
+  // Chat methods
+  getChatMessages(userId: string): Promise<ChatMessage[]>;
+  getChatConversation(userId1: string, userId2: string): Promise<ChatMessage[]>;
+  sendChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  markMessagesAsRead(senderId: string, receiverId: string): Promise<void>;
+  getUnreadCount(userId: string): Promise<number>;
+  
+  // Permission methods
+  getAllPermissions(): Promise<Permission[]>;
+  createPermission(permission: InsertPermission): Promise<Permission>;
+  getRolePermissions(role: string): Promise<RolePermission[]>;
+  setRolePermission(role: string, permissionKey: string): Promise<RolePermission>;
+  removeRolePermission(role: string, permissionKey: string): Promise<boolean>;
+  getUserPermissions(userId: string): Promise<UserPermission[]>;
+  setUserPermission(userId: string, permissionKey: string, granted: boolean): Promise<UserPermission>;
+  
+  // Template methods
+  getAllTemplates(): Promise<ProcessTemplate[]>;
+  createTemplate(template: InsertProcessTemplate): Promise<ProcessTemplate>;
+  deleteTemplate(id: number): Promise<boolean>;
+  
+  // Feature Toggle methods
+  getAllFeatureToggles(): Promise<FeatureToggle[]>;
+  updateFeatureToggle(featureKey: string, enabled: boolean): Promise<FeatureToggle>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -348,6 +382,144 @@ export class DatabaseStorage implements IStorage {
       ))
       .returning();
     return result.length > 0;
+  }
+
+  // Chat methods
+  async getChatMessages(userId: string): Promise<ChatMessage[]> {
+    return await db.select().from(schema.chatMessages)
+      .where(sql`${schema.chatMessages.senderId} = ${userId} OR ${schema.chatMessages.receiverId} = ${userId} OR ${schema.chatMessages.receiverId} IS NULL`)
+      .orderBy(desc(schema.chatMessages.createdAt));
+  }
+
+  async getChatConversation(userId1: string, userId2: string): Promise<ChatMessage[]> {
+    return await db.select().from(schema.chatMessages)
+      .where(sql`(${schema.chatMessages.senderId} = ${userId1} AND ${schema.chatMessages.receiverId} = ${userId2}) OR (${schema.chatMessages.senderId} = ${userId2} AND ${schema.chatMessages.receiverId} = ${userId1})`)
+      .orderBy(schema.chatMessages.createdAt);
+  }
+
+  async sendChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const result = await db.insert(schema.chatMessages).values(message).returning();
+    return result[0];
+  }
+
+  async markMessagesAsRead(senderId: string, receiverId: string): Promise<void> {
+    await db.update(schema.chatMessages)
+      .set({ isRead: true })
+      .where(and(
+        eq(schema.chatMessages.senderId, senderId),
+        eq(schema.chatMessages.receiverId, receiverId)
+      ));
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(schema.chatMessages)
+      .where(and(
+        eq(schema.chatMessages.receiverId, userId),
+        eq(schema.chatMessages.isRead, false)
+      ));
+    return result[0]?.count || 0;
+  }
+
+  // Permission methods
+  async getAllPermissions(): Promise<Permission[]> {
+    return await db.select().from(schema.permissions);
+  }
+
+  async createPermission(permission: InsertPermission): Promise<Permission> {
+    const result = await db.insert(schema.permissions).values(permission).returning();
+    return result[0];
+  }
+
+  async getRolePermissions(role: string): Promise<RolePermission[]> {
+    return await db.select().from(schema.rolePermissions)
+      .where(eq(schema.rolePermissions.role, role));
+  }
+
+  async setRolePermission(role: string, permissionKey: string): Promise<RolePermission> {
+    const result = await db.insert(schema.rolePermissions)
+      .values({ role, permissionKey })
+      .returning();
+    return result[0];
+  }
+
+  async removeRolePermission(role: string, permissionKey: string): Promise<boolean> {
+    const result = await db.delete(schema.rolePermissions)
+      .where(and(
+        eq(schema.rolePermissions.role, role),
+        eq(schema.rolePermissions.permissionKey, permissionKey)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getUserPermissions(userId: string): Promise<UserPermission[]> {
+    return await db.select().from(schema.userPermissions)
+      .where(eq(schema.userPermissions.userId, userId));
+  }
+
+  async setUserPermission(userId: string, permissionKey: string, granted: boolean): Promise<UserPermission> {
+    const existing = await db.select().from(schema.userPermissions)
+      .where(and(
+        eq(schema.userPermissions.userId, userId),
+        eq(schema.userPermissions.permissionKey, permissionKey)
+      ))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      const result = await db.update(schema.userPermissions)
+        .set({ granted })
+        .where(eq(schema.userPermissions.id, existing[0].id))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(schema.userPermissions)
+      .values({ userId, permissionKey, granted })
+      .returning();
+    return result[0];
+  }
+
+  // Template methods
+  async getAllTemplates(): Promise<ProcessTemplate[]> {
+    return await db.select().from(schema.processTemplates)
+      .orderBy(schema.processTemplates.name);
+  }
+
+  async createTemplate(template: InsertProcessTemplate): Promise<ProcessTemplate> {
+    const result = await db.insert(schema.processTemplates).values(template).returning();
+    return result[0];
+  }
+
+  async deleteTemplate(id: number): Promise<boolean> {
+    const result = await db.delete(schema.processTemplates)
+      .where(eq(schema.processTemplates.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Feature Toggle methods
+  async getAllFeatureToggles(): Promise<FeatureToggle[]> {
+    return await db.select().from(schema.featureToggles);
+  }
+
+  async updateFeatureToggle(featureKey: string, enabled: boolean): Promise<FeatureToggle> {
+    const existing = await db.select().from(schema.featureToggles)
+      .where(eq(schema.featureToggles.featureKey, featureKey))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      const result = await db.update(schema.featureToggles)
+        .set({ enabled, updatedAt: new Date() })
+        .where(eq(schema.featureToggles.featureKey, featureKey))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(schema.featureToggles)
+      .values({ featureKey, name: featureKey, enabled })
+      .returning();
+    return result[0];
   }
 }
 
