@@ -16,7 +16,9 @@ import {
   Layers,
   Zap,
   FileText,
-  Building2
+  Building2,
+  ListOrdered,
+  Gauge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -191,7 +193,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => { setLocation('/admin/process-types'); setIsMobileOpen(false); }}
                 data-testid="nav-process-types"
               >
-                <Layers className="w-4 h-4" />
+                <ListOrdered className="w-4 h-4" />
                 Tipos de Processo
               </Button>
               <Button 
@@ -200,7 +202,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => { setLocation('/admin/priorities'); setIsMobileOpen(false); }}
                 data-testid="nav-priorities"
               >
-                <Zap className="w-4 h-4" />
+                <Gauge className="w-4 h-4" />
                 Prioridades
               </Button>
             </>

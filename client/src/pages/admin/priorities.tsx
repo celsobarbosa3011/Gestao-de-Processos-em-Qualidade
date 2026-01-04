@@ -14,27 +14,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePriorities } from "@/hooks/use-priorities";
 import type { Priority } from "@shared/schema";
 
 const prioritySchema = z.object({
   name: z.string().min(2, "Nome é obrigatório"),
-  level: z.number().min(0, "Nível deve ser positivo"),
+  level: z.coerce.number().min(0, "Nível deve ser positivo"),
   color: z.string().default('#6B7280'),
-  order: z.number().default(0),
+  order: z.coerce.number().default(0),
   active: z.boolean().default(true),
 });
 
 type PriorityFormData = z.infer<typeof prioritySchema>;
-
-async function getPriorities(): Promise<Priority[]> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch("/api/priorities", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error("Failed to fetch priorities");
-  return res.json();
-}
 
 async function createPriority(data: PriorityFormData): Promise<Priority> {
   const token = localStorage.getItem("auth_token");
@@ -83,10 +75,7 @@ export default function AdminPrioritiesPage() {
   const [selectedPriority, setSelectedPriority] = useState<Priority | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: priorities = [], isLoading } = useQuery({
-    queryKey: ['/api/priorities'],
-    queryFn: getPriorities,
-  });
+  const { data: priorities = [], isLoading } = usePriorities();
 
   const createMutation = useMutation({
     mutationFn: createPriority,

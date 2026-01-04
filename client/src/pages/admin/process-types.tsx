@@ -14,27 +14,19 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useProcessTypes } from "@/hooks/use-process-types";
 import type { ProcessType } from "@shared/schema";
 
 const typeSchema = z.object({
   name: z.string().min(2, "Nome é obrigatório"),
   description: z.string().optional(),
   color: z.string().default('#6B7280'),
-  order: z.number().default(0),
+  order: z.coerce.number().default(0),
   active: z.boolean().default(true),
 });
 
 type TypeFormData = z.infer<typeof typeSchema>;
-
-async function getProcessTypes(): Promise<ProcessType[]> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch("/api/process-types", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error("Failed to fetch process types");
-  return res.json();
-}
 
 async function createProcessType(data: TypeFormData): Promise<ProcessType> {
   const token = localStorage.getItem("auth_token");
@@ -83,10 +75,7 @@ export default function AdminProcessTypesPage() {
   const [selectedType, setSelectedType] = useState<ProcessType | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: types = [], isLoading } = useQuery({
-    queryKey: ['/api/process-types'],
-    queryFn: getProcessTypes,
-  });
+  const { data: types = [], isLoading } = useProcessTypes();
 
   const createMutation = useMutation({
     mutationFn: createProcessType,
