@@ -1,0 +1,71 @@
+The label's for attribute doesn't match any element id. This might prevent the browser from correctly autofilling the form and accessibility tools from working correctly.
+
+To fix this issue, make sure the label's for attribute references the correct id of a form field.
+
+1 recurso
+Nó com violações
+Saiba mais: Elementos do rótulo
+Incorrect use of <label for=FORM_ELEMENT>
+The label's for attribute refers to a form field by its name, not its id. This might prevent the browser from correctly autofilling the form and accessibility tools from working correctly.
+
+To fix this issue, refer to form fields by their id attribute.
+
+1 recurso
+Saiba mais: HTML Standard
+Melhorias
+A form field element should have an id or name attribute
+A form field element has neither an id nor a name attribute. This might prevent the browser from correctly autofilling the form.
+
+To fix this issue, add a unique id or name attribute to a form field. This is not strictly needed, but still recommended even if you have an autocomplete attribute on the same element.
+
+22 recursos
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Nó com violações
+Saiba mais: Elemento de entrada do formulário
+Response was blocked by CORB (Cross-Origin Read Blocking)
+Cross-Origin Read Blocking (CORB) blocked a cross-origin response.
+
+11 solicitações
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+session_result/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+
+68c9ad4d4cddb58cf3a1f93d/
+Saiba mais: Explicação do CORB

@@ -53,25 +53,23 @@ export const useStore = create<AppState>()(
         currentUser: state.currentUser,
         mustChangePassword: state.mustChangePassword,
         authToken: state.authToken,
-      }),
+      }) as any,
+      onRehydrateStorage: () => {
+        return () => {
+          useStore.setState({ _hasHydrated: true });
+        };
+      },
     }
   )
 );
 
-// Mark as hydrated after store is created
-// This runs synchronously after the persist middleware rehydrates
+// Fallback: ensure hydration flag is set even if onRehydrateStorage doesn't fire
 if (typeof window !== 'undefined') {
-  const hydrateStore = () => {
-    useStore.setState({ _hasHydrated: true });
-  };
-  
-  // If storage is empty or already synced, hydrate immediately
-  // Otherwise wait for next tick to ensure rehydration is complete
-  if (useStore.persist.hasHydrated()) {
-    hydrateStore();
-  } else {
-    useStore.persist.onFinishHydration(hydrateStore);
-  }
+  setTimeout(() => {
+    if (!useStore.getState()._hasHydrated) {
+      useStore.setState({ _hasHydrated: true });
+    }
+  }, 100);
 }
 
 export const waitForHydration = (): Promise<void> => {
