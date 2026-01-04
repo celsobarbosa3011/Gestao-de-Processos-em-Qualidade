@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ShieldCheck, Stethoscope } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { login as apiLogin } from "@/lib/api";
 import { useBrandingConfig } from "@/hooks/use-branding";
@@ -22,10 +22,10 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { setCurrentUser } = useStore();
   const { toast } = useToast();
-  const { data: branding } = useBrandingConfig();
+  const { data: branding, isLoading: brandingLoading } = useBrandingConfig();
   const [isLoading, setIsLoading] = useState(false);
 
-  const appName = branding?.appName || 'MediFlow';
+  const appName = branding?.appName || 'UP - Qualidade em Saúde';
   const tagline = branding?.tagline || 'Gestão administrativa eficiente para unidades de saúde.';
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -59,6 +59,42 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
+      {/* Left side - Dark themed with image */}
+      <div 
+        className="hidden lg:flex flex-col justify-between p-12 text-white relative overflow-hidden"
+        style={{ backgroundColor: '#3B4F5C' }}
+      >
+        <div 
+          className="absolute inset-0 bg-cover bg-center opacity-20"
+          style={{ 
+            backgroundImage: "url('https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=2070&auto=format&fit=crop')" 
+          }}
+        />
+        <div className="relative z-10">
+          {branding?.logoUrl ? (
+            <img 
+              src={branding.logoUrl} 
+              alt={appName}
+              className="h-16 w-auto object-contain"
+            />
+          ) : (
+            <div className="flex items-center gap-2 text-lg font-bold">
+              <ShieldCheck className="w-8 h-8" />
+              <span>{appName}</span>
+            </div>
+          )}
+        </div>
+        <div className="relative z-10 max-w-lg">
+          <h2 className="text-4xl font-bold leading-tight mb-4" style={{ color: '#2ECC71' }}>
+            SAÚDE MENTAL
+          </h2>
+          <p className="text-xl opacity-90">
+            Gestão eficiente para unidades de saúde com foco no que realmente importa.
+          </p>
+        </div>
+      </div>
+
+      {/* Right side - Login form */}
       <div className="flex items-center justify-center p-4 sm:p-8 bg-background">
         <div className="w-full max-w-md space-y-6 sm:space-y-8">
           <div className="flex flex-col space-y-2 text-center">
@@ -66,27 +102,21 @@ export default function AuthPage() {
               <img 
                 src={branding.logoUrl} 
                 alt={appName}
-                className="mx-auto h-12 w-12 rounded-lg object-contain mb-4"
+                className="mx-auto h-16 w-auto object-contain mb-4"
               />
             ) : (
               <div className="mx-auto h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-4">
                 <ShieldCheck className="w-6 h-6" />
               </div>
             )}
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Acesse o {appName}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Fazer Login</h1>
             <p className="text-sm text-muted-foreground">
-              {tagline}
+              Entre com suas credenciais para acessar sua conta
             </p>
           </div>
 
           <Card className="border-border shadow-lg">
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle>Login</CardTitle>
-              <CardDescription>
-                Entre com suas credenciais para acessar o sistema.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            <CardContent className="p-4 sm:p-6 pt-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -98,7 +128,7 @@ export default function AuthPage() {
                         <FormControl>
                           <Input 
                             data-testid="input-email"
-                            placeholder="admin@mediflow.com" 
+                            placeholder="seu@email.com" 
                             {...field} 
                           />
                         </FormControl>
@@ -116,7 +146,7 @@ export default function AuthPage() {
                           <Input 
                             data-testid="input-password"
                             type="password" 
-                            placeholder="••••••••" 
+                            placeholder="Sua senha" 
                             {...field} 
                           />
                         </FormControl>
@@ -127,7 +157,7 @@ export default function AuthPage() {
                   <Button 
                     data-testid="button-login"
                     type="submit" 
-                    className="w-full h-10 text-base"
+                    className="w-full h-12 text-base rounded-full"
                     disabled={isLoading}
                   >
                     {isLoading ? "Entrando..." : "Entrar"}
@@ -161,32 +191,6 @@ export default function AuthPage() {
               </div>
             </CardFooter>
           </Card>
-        </div>
-      </div>
-      <div 
-        className="hidden lg:flex flex-col justify-between p-12 text-primary-foreground relative overflow-hidden"
-        style={{ backgroundColor: branding?.primaryColor || '#0F766E' }}
-      >
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 text-lg font-bold">
-            {branding?.logoUrl ? (
-              <img src={branding.logoUrl} alt={appName} className="w-6 h-6 rounded object-contain" />
-            ) : (
-              <Stethoscope className="w-6 h-6" />
-            )}
-            {appName} System
-          </div>
-        </div>
-        <div className="relative z-10 max-w-lg">
-          <blockquote className="space-y-2">
-            <p className="text-2xl font-medium leading-snug">
-              "A organização e agilidade que o {appName} trouxe para nossa unidade permitiu focar no que realmente importa: o atendimento ao paciente."
-            </p>
-            <footer className="text-sm opacity-80 mt-4">
-              — Dra. Helena Costa, Diretora Administrativa
-            </footer>
-          </blockquote>
         </div>
       </div>
     </div>
