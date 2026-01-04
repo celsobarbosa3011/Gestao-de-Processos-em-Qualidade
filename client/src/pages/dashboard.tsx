@@ -1,15 +1,26 @@
 import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from "recharts";
-import { AlertCircle, CheckCircle2, Clock, Activity, FileText } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Activity, FileText, Download, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { differenceInDays } from "date-fns";
 
 export default function DashboardPage() {
-  const { processes, users } = useStore();
+  const { processes, alertSettings } = useStore();
 
   const totalProcesses = processes.length;
   const delayedProcesses = processes.filter(p => p.deadline && new Date(p.deadline) < new Date());
   const completedProcesses = processes.filter(p => p.status === 'approved');
   
+  // Stalled processes logic
+  const stalledProcesses = processes.filter(p => {
+    if (['approved', 'rejected'].includes(p.status)) return false;
+    const lastUpdate = p.history.length > 0 
+      ? new Date(p.history[p.history.length - 1].timestamp) 
+      : new Date(p.createdAt);
+    return differenceInDays(new Date(), lastUpdate) >= alertSettings.stalledDays;
+  });
+
   // Chart Data Preparation
   const statusData = [
     { name: 'Novos', value: processes.filter(p => p.status === 'new').length },
@@ -31,11 +42,42 @@ export default function DashboardPage() {
 
   const COLORS = ['#0F766E', '#0D9488', '#14B8A6', '#2DD4BF', '#5EEAD4'];
 
+  const handleExportCSV = () => {
+    const headers = ["ID", "Título", "Unidade", "Status", "Prioridade", "Criado em", "Prazo", "Responsável"];
+    const rows = processes.map(p => [
+      p.id,
+      p.title,
+      p.unit,
+      p.status,
+      p.priority,
+      new Date(p.createdAt).toLocaleDateString(),
+      p.deadline ? new Date(p.deadline).toLocaleDateString() : "-",
+      p.responsibleId || "-"
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "mediflow_processos.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Executivo</h1>
-        <p className="text-muted-foreground mt-1">Visão geral dos indicadores de desempenho da unidade.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard Executivo</h1>
+          <p className="text-muted-foreground mt-1">Visão geral dos indicadores de desempenho da unidade.</p>
+        </div>
+        <Button variant="outline" onClick={handleExportCSV} className="gap-2">
+          <Download className="w-4 h-4" />
+          Exportar Relatório
+        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -88,6 +130,78 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+         {/* Delayed Processes List */}
+         <Card className="shadow-sm border-destructive/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertCircle className="w-5 h-5" />
+                Processos em Atraso
+              </CardTitle>
+              <CardDescription>Lista de processos que já ultrapassaram o prazo limite.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {delayedProcesses.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-4">Nenhum processo atrasado.</div>
+              ) : (
+                <div className="space-y-3">
+                  {delayedProcesses.slice(0, 5).map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg border border-destructive/10">
+                      <div>
+                        <div className="font-medium text-sm">{p.title}</div>
+                        <div className="text-xs text-muted-foreground">{p.id} • {p.unit}</div>
+                      </div>
+                      <div className="text-xs font-bold text-destructive">
+                        {p.deadline ? new Date(p.deadline).toLocaleDateString() : '-'}
+                      </div>
+                    </div>
+                  ))}
+                  {delayedProcesses.length > 5 && (
+                    <div className="text-xs text-center text-muted-foreground pt-2">
+                      + {delayedProcesses.length - 5} outros processos
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+         </Card>
+
+         {/* Stalled Processes List */}
+         <Card className="shadow-sm border-yellow-500/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-yellow-600">
+                <AlertTriangle className="w-5 h-5" />
+                Processos Estagnados
+              </CardTitle>
+              <CardDescription>Sem movimentação há mais de {alertSettings.stalledDays} dias.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stalledProcesses.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-4">Nenhum processo estagnado.</div>
+              ) : (
+                <div className="space-y-3">
+                  {stalledProcesses.slice(0, 5).map(p => (
+                    <div key={p.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                      <div>
+                        <div className="font-medium text-sm">{p.title}</div>
+                        <div className="text-xs text-muted-foreground">{p.id} • {p.unit}</div>
+                      </div>
+                      <div className="text-xs font-bold text-yellow-700">
+                        {differenceInDays(new Date(), p.history.length > 0 ? new Date(p.history[p.history.length-1].timestamp) : new Date(p.createdAt))} dias parado
+                      </div>
+                    </div>
+                  ))}
+                  {stalledProcesses.length > 5 && (
+                    <div className="text-xs text-center text-muted-foreground pt-2">
+                      + {stalledProcesses.length - 5} outros processos
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+         </Card>
       </div>
 
       {/* Charts Section */}
