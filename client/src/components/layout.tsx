@@ -18,7 +18,11 @@ import {
   FileText,
   Building2,
   ListOrdered,
-  Gauge
+  Gauge,
+  ChevronDown,
+  Layout as LayoutIcon,
+  ShieldCheck,
+  ClipboardList
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,6 +30,12 @@ import {
   SheetContent, 
   SheetTrigger 
 } from "@/components/ui/sheet";
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from "@/components/ui/accordion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChatButton } from "@/components/chat";
 import { NotificationsCenter } from "@/components/notifications-center";
@@ -50,9 +60,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const appInitial = appName.charAt(0).toUpperCase();
 
   const NavContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="p-6">
-        <div className="flex items-center gap-2 mb-8">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4 pt-6">
+        <div className="mb-6 flex items-center gap-2">
           {branding?.logoUrl ? (
             <img 
               src={branding.logoUrl} 
@@ -67,146 +77,164 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <span className="text-xl font-bold tracking-tight">{appName}</span>
         </div>
         
-        <nav className="space-y-2">
-          {currentUser.role === 'admin' && (
-            <Button 
-              variant={location === '/dashboard' ? 'secondary' : 'ghost'} 
-              className="w-full justify-start gap-3 font-medium"
-              onClick={() => { setLocation('/dashboard'); setIsMobileOpen(false); }}
-              data-testid="nav-dashboard"
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Dashboard
-            </Button>
-          )}
-          
-          <Button 
-            variant={location === '/kanban' ? 'secondary' : 'ghost'} 
-            className="w-full justify-start gap-3 font-medium"
-            onClick={() => { setLocation('/kanban'); setIsMobileOpen(false); }}
-            data-testid="nav-kanban"
-          >
-            <Kanban className="w-4 h-4" />
-            Processos
-          </Button>
+        <nav className="space-y-1">
+          <Accordion type="multiple" defaultValue={["operational", "management", "admin"]} className="w-full space-y-2">
+            <AccordionItem value="operational" className="border-none">
+              <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Operacional
+              </AccordionTrigger>
+              <AccordionContent className="space-y-1 pt-1 pb-2">
+                <Button 
+                  variant={location === '/kanban' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/kanban'); setIsMobileOpen(false); }}
+                  data-testid="nav-kanban"
+                >
+                  <Kanban className="w-4 h-4" />
+                  Processos
+                </Button>
 
-          <Button 
-            variant={location === '/calendar' ? 'secondary' : 'ghost'} 
-            className="w-full justify-start gap-3 font-medium"
-            onClick={() => { setLocation('/calendar'); setIsMobileOpen(false); }}
-            data-testid="nav-calendar"
-          >
-            <Calendar className="w-4 h-4" />
-            Calendário
-          </Button>
+                <Button 
+                  variant={location === '/calendar' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/calendar'); setIsMobileOpen(false); }}
+                  data-testid="nav-calendar"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Calendário
+                </Button>
 
-          <Button 
-            variant={location === '/timeline' ? 'secondary' : 'ghost'} 
-            className="w-full justify-start gap-3 font-medium"
-            onClick={() => { setLocation('/timeline'); setIsMobileOpen(false); }}
-            data-testid="nav-timeline"
-          >
-            <GanttChart className="w-4 h-4" />
-            Timeline
-          </Button>
+                <Button 
+                  variant={location === '/timeline' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/timeline'); setIsMobileOpen(false); }}
+                  data-testid="nav-timeline"
+                >
+                  <GanttChart className="w-4 h-4" />
+                  Timeline
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
 
-          {currentUser.role === 'admin' && (
-            <>
-              <div className="pt-4 pb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Administração
-              </div>
-              <Button 
-                variant={location === '/admin/users' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/users'); setIsMobileOpen(false); }}
-                data-testid="nav-users"
-              >
-                <Users className="w-4 h-4" />
-                Usuários
-              </Button>
-              <Button 
-                variant={location === '/admin/units' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/units'); setIsMobileOpen(false); }}
-                data-testid="nav-units"
-              >
-                <Building2 className="w-4 h-4" />
-                Unidades
-              </Button>
-              <Button 
-                variant={location === '/admin/branding' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/branding'); setIsMobileOpen(false); }}
-                data-testid="nav-branding"
-              >
-                <Palette className="w-4 h-4" />
-                Marca / White Label
-              </Button>
-              <Button 
-                variant={location === '/admin/settings' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/settings'); setIsMobileOpen(false); }}
-                data-testid="nav-settings"
-              >
-                <Settings className="w-4 h-4" />
-                Configurações
-              </Button>
-              <Button 
-                variant={location === '/admin/logs' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/logs'); setIsMobileOpen(false); }}
-                data-testid="nav-logs"
-              >
-                <FileClock className="w-4 h-4" />
-                Logs de Auditoria
-              </Button>
-              <Button 
-                variant={location === '/admin/custom-fields' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/custom-fields'); setIsMobileOpen(false); }}
-                data-testid="nav-custom-fields"
-              >
-                <Layers className="w-4 h-4" />
-                Campos Personalizados
-              </Button>
-              <Button 
-                variant={location === '/admin/automations' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/automations'); setIsMobileOpen(false); }}
-                data-testid="nav-automations"
-              >
-                <Zap className="w-4 h-4" />
-                Automações
-              </Button>
-              <Button 
-                variant={location === '/admin/templates' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/templates'); setIsMobileOpen(false); }}
-                data-testid="nav-templates"
-              >
-                <FileText className="w-4 h-4" />
-                Templates
-              </Button>
-              <Button 
-                variant={location === '/admin/process-types' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/process-types'); setIsMobileOpen(false); }}
-                data-testid="nav-process-types"
-              >
-                <ListOrdered className="w-4 h-4" />
-                Tipos de Processo
-              </Button>
-              <Button 
-                variant={location === '/admin/priorities' ? 'secondary' : 'ghost'} 
-                className="w-full justify-start gap-3 font-medium"
-                onClick={() => { setLocation('/admin/priorities'); setIsMobileOpen(false); }}
-                data-testid="nav-priorities"
-              >
-                <Gauge className="w-4 h-4" />
-                Prioridades
-              </Button>
-            </>
-          )}
+            {currentUser.role === 'admin' && (
+              <AccordionItem value="management" className="border-none">
+                <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Gestão
+                </AccordionTrigger>
+                <AccordionContent className="space-y-1 pt-1 pb-2">
+                  <Button 
+                    variant={location === '/dashboard' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/dashboard'); setIsMobileOpen(false); }}
+                    data-testid="nav-dashboard"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/logs' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/logs'); setIsMobileOpen(false); }}
+                    data-testid="nav-logs"
+                  >
+                    <FileClock className="w-4 h-4" />
+                    Logs de Auditoria
+                  </Button>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {currentUser.role === 'admin' && (
+              <AccordionItem value="admin" className="border-none">
+                <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Configurações
+                </AccordionTrigger>
+                <AccordionContent className="space-y-1 pt-1 pb-2">
+                  <Button 
+                    variant={location === '/admin/users' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/users'); setIsMobileOpen(false); }}
+                    data-testid="nav-users"
+                  >
+                    <Users className="w-4 h-4" />
+                    Usuários
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/units' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/units'); setIsMobileOpen(false); }}
+                    data-testid="nav-units"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Unidades
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/branding' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/branding'); setIsMobileOpen(false); }}
+                    data-testid="nav-branding"
+                  >
+                    <Palette className="w-4 h-4" />
+                    Marca / White Label
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/process-types' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/process-types'); setIsMobileOpen(false); }}
+                    data-testid="nav-process-types"
+                  >
+                    <ListOrdered className="w-4 h-4" />
+                    Tipos de Processo
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/priorities' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/priorities'); setIsMobileOpen(false); }}
+                    data-testid="nav-priorities"
+                  >
+                    <Gauge className="w-4 h-4" />
+                    Prioridades
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/custom-fields' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/custom-fields'); setIsMobileOpen(false); }}
+                    data-testid="nav-custom-fields"
+                  >
+                    <Layers className="w-4 h-4" />
+                    Campos Personalizados
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/automations' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/automations'); setIsMobileOpen(false); }}
+                    data-testid="nav-automations"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Automações
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/templates' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/templates'); setIsMobileOpen(false); }}
+                    data-testid="nav-templates"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Templates
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/settings' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/settings'); setIsMobileOpen(false); }}
+                    data-testid="nav-settings"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Sistema
+                  </Button>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+          </Accordion>
         </nav>
       </div>
 
