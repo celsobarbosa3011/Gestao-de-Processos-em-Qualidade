@@ -23,7 +23,7 @@ export const useStore = create<AppState>()(
       currentUser: null,
       mustChangePassword: false,
       authToken: null,
-      _hasHydrated: false,
+      _hasHydrated: true, // Start as true - persist will load data asynchronously
       
       setCurrentUser: (user) => {
         if (user) {
@@ -54,35 +54,6 @@ export const useStore = create<AppState>()(
         mustChangePassword: state.mustChangePassword,
         authToken: state.authToken,
       }) as any,
-      onRehydrateStorage: () => {
-        return () => {
-          useStore.setState({ _hasHydrated: true });
-        };
-      },
     }
   )
 );
-
-// Fallback: ensure hydration flag is set even if onRehydrateStorage doesn't fire
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    if (!useStore.getState()._hasHydrated) {
-      useStore.setState({ _hasHydrated: true });
-    }
-  }, 100);
-}
-
-export const waitForHydration = (): Promise<void> => {
-  return new Promise((resolve) => {
-    if (useStore.getState()._hasHydrated) {
-      resolve();
-      return;
-    }
-    const unsubscribe = useStore.subscribe((state) => {
-      if (state._hasHydrated) {
-        unsubscribe();
-        resolve();
-      }
-    });
-  });
-};
