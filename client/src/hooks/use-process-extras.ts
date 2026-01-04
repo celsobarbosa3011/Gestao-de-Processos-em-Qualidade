@@ -14,13 +14,15 @@ import {
   addLabelToProcess,
   removeLabelFromProcess
 } from "@/lib/api";
+import { useStore } from "@/lib/store";
 import type { ProcessChecklist, ProcessAttachment, ProcessLabel } from "@shared/schema";
 
 export function useProcessChecklists(processId: number | null) {
+  const { authToken } = useStore();
   return useQuery<ProcessChecklist[]>({
     queryKey: ["checklists", processId],
     queryFn: () => getProcessChecklists(processId!),
-    enabled: !!processId,
+    enabled: !!processId && !!authToken,
   });
 }
 
@@ -58,10 +60,11 @@ export function useDeleteChecklist() {
 }
 
 export function useProcessAttachments(processId: number | null) {
+  const { authToken } = useStore();
   return useQuery<ProcessAttachment[]>({
     queryKey: ["attachments", processId],
     queryFn: () => getProcessAttachments(processId!),
-    enabled: !!processId,
+    enabled: !!processId && !!authToken,
   });
 }
 
@@ -90,9 +93,11 @@ export function useDeleteAttachment() {
 }
 
 export function useAllLabels() {
+  const { authToken } = useStore();
   return useQuery<ProcessLabel[]>({
     queryKey: ["labels"],
     queryFn: getAllLabels,
+    enabled: !!authToken,
   });
 }
 
@@ -118,10 +123,11 @@ export function useDeleteLabel() {
 }
 
 export function useProcessLabels(processId: number | null) {
+  const { authToken } = useStore();
   return useQuery<ProcessLabel[]>({
     queryKey: ["process-labels", processId],
     queryFn: () => getProcessLabels(processId!),
-    enabled: !!processId,
+    enabled: !!processId && !!authToken,
   });
 }
 

@@ -85,9 +85,9 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
     
     try {
       await uploadAttachment.mutateAsync({ processId: process.id, file });
-      toast.success("Arquivo anexado com sucesso!");
+      toast.success("Anexo enviado com sucesso");
     } catch (error) {
-      toast.error("Erro ao anexar arquivo");
+      toast.error("Erro ao enviar anexo");
     }
     
     if (fileInputRef.current) {
@@ -95,26 +95,30 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
     }
   };
 
-  const handleAddLabel = async () => {
+  const handleAddLabel = async (labelId: number) => {
+    await addLabel.mutateAsync({ processId: process.id, labelId });
+  };
+
+  const handleRemoveLabel = async (labelId: number) => {
+    await removeLabel.mutateAsync({ processId: process.id, labelId });
+  };
+
+  const handleCreateLabel = async () => {
     if (!newLabelName.trim()) return;
-    try {
-      const label = await createLabel.mutateAsync({ name: newLabelName, color: newLabelColor });
-      await addLabel.mutateAsync({ processId: process.id, labelId: label.id });
-      setNewLabelName("");
-      toast.success("Etiqueta criada e adicionada!");
-    } catch (error) {
-      toast.error("Erro ao criar etiqueta");
+    await createLabel.mutateAsync({ name: newLabelName, color: newLabelColor });
+    setNewLabelName("");
+    setNewLabelColor("#6B7280");
+  };
+
+  const availableLabels = allLabels.filter(
+    label => !processLabels.some(pl => pl.id === label.id)
+  );
+
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+      return <Image className="w-4 h-4" />;
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) return <Image className="w-4 h-4" />;
     return <FileText className="w-4 h-4" />;
   };
 
@@ -143,12 +147,6 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                 className="text-xs"
               >
                 {label.name}
-                <button 
-                  className="ml-1 hover:opacity-70" 
-                  onClick={() => removeLabel.mutate({ processId: process.id, labelId: label.id })}
-                >
-                  <X className="w-3 h-3" />
-                </button>
               </Badge>
             ))}
           </div>
@@ -292,27 +290,27 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                   )}
                   {attachments.map((attachment) => (
                     <div key={attachment.id} className="flex items-center gap-3 p-3 rounded-md border hover:bg-muted/50 group" data-testid={`attachment-${attachment.id}`}>
-                      {getFileIcon(attachment.fileType)}
+                      {getFileIcon(attachment.filename)}
                       <div className="flex-1 min-w-0">
                         <a 
-                          href={attachment.fileUrl} 
+                          href={attachment.url} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-sm font-medium hover:underline truncate block"
                         >
-                          {attachment.fileName}
+                          {attachment.filename}
                         </a>
                         <span className="text-xs text-muted-foreground">
-                          {formatFileSize(attachment.fileSize)} - {format(new Date(attachment.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                          {format(new Date(attachment.uploadedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </span>
                       </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 text-destructive"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
                         onClick={() => deleteAttachment.mutate({ id: attachment.id, processId: process.id })}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   ))}
@@ -321,20 +319,20 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
               <div className="p-4 border-t bg-background">
                 <input 
                   type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  className="hidden" 
-                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
                 />
                 <Button 
-                  data-testid="button-upload"
+                  data-testid="button-upload-attachment"
                   variant="outline" 
                   className="w-full"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadAttachment.isPending}
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  {uploadAttachment.isPending ? 'Enviando...' : 'Anexar Arquivo'}
+                  {uploadAttachment.isPending ? 'Enviando...' : 'Enviar Anexo'}
                 </Button>
               </div>
             </TabsContent>
@@ -343,69 +341,65 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
               <ScrollArea className="flex-1 p-6">
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Etiquetas do processo</h4>
+                    <h4 className="text-sm font-medium mb-2">Etiquetas do Processo</h4>
                     <div className="flex flex-wrap gap-2">
                       {processLabels.length === 0 && (
-                        <span className="text-sm text-muted-foreground">Nenhuma etiqueta</span>
+                        <span className="text-sm text-muted-foreground">Nenhuma etiqueta.</span>
                       )}
                       {processLabels.map(label => (
                         <Badge 
                           key={label.id} 
                           style={{ backgroundColor: label.color, color: '#fff' }}
-                          className="text-sm"
+                          className="text-xs cursor-pointer hover:opacity-80"
+                          onClick={() => handleRemoveLabel(label.id)}
                         >
                           {label.name}
-                          <button 
-                            className="ml-1 hover:opacity-70" 
-                            onClick={() => removeLabel.mutate({ processId: process.id, labelId: label.id })}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                          <X className="w-3 h-3 ml-1" />
                         </Badge>
                       ))}
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Etiquetas disponíveis</h4>
+                    <h4 className="text-sm font-medium mb-2">Adicionar Etiqueta</h4>
                     <div className="flex flex-wrap gap-2">
-                      {allLabels.filter(l => !processLabels.some(pl => pl.id === l.id)).map(label => (
+                      {availableLabels.length === 0 && (
+                        <span className="text-sm text-muted-foreground">Nenhuma etiqueta disponível.</span>
+                      )}
+                      {availableLabels.map(label => (
                         <Badge 
                           key={label.id} 
                           style={{ backgroundColor: label.color, color: '#fff' }}
-                          className="text-sm cursor-pointer hover:opacity-80"
-                          onClick={() => addLabel.mutate({ processId: process.id, labelId: label.id })}
+                          className="text-xs cursor-pointer hover:opacity-80"
+                          onClick={() => handleAddLabel(label.id)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
                           {label.name}
                         </Badge>
                       ))}
-                      {allLabels.filter(l => !processLabels.some(pl => pl.id === l.id)).length === 0 && (
-                        <span className="text-sm text-muted-foreground">Todas as etiquetas estão em uso</span>
-                      )}
                     </div>
                   </div>
                 </div>
               </ScrollArea>
               <div className="p-4 border-t bg-background">
                 <div className="flex gap-2">
-                  <input 
-                    type="color" 
-                    value={newLabelColor} 
-                    onChange={(e) => setNewLabelColor(e.target.value)}
-                    className="w-10 h-9 rounded border cursor-pointer"
-                  />
                   <Input 
-                    data-testid="input-label"
+                    data-testid="input-label-name"
                     placeholder="Nova etiqueta..." 
                     value={newLabelName}
                     onChange={(e) => setNewLabelName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddLabel()}
+                    className="flex-1"
+                  />
+                  <input 
+                    type="color" 
+                    value={newLabelColor}
+                    onChange={(e) => setNewLabelColor(e.target.value)}
+                    className="w-10 h-10 rounded border cursor-pointer"
                   />
                   <Button 
-                    data-testid="button-add-label"
+                    data-testid="button-create-label"
                     size="icon" 
-                    onClick={handleAddLabel}
+                    onClick={handleCreateLabel}
                     disabled={createLabel.isPending}
                   >
                     <Plus className="w-4 h-4" />
