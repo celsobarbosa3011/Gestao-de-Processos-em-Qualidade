@@ -290,18 +290,18 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                   )}
                   {attachments.map((attachment) => (
                     <div key={attachment.id} className="flex items-center gap-3 p-3 rounded-md border hover:bg-muted/50 group" data-testid={`attachment-${attachment.id}`}>
-                      {getFileIcon(attachment.filename)}
+                      {getFileIcon(attachment.fileName)}
                       <div className="flex-1 min-w-0">
                         <a 
-                          href={attachment.url} 
+                          href={attachment.fileUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-sm font-medium hover:underline truncate block"
                         >
-                          {attachment.filename}
+                          {attachment.fileName}
                         </a>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(attachment.uploadedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                          {format(new Date(attachment.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </span>
                       </div>
                       <Button 
