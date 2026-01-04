@@ -24,7 +24,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   high: "bg-orange-500 text-white",
   medium: "bg-yellow-500 text-black",
   low: "bg-green-500 text-white",
+  // Portuguese priorities from database
+  "Crítica": "bg-red-500 text-white",
+  "Alta": "bg-orange-500 text-white",
+  "Média": "bg-yellow-500 text-black",
+  "Baixa": "bg-green-500 text-white",
 };
+
+const DEFAULT_PRIORITY_COLOR = "bg-gray-500 text-white";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -163,7 +170,7 @@ export default function CalendarPage() {
                           {dayProcesses.slice(0, 3).map((p) => (
                             <div
                               key={p.id}
-                              className={`w-full h-1.5 rounded-full ${PRIORITY_COLORS[p.priority].split(" ")[0]}`}
+                              className={`w-full h-1.5 rounded-full ${(PRIORITY_COLORS[p.priority] || DEFAULT_PRIORITY_COLOR).split(" ")[0]}`}
                               title={p.title}
                             />
                           ))}
@@ -234,16 +241,10 @@ export default function CalendarPage() {
                         </p>
                       </div>
                       <Badge
-                        className={`${PRIORITY_COLORS[process.priority]} text-[10px] shrink-0`}
+                        className={`${PRIORITY_COLORS[process.priority] || DEFAULT_PRIORITY_COLOR} text-[10px] shrink-0`}
                         data-testid={`badge-priority-${process.id}`}
                       >
-                        {process.priority === "critical"
-                          ? "Crítico"
-                          : process.priority === "high"
-                          ? "Alto"
-                          : process.priority === "medium"
-                          ? "Médio"
-                          : "Baixo"}
+                        {process.priority}
                       </Badge>
                     </div>
                     <div className="mt-2">
