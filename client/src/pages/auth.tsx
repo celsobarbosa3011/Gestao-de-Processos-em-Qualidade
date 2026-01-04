@@ -70,7 +70,8 @@ export default function AuthPage() {
             backgroundImage: "url('https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=2070&auto=format&fit=crop')" 
           }}
         />
-                <div className="relative z-10 max-w-lg">
+        <div className="flex-1" />
+        <div className="relative z-10 max-w-lg">
           <h2 className="text-4xl font-bold leading-tight mb-4" style={{ color: '#2ECC71' }}>
             Gestão de Qualidade na Saúde
           </h2>
