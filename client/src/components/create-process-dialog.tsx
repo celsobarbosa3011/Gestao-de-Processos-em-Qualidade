@@ -12,6 +12,7 @@ import { useCreateProcess } from "@/hooks/use-processes";
 import { useUnits } from "@/hooks/use-units";
 import { useProcessTypes } from "@/hooks/use-process-types";
 import { usePriorities } from "@/hooks/use-priorities";
+import { useProfiles } from "@/hooks/use-profiles";
 
 const processSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
@@ -19,6 +20,7 @@ const processSchema = z.object({
   unit: z.string().min(1, "Unidade é obrigatória"),
   type: z.string().min(1, "Tipo é obrigatório"),
   priority: z.string().min(1, "Prioridade é obrigatória"),
+  responsibleId: z.string().optional(),
   deadline: z.string().optional(),
 });
 
@@ -33,6 +35,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
   const { data: units = [], isLoading: unitsLoading } = useUnits();
   const { data: processTypes = [], isLoading: typesLoading } = useProcessTypes();
   const { data: priorities = [], isLoading: prioritiesLoading } = usePriorities();
+  const { data: profiles = [], isLoading: profilesLoading } = useProfiles();
   
   const form = useForm<z.infer<typeof processSchema>>({
     resolver: zodResolver(processSchema),
@@ -42,6 +45,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
       unit: currentUser?.unit || "",
       type: "",
       priority: "",
+      responsibleId: currentUser?.id || "",
     },
   });
 
@@ -66,12 +70,19 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
       color: priority.color || undefined,
     }));
 
+  const responsibleOptions = profiles
+    .filter((p) => p.status === 'active')
+    .map((profile) => ({
+      value: profile.id,
+      label: profile.name,
+    }));
+
   const onSubmit = async (values: z.infer<typeof processSchema>) => {
     if (!currentUser) return;
     
     await createProcess.mutateAsync({
       ...values,
-      responsibleId: currentUser.id,
+      responsibleId: values.responsibleId || currentUser.id,
       status: 'new',
       deadline: values.deadline ? new Date(values.deadline) : undefined,
     });
@@ -180,6 +191,29 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                       emptyMessage="Nenhuma unidade encontrada"
                       isLoading={unitsLoading}
                       data-testid="select-unit"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="responsibleId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável</FormLabel>
+                  <FormControl>
+                    <SearchableSelect
+                      options={responsibleOptions}
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      placeholder="Selecione o responsável"
+                      searchPlaceholder="Pesquisar responsável..."
+                      emptyMessage="Nenhum usuário encontrado"
+                      isLoading={profilesLoading}
+                      data-testid="select-responsible"
                     />
                   </FormControl>
                   <FormMessage />
