@@ -34,6 +34,16 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
   return response.json();
 }
 
+export async function createProfile(data: { name: string; email: string; role: string; unit: string; status: string; avatar?: string }): Promise<Profile> {
+  const response = await fetch(`${API_BASE}/profiles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...data, password: 'senha123' }),
+  });
+  if (!response.ok) throw new Error("Failed to create profile");
+  return response.json();
+}
+
 // Processes
 export async function getAllProcesses(): Promise<Process[]> {
   const response = await fetch(`${API_BASE}/processes`);

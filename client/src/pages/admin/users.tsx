@@ -1,10 +1,9 @@
-import { useStore, User } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,6 +20,9 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAllProfiles, createProfile, updateProfile } from "@/lib/api";
+import type { Profile } from "@shared/schema";
 
 const userSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
@@ -30,9 +32,28 @@ const userSchema = z.object({
 });
 
 export default function AdminUsersPage() {
-  const { users, addUser, updateUser } = useStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['profiles'],
+    queryFn: getAllProfiles,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Profile> }) => updateProfile(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+    },
+  });
 
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
@@ -45,25 +66,38 @@ export default function AdminUsersPage() {
   });
 
   const onSubmit = (values: z.infer<typeof userSchema>) => {
-    addUser({
+    createMutation.mutate({
       ...values,
       status: 'active',
-      avatar: `https://i.pravatar.cc/150?u=${values.email}` // Mock avatar
-    });
-    setIsDialogOpen(false);
-    form.reset();
-    toast({
-      title: "Usuário criado",
-      description: `${values.name} foi adicionado com sucesso.`,
+      avatar: `https://i.pravatar.cc/150?u=${values.email}`
+    }, {
+      onSuccess: () => {
+        setIsDialogOpen(false);
+        form.reset();
+        toast({
+          title: "Usuário criado",
+          description: `${values.name} foi adicionado com sucesso.`,
+        });
+      },
+      onError: () => {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Não foi possível criar o usuário.",
+        });
+      }
     });
   };
 
-  const toggleStatus = (user: User) => {
+  const toggleStatus = (user: Profile) => {
     const newStatus = user.status === 'active' ? 'suspended' : 'active';
-    updateUser(user.id, { status: newStatus });
-    toast({
-      title: `Status atualizado`,
-      description: `Usuário ${user.name} agora está ${newStatus === 'active' ? 'ativo' : 'suspenso'}.`,
+    updateMutation.mutate({ id: user.id, updates: { status: newStatus } }, {
+      onSuccess: () => {
+        toast({
+          title: `Status atualizado`,
+          description: `Usuário ${user.name} agora está ${newStatus === 'active' ? 'ativo' : 'suspenso'}.`,
+        });
+      }
     });
   };
 
@@ -84,6 +118,7 @@ export default function AdminUsersPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Novo Usuário</DialogTitle>
+              <DialogDescription>Preencha as informações para criar um novo usuário.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -176,7 +211,7 @@ export default function AdminUsersPage() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.avatar} />
+                        <AvatarImage src={user.avatar ?? undefined} />
                         <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
