@@ -10,7 +10,12 @@ import {
   LogOut, 
   Menu,
   FileClock,
-  Palette
+  Palette,
+  Calendar,
+  GanttChart,
+  Layers,
+  Zap,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -82,6 +87,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             Processos
           </Button>
 
+          <Button 
+            variant={location === '/calendar' ? 'secondary' : 'ghost'} 
+            className="w-full justify-start gap-3 font-medium"
+            onClick={() => { setLocation('/calendar'); setIsMobileOpen(false); }}
+            data-testid="nav-calendar"
+          >
+            <Calendar className="w-4 h-4" />
+            Calendário
+          </Button>
+
+          <Button 
+            variant={location === '/timeline' ? 'secondary' : 'ghost'} 
+            className="w-full justify-start gap-3 font-medium"
+            onClick={() => { setLocation('/timeline'); setIsMobileOpen(false); }}
+            data-testid="nav-timeline"
+          >
+            <GanttChart className="w-4 h-4" />
+            Timeline
+          </Button>
+
           {currentUser.role === 'admin' && (
             <>
               <div className="pt-4 pb-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -122,6 +147,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               >
                 <FileClock className="w-4 h-4" />
                 Logs de Auditoria
+              </Button>
+              <Button 
+                variant={location === '/admin/custom-fields' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/custom-fields'); setIsMobileOpen(false); }}
+                data-testid="nav-custom-fields"
+              >
+                <Layers className="w-4 h-4" />
+                Campos Personalizados
+              </Button>
+              <Button 
+                variant={location === '/admin/automations' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/automations'); setIsMobileOpen(false); }}
+                data-testid="nav-automations"
+              >
+                <Zap className="w-4 h-4" />
+                Automações
+              </Button>
+              <Button 
+                variant={location === '/admin/templates' ? 'secondary' : 'ghost'} 
+                className="w-full justify-start gap-3 font-medium"
+                onClick={() => { setLocation('/admin/templates'); setIsMobileOpen(false); }}
+                data-testid="nav-templates"
+              >
+                <FileText className="w-4 h-4" />
+                Templates
               </Button>
             </>
           )}
