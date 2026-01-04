@@ -295,22 +295,24 @@ export default function TimelinePage() {
                 </div>
                 <div className="relative">
                   <div className="flex">
-                    {daysInMonth.map((day, index) => (
-                      <div
-                        key={day.toISOString()}
-                        className={`flex-1 text-center text-xs text-muted-foreground ${
-                          index % 7 === 0 || index % 7 === 6
-                            ? "bg-muted/30"
-                            : ""
-                        }`}
-                        style={{ minWidth: "30px" }}
-                      >
-                        <div>{format(day, "d")}</div>
-                        <div className="text-[10px]">
-                          {format(day, "EEE", { locale: ptBR })}
+                    {daysInMonth.map((day) => {
+                      const dayOfWeek = day.getDay();
+                      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={`flex-1 text-center text-xs font-medium ${
+                            isWeekend
+                              ? "bg-muted/40 text-muted-foreground"
+                              : "text-foreground"
+                          }`}
+                          style={{ minWidth: "28px" }}
+                          title={format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                        >
+                          {format(day, "d")}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -358,17 +360,19 @@ export default function TimelinePage() {
                         </div>
                         <div className="relative h-10 bg-muted/20 rounded">
                           <div className="absolute inset-0 flex">
-                            {daysInMonth.map((day, index) => (
-                              <div
-                                key={day.toISOString()}
-                                className={`flex-1 border-r border-dashed border-muted ${
-                                  index % 7 === 0 || index % 7 === 6
-                                    ? "bg-muted/20"
-                                    : ""
-                                }`}
-                                style={{ minWidth: "30px" }}
-                              />
-                            ))}
+                            {daysInMonth.map((day) => {
+                              const dayOfWeek = day.getDay();
+                              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                              return (
+                                <div
+                                  key={day.toISOString()}
+                                  className={`flex-1 border-r border-dashed border-muted ${
+                                    isWeekend ? "bg-muted/30" : ""
+                                  }`}
+                                  style={{ minWidth: "28px" }}
+                                />
+                              );
+                            })}
                           </div>
                           <div
                             className={`absolute top-1 bottom-1 rounded-md ${
