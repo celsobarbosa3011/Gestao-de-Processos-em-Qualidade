@@ -4,20 +4,22 @@ import {
   DialogHeader, 
   DialogTitle,
   DialogDescription,
-  DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Process, useStore } from "@/lib/store";
+import type { Process } from "@shared/schema";
+import { useStore } from "@/lib/store";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Clock, User, FileText, MessageSquare, History, Send, Paperclip } from "lucide-react";
+import { Calendar, Clock, User, MessageSquare, Send } from "lucide-react";
 import { useState } from "react";
+import { useProfiles } from "@/hooks/use-profiles";
+import { useProcessComments, useCreateComment } from "@/hooks/use-comments";
+import { useProcessEvents } from "@/hooks/use-events";
 
 interface ProcessDialogProps {
   process: Process | null;
@@ -26,17 +28,23 @@ interface ProcessDialogProps {
 }
 
 export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProps) {
-  const { users, addComment, currentUser } = useStore();
+  const { currentUser } = useStore();
+  const { data: profiles = [] } = useProfiles();
+  const { data: comments = [] } = useProcessComments(process?.id || null);
+  const { data: events = [] } = useProcessEvents(process?.id || null);
+  const createComment = useCreateComment();
   const [commentText, setCommentText] = useState("");
 
   if (!process) return null;
 
-  const responsible = users.find(u => u.id === process.responsibleId);
-  const creator = users.find(u => true); // Mock logic finding creator in real app
+  const responsible = profiles.find(u => u.id === process.responsibleId);
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!commentText.trim()) return;
-    addComment(process.id, commentText);
+    await createComment.mutateAsync({
+      processId: process.id,
+      text: commentText
+    });
     setCommentText("");
   };
 
@@ -45,8 +53,8 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
         <DialogHeader className="p-6 pb-4 border-b">
           <div className="flex items-center gap-2 mb-2">
-            <Badge variant="outline" className="font-mono text-xs text-muted-foreground">
-              {process.id}
+            <Badge variant="outline" className="font-mono text-xs text-muted-foreground" data-testid={`badge-process-${process.id}`}>
+              #{process.id}
             </Badge>
             <Badge className={
               process.priority === 'critical' ? 'bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20' :
@@ -81,11 +89,11 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                 <TabsTrigger value="details" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4">
                   Detalhes
                 </TabsTrigger>
-                <TabsTrigger value="comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4">
-                  Comentários ({process.comments.length})
+                <TabsTrigger value="comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4" data-testid="tab-comments">
+                  Comentários ({comments.length})
                 </TabsTrigger>
-                <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4">
-                  Histórico
+                <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4" data-testid="tab-history">
+                  Histórico ({events.length})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -122,38 +130,22 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-2">
-                   <h3 className="text-sm font-medium text-muted-foreground">Anexos</h3>
-                   {process.attachments.length > 0 ? (
-                     <div className="space-y-2">
-                        {process.attachments.map((att, i) => (
-                          <div key={i} className="flex items-center gap-2 text-sm p-2 border rounded hover:bg-muted/50 cursor-pointer">
-                            <Paperclip className="w-4 h-4 text-muted-foreground" />
-                            <span className="truncate flex-1">documento_anexo_{i+1}.pdf</span>
-                          </div>
-                        ))}
-                     </div>
-                   ) : (
-                     <div className="text-sm text-muted-foreground italic p-2">Nenhum anexo.</div>
-                   )}
-                </div>
               </div>
             </TabsContent>
 
             <TabsContent value="comments" className="flex-1 flex flex-col mt-0 h-full overflow-hidden">
               <ScrollArea className="flex-1 p-6">
                 <div className="space-y-4">
-                  {process.comments.length === 0 && (
+                  {comments.length === 0 && (
                      <div className="text-center py-8 text-muted-foreground text-sm">
                        Nenhum comentário ainda.
                      </div>
                   )}
-                  {process.comments.map((comment) => {
-                    const author = users.find(u => u.id === comment.userId);
+                  {comments.map((comment) => {
+                    const author = profiles.find(u => u.id === comment.userId);
                     const isMe = author?.id === currentUser?.id;
                     return (
-                      <div key={comment.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+                      <div key={comment.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`} data-testid={`comment-${comment.id}`}>
                         <Avatar className="h-8 w-8">
                           <AvatarFallback>{author?.name.slice(0,2).toUpperCase()}</AvatarFallback>
                         </Avatar>
@@ -176,12 +168,18 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
               <div className="p-4 border-t bg-background">
                 <div className="flex gap-2">
                   <Input 
+                    data-testid="input-comment"
                     placeholder="Escreva um comentário..." 
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendComment()}
                   />
-                  <Button size="icon" onClick={handleSendComment}>
+                  <Button 
+                    data-testid="button-send-comment"
+                    size="icon" 
+                    onClick={handleSendComment}
+                    disabled={createComment.isPending}
+                  >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
@@ -190,21 +188,24 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
 
             <TabsContent value="history" className="flex-1 overflow-y-auto p-6 mt-0">
                <div className="relative border-l ml-2 space-y-6">
-                 {process.history.length === 0 && (
+                 {events.length === 0 && (
                     <div className="pl-6 text-sm text-muted-foreground">Sem histórico registrado.</div>
                  )}
-                 {process.history.map((event) => (
-                   <div key={event.id} className="ml-6 relative">
-                     <span className="absolute -left-[29px] top-1 h-3 w-3 rounded-full bg-muted-foreground/30 ring-4 ring-background" />
-                     <div className="flex flex-col gap-1">
-                       <span className="text-sm font-medium">{event.action}</span>
-                       <span className="text-xs text-muted-foreground">{event.details}</span>
-                       <span className="text-[10px] text-muted-foreground/60">
-                         {format(new Date(event.timestamp), "dd/MM/yyyy HH:mm", { locale: ptBR })} por {users.find(u => u.id === event.userId)?.name}
-                       </span>
+                 {events.map((event) => {
+                   const user = profiles.find(u => u.id === event.userId);
+                   return (
+                     <div key={event.id} className="ml-6 relative" data-testid={`event-${event.id}`}>
+                       <span className="absolute -left-[29px] top-1 h-3 w-3 rounded-full bg-muted-foreground/30 ring-4 ring-background" />
+                       <div className="flex flex-col gap-1">
+                         <span className="text-sm font-medium">{event.action}</span>
+                         <span className="text-xs text-muted-foreground">{event.details}</span>
+                         <span className="text-[10px] text-muted-foreground/60">
+                           {format(new Date(event.timestamp), "dd/MM/yyyy HH:mm", { locale: ptBR })} por {user?.name || 'Sistema'}
+                         </span>
+                       </div>
                      </div>
-                   </div>
-                 ))}
+                   );
+                 })}
                </div>
             </TabsContent>
           </Tabs>

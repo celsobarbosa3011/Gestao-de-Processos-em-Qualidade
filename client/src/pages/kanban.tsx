@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
-import { useStore, ProcessStatus, Process } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { ProcessCard } from "@/components/process-card";
 import { ProcessDialog } from "@/components/process-dialog";
 import { Plus, Filter, Search } from "lucide-react";
@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { CreateProcessDialog } from "@/components/create-process-dialog";
+import { useProcesses, useUpdateProcess } from "@/hooks/use-processes";
+import { useProfiles } from "@/hooks/use-profiles";
+import { useAlertSettings } from "@/hooks/use-alert-settings";
+import type { Process } from "@shared/schema";
+
+type ProcessStatus = 'new' | 'analysis' | 'pending' | 'approved' | 'rejected';
 
 const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'new', title: 'Novos' },
@@ -17,29 +24,27 @@ const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'rejected', title: 'Rejeitados' },
 ];
 
-import { CreateProcessDialog } from "@/components/create-process-dialog";
-
 export default function KanbanPage() {
-  const { processes, moveProcess, currentUser } = useStore();
+  const { currentUser } = useStore();
+  const { data: processes = [], isLoading } = useProcesses();
+  const { data: profiles = [] } = useProfiles();
+  const { data: alertSettings } = useAlertSettings();
+  const updateProcess = useUpdateProcess();
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
 
-  // Logic to filter processes based on Role
+  // Filter processes
   const visibleProcesses = processes.filter(p => {
     // Search filter
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.id.toLowerCase().includes(search.toLowerCase())) {
+    if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !String(p.id).includes(search)) {
       return false;
     }
-    // Admin sees all (with optional unit filter), User sees only assigned or owned (simplified to "my dashboard" view)
-    if (currentUser?.role === 'user') {
-      // For demo: User sees processes from their Unit OR assigned to them
-      return p.unit === currentUser.unit || p.responsibleId === currentUser.id;
-    }
     // Admin unit filter
-    if (unitFilter !== 'all' && p.unit !== unitFilter) return false;
-    
+    if (currentUser?.role === 'admin' && unitFilter !== 'all' && p.unit !== unitFilter) {
+      return false;
+    }
     return true;
   });
 
@@ -49,8 +54,22 @@ export default function KanbanPage() {
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    moveProcess(draggableId, destination.droppableId as ProcessStatus);
+    const processId = parseInt(draggableId);
+    const newStatus = destination.droppableId as ProcessStatus;
+    
+    updateProcess.mutate({
+      id: processId,
+      updates: { status: newStatus }
+    });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <p className="text-muted-foreground">Carregando processos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -63,6 +82,7 @@ export default function KanbanPage() {
            <div className="relative w-full sm:w-64">
              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
              <Input 
+               data-testid="input-search"
                placeholder="Buscar processos..." 
                className="pl-9"
                value={search}
@@ -71,7 +91,7 @@ export default function KanbanPage() {
            </div>
            {currentUser?.role === 'admin' && (
              <Select value={unitFilter} onValueChange={setUnitFilter}>
-               <SelectTrigger className="w-[180px]">
+               <SelectTrigger className="w-[180px]" data-testid="select-unit-filter">
                  <Filter className="w-4 h-4 mr-2" />
                  <SelectValue placeholder="Filtrar Unidade" />
                </SelectTrigger>
@@ -84,6 +104,7 @@ export default function KanbanPage() {
              </Select>
            )}
            <Button 
+             data-testid="button-new-process"
              className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
              onClick={() => setIsCreateOpen(true)}
            >
@@ -103,7 +124,10 @@ export default function KanbanPage() {
                   <div className="p-4 border-b border-border/50 flex items-center justify-between bg-secondary/50 rounded-t-xl sticky top-0 z-10 backdrop-blur-sm">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-sm uppercase tracking-wide text-foreground/80">{column.title}</h3>
-                      <span className="bg-background text-foreground text-xs font-bold px-2 py-0.5 rounded-full border shadow-sm">
+                      <span 
+                        data-testid={`count-${column.id}`}
+                        className="bg-background text-foreground text-xs font-bold px-2 py-0.5 rounded-full border shadow-sm"
+                      >
                         {columnProcesses.length}
                       </span>
                     </div>
@@ -125,6 +149,8 @@ export default function KanbanPage() {
                             process={process} 
                             index={index} 
                             onClick={() => setSelectedProcess(process)}
+                            profiles={profiles}
+                            alertSettings={alertSettings}
                           />
                         ))}
                         {provided.placeholder}

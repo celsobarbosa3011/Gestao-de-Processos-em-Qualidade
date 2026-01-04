@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ShieldCheck, Stethoscope } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { login as apiLogin } from "@/lib/api";
+import { useState } from "react";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Email inválido" }),
@@ -17,33 +19,36 @@ const formSchema = z.object({
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const { login } = useStore();
+  const { setCurrentUser } = useStore();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "admin@mediflow.com",
-      password: "password",
+      password: "admin123",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsLoading(true);
     try {
-      login(values.email);
-      // Determine redirection based on role (handled by protected route logic, but for now simple redirect)
-      // For immediate feedback
+      const user = await apiLogin(values.email, values.password);
+      setCurrentUser(user);
       toast({
         title: "Login realizado com sucesso",
-        description: "Bem-vindo ao MediFlow.",
+        description: `Bem-vindo, ${user.name}!`,
       });
-      setLocation("/kanban"); // Default to kanban for now
+      setLocation("/kanban");
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erro no login",
         description: "Credenciais inválidas.",
       });
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -78,7 +83,11 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="admin@mediflow.com" {...field} />
+                          <Input 
+                            data-testid="input-email"
+                            placeholder="admin@mediflow.com" 
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -91,14 +100,24 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
+                          <Input 
+                            data-testid="input-password"
+                            type="password" 
+                            placeholder="••••••••" 
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full h-10 text-base">
-                    Entrar
+                  <Button 
+                    data-testid="button-login"
+                    type="submit" 
+                    className="w-full h-10 text-base"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
                 </form>
               </Form>
@@ -106,8 +125,24 @@ export default function AuthPage() {
             <CardFooter className="flex flex-col gap-2 bg-muted/30 p-4 rounded-b-lg border-t text-xs text-muted-foreground text-center">
               <p>Credenciais de demonstração:</p>
               <div className="flex gap-4 justify-center font-mono">
-                <span className="cursor-pointer hover:text-primary" onClick={() => form.setValue('email', 'admin@mediflow.com')}>admin@mediflow.com</span>
-                <span className="cursor-pointer hover:text-primary" onClick={() => form.setValue('email', 'sarah@mediflow.com')}>sarah@mediflow.com</span>
+                <span 
+                  className="cursor-pointer hover:text-primary" 
+                  onClick={() => {
+                    form.setValue('email', 'admin@mediflow.com');
+                    form.setValue('password', 'admin123');
+                  }}
+                >
+                  admin@mediflow.com
+                </span>
+                <span 
+                  className="cursor-pointer hover:text-primary" 
+                  onClick={() => {
+                    form.setValue('email', 'sarah@mediflow.com');
+                    form.setValue('password', 'sarah123');
+                  }}
+                >
+                  sarah@mediflow.com
+                </span>
               </div>
             </CardFooter>
           </Card>

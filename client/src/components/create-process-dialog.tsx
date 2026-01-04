@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useStore } from "@/lib/store";
-import { useToast } from "@/hooks/use-toast";
+import { useCreateProcess } from "@/hooks/use-processes";
 
 const processSchema = z.object({
   title: z.string().min(3, "Título deve ter pelo menos 3 caracteres"),
@@ -25,8 +25,8 @@ interface CreateProcessDialogProps {
 }
 
 export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogProps) {
-  const { addProcess, currentUser } = useStore();
-  const { toast } = useToast();
+  const { currentUser } = useStore();
+  const createProcess = useCreateProcess();
   
   const form = useForm<z.infer<typeof processSchema>>({
     resolver: zodResolver(processSchema),
@@ -39,19 +39,14 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
     },
   });
 
-  const onSubmit = (values: z.infer<typeof processSchema>) => {
-    addProcess({
-      ...values,
-      responsibleId: currentUser?.id, // Auto-assign creator initially
-      status: 'new',
-      comments: [],
-      history: [],
-      attachments: [],
-    });
+  const onSubmit = async (values: z.infer<typeof processSchema>) => {
+    if (!currentUser) return;
     
-    toast({
-      title: "Processo criado",
-      description: "O novo processo foi adicionado ao quadro.",
+    await createProcess.mutateAsync({
+      ...values,
+      responsibleId: currentUser.id,
+      status: 'new',
+      deadline: values.deadline ? new Date(values.deadline) : undefined,
     });
     
     onOpenChange(false);
@@ -73,7 +68,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 <FormItem>
                   <FormLabel>Título</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Compra de Material" {...field} />
+                    <Input data-testid="input-title" placeholder="Ex: Compra de Material" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -87,7 +82,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 <FormItem>
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Detalhes da solicitação..." {...field} />
+                    <Textarea data-testid="input-description" placeholder="Detalhes da solicitação..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -102,7 +97,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                   <FormItem>
                     <FormLabel>Tipo</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: RH, Financeiro" {...field} />
+                      <Input data-testid="input-type" placeholder="Ex: RH, Financeiro" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -117,7 +112,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                     <FormLabel>Prioridade</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="select-priority">
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                       </FormControl>
@@ -141,7 +136,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 <FormItem>
                   <FormLabel>Unidade</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input data-testid="input-unit" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -155,7 +150,7 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
                 <FormItem>
                   <FormLabel>Prazo (Opcional)</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input data-testid="input-deadline" type="date" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -163,7 +158,9 @@ export function CreateProcessDialog({ open, onOpenChange }: CreateProcessDialogP
             />
 
             <DialogFooter className="pt-2">
-              <Button type="submit">Criar Processo</Button>
+              <Button data-testid="button-create" type="submit" disabled={createProcess.isPending}>
+                {createProcess.isPending ? "Criando..." : "Criar Processo"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
