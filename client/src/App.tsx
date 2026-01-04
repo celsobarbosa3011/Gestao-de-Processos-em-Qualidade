@@ -12,6 +12,8 @@ import AdminUsersPage from "@/pages/admin/users";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminLogsPage from "@/pages/admin/logs";
 import AdminBrandingPage from "@/pages/admin/branding";
+import CalendarPage from "@/pages/calendar";
+import TimelinePage from "@/pages/timeline";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { useStore } from "@/lib/store";
 
@@ -43,6 +45,8 @@ function Router() {
           <Redirect to="/kanban" />
         </Route>
         <Route path="/kanban" component={KanbanPage} />
+        <Route path="/calendar" component={CalendarPage} />
+        <Route path="/timeline" component={TimelinePage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/admin/users" component={AdminUsersPage} />
         <Route path="/admin/branding" component={AdminBrandingPage} />

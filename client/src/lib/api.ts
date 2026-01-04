@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -463,5 +463,220 @@ export async function updateFeatureToggle(featureKey: string, enabled: boolean):
     body: JSON.stringify({ enabled }),
   });
   if (!response.ok) throw new Error("Failed to update feature");
+  return response.json();
+}
+
+// Time Entries
+export async function getTimeEntries(processId: number): Promise<TimeEntry[]> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/time-entries`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch time entries");
+  return response.json();
+}
+
+export async function createTimeEntry(processId: number, data: { description?: string; minutes: number; date?: string }): Promise<TimeEntry> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/time-entries`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create time entry");
+  return response.json();
+}
+
+export async function deleteTimeEntry(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/time-entries/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete time entry");
+}
+
+export async function getTotalTime(processId: number): Promise<{ total: number }> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/total-time`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch total time");
+  return response.json();
+}
+
+// Custom Fields
+export async function getCustomFields(): Promise<CustomField[]> {
+  const response = await fetch(`${API_BASE}/custom-fields`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch custom fields");
+  return response.json();
+}
+
+export async function createCustomField(field: InsertCustomField): Promise<CustomField> {
+  const response = await fetch(`${API_BASE}/custom-fields`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(field),
+  });
+  if (!response.ok) throw new Error("Failed to create custom field");
+  return response.json();
+}
+
+export async function updateCustomField(id: number, updates: Partial<InsertCustomField>): Promise<CustomField> {
+  const response = await fetch(`${API_BASE}/custom-fields/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update custom field");
+  return response.json();
+}
+
+export async function deleteCustomField(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/custom-fields/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete custom field");
+}
+
+export async function getCustomFieldValues(processId: number): Promise<CustomFieldValue[]> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/custom-field-values`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch custom field values");
+  return response.json();
+}
+
+export async function setCustomFieldValue(processId: number, fieldId: number, value: string | null): Promise<CustomFieldValue> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/custom-field-values`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ fieldId, value }),
+  });
+  if (!response.ok) throw new Error("Failed to set custom field value");
+  return response.json();
+}
+
+// Automations
+export async function getAutomations(): Promise<Automation[]> {
+  const response = await fetch(`${API_BASE}/automations`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch automations");
+  return response.json();
+}
+
+export async function createAutomation(automation: InsertAutomation): Promise<Automation> {
+  const response = await fetch(`${API_BASE}/automations`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(automation),
+  });
+  if (!response.ok) throw new Error("Failed to create automation");
+  return response.json();
+}
+
+export async function updateAutomation(id: number, updates: Partial<InsertAutomation>): Promise<Automation> {
+  const response = await fetch(`${API_BASE}/automations/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update automation");
+  return response.json();
+}
+
+export async function deleteAutomation(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/automations/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete automation");
+}
+
+// Notifications
+export async function getNotifications(): Promise<Notification[]> {
+  const response = await fetch(`${API_BASE}/notifications`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch notifications");
+  return response.json();
+}
+
+export async function markNotificationAsRead(id: number): Promise<Notification> {
+  const response = await fetch(`${API_BASE}/notifications/${id}/read`, {
+    method: "PATCH",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to mark notification as read");
+  return response.json();
+}
+
+export async function markAllNotificationsAsRead(): Promise<void> {
+  const response = await fetch(`${API_BASE}/notifications/read-all`, {
+    method: "POST",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to mark all notifications as read");
+}
+
+export async function getUnreadNotificationCount(): Promise<{ count: number }> {
+  const response = await fetch(`${API_BASE}/notifications/unread-count`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to get unread notification count");
+  return response.json();
+}
+
+export async function deleteNotification(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/notifications/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete notification");
+}
+
+// Swimlanes
+export async function getSwimlanes(): Promise<Swimlane[]> {
+  const response = await fetch(`${API_BASE}/swimlanes`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch swimlanes");
+  return response.json();
+}
+
+export async function createSwimlane(swimlane: InsertSwimlane): Promise<Swimlane> {
+  const response = await fetch(`${API_BASE}/swimlanes`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(swimlane),
+  });
+  if (!response.ok) throw new Error("Failed to create swimlane");
+  return response.json();
+}
+
+export async function updateSwimlane(id: number, updates: Partial<InsertSwimlane>): Promise<Swimlane> {
+  const response = await fetch(`${API_BASE}/swimlanes/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update swimlane");
+  return response.json();
+}
+
+export async function deleteSwimlane(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/swimlanes/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete swimlane");
+}
+
+// Analytics
+export async function getCumulativeFlowData(): Promise<{ status: string; date: string; count: number }[]> {
+  const response = await fetch(`${API_BASE}/analytics/cumulative-flow`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch cumulative flow data");
   return response.json();
 }
