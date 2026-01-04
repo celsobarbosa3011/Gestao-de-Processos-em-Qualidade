@@ -16,8 +16,50 @@ export const profiles = pgTable("profiles", {
   provisionalPassword: text("provisional_password"),
   provisionalPasswordExpiresAt: timestamp("provisional_password_expires_at"),
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  profileCompleted: boolean("profile_completed").notNull().default(false),
+  motherName: text("mother_name"),
+  cpf: text("cpf"),
+  cep: text("cep"),
+  address: text("address"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: text("state"),
+  phone: text("phone"),
+  secondaryPhone: text("secondary_phone"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// Healthcare Units Table
+export const units = pgTable("units", {
+  id: serial("id").primaryKey(),
+  cnpj: text("cnpj").notNull().unique(),
+  razaoSocial: text("razao_social").notNull(),
+  nomeFantasia: text("nome_fantasia"),
+  cep: text("cep"),
+  address: text("address"),
+  number: text("number"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: text("state"),
+  phone: text("phone"),
+  website: text("website"),
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  email: text("email"),
+  status: text("status").notNull().default('active'),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertUnitSchema = createInsertSchema(units).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const updateUnitSchema = insertUnitSchema.partial();
+
+export type InsertUnit = z.infer<typeof insertUnitSchema>;
+export type UpdateUnit = z.infer<typeof updateUnitSchema>;
+export type Unit = typeof units.$inferSelect;
 
 export const insertProfileSchema = createInsertSchema(profiles).omit({
   id: true,

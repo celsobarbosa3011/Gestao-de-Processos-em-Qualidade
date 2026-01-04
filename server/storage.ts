@@ -50,6 +50,9 @@ import type {
   InsertSwimlane,
   DashboardWidget,
   InsertDashboardWidget,
+  Unit,
+  InsertUnit,
+  UpdateUnit,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -140,6 +143,14 @@ export interface IStorage {
   // Feature Toggle methods
   getAllFeatureToggles(): Promise<FeatureToggle[]>;
   updateFeatureToggle(featureKey: string, enabled: boolean): Promise<FeatureToggle>;
+  
+  // Unit methods
+  getAllUnits(): Promise<Unit[]>;
+  getUnit(id: number): Promise<Unit | undefined>;
+  getUnitByCnpj(cnpj: string): Promise<Unit | undefined>;
+  createUnit(unit: InsertUnit): Promise<Unit>;
+  updateUnit(id: number, updates: UpdateUnit): Promise<Unit | undefined>;
+  deleteUnit(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -798,6 +809,36 @@ export class DatabaseStorage implements IStorage {
       widgets.push(created);
     }
     return widgets;
+  }
+
+  // Unit methods
+  async getAllUnits(): Promise<Unit[]> {
+    return await db.select().from(schema.units).orderBy(schema.units.nomeFantasia);
+  }
+
+  async getUnit(id: number): Promise<Unit | undefined> {
+    const result = await db.select().from(schema.units).where(eq(schema.units.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUnitByCnpj(cnpj: string): Promise<Unit | undefined> {
+    const result = await db.select().from(schema.units).where(eq(schema.units.cnpj, cnpj)).limit(1);
+    return result[0];
+  }
+
+  async createUnit(unit: InsertUnit): Promise<Unit> {
+    const result = await db.insert(schema.units).values(unit).returning();
+    return result[0];
+  }
+
+  async updateUnit(id: number, updates: UpdateUnit): Promise<Unit | undefined> {
+    const result = await db.update(schema.units).set(updates).where(eq(schema.units.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteUnit(id: number): Promise<boolean> {
+    const result = await db.delete(schema.units).where(eq(schema.units.id, id)).returning();
+    return result.length > 0;
   }
 }
 
