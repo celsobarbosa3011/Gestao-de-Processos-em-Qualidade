@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { login as apiLogin } from "@/lib/api";
 import { useBrandingConfig } from "@/hooks/use-branding";
@@ -23,6 +23,7 @@ export default function AuthPage() {
   const { setCurrentUser } = useStore();
   const { data: branding, isLoading: brandingLoading } = useBrandingConfig();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const appName = branding?.appName || 'UP - Qualidade em Saúde';
   const tagline = branding?.tagline || 'Gestão administrativa eficiente para unidades de saúde.';
@@ -122,12 +123,22 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
-                          <Input 
-                            data-testid="input-password"
-                            type="password" 
-                            placeholder="Sua senha" 
-                            {...field} 
-                          />
+                          <div className="relative">
+                            <Input 
+                              data-testid="input-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Sua senha" 
+                              {...field} 
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPassword(!showPassword)}
+                              data-testid="toggle-password-visibility"
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

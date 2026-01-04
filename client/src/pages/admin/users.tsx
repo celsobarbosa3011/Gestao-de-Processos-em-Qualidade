@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
     createMutation.mutate({
       ...values,
       status: 'active',
-      avatar: `https://i.pravatar.cc/150?u=${values.email}`
+      avatar: undefined
     }, {
       onSuccess: () => {
         setIsDialogOpen(false);
@@ -287,7 +287,9 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
                         <AvatarImage src={user.avatar ?? undefined} />
-                        <AvatarFallback>{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                          {user.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
                         <span className="font-medium text-sm">{user.name}</span>
