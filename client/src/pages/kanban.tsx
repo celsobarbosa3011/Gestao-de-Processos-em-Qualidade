@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { CreateProcessDialog } from "@/components/create-process-dialog";
 import { useProcesses, useUpdateProcess } from "@/hooks/use-processes";
 import { useProfiles } from "@/hooks/use-profiles";
+import { useUnits } from "@/hooks/use-units";
 import { useAlertSettings } from "@/hooks/use-alert-settings";
 import { useWipLimits } from "@/hooks/use-wip-limits";
 import { useWebSocketEvent } from "@/hooks/use-websocket";
@@ -61,6 +62,7 @@ export default function KanbanPage() {
   const queryClient = useQueryClient();
   const { data: processes = [], isLoading } = useProcesses();
   const { data: profiles = [] } = useProfiles();
+  const { data: units = [] } = useUnits();
   const { data: alertSettings } = useAlertSettings();
   const { data: wipLimits = [] } = useWipLimits();
   const updateProcess = useUpdateProcess();
@@ -356,9 +358,11 @@ export default function KanbanPage() {
                </SelectTrigger>
                <SelectContent>
                  <SelectItem value="all">Todas Unidades</SelectItem>
-                 <SelectItem value="Unidade A">Unidade A</SelectItem>
-                 <SelectItem value="Unidade B">Unidade B</SelectItem>
-                 <SelectItem value="Central">Central</SelectItem>
+                 {units.map((unit) => (
+                   <SelectItem key={unit.id} value={unit.razaoSocial}>
+                     {unit.nomeFantasia || unit.razaoSocial}
+                   </SelectItem>
+                 ))}
                </SelectContent>
              </Select>
            )}
