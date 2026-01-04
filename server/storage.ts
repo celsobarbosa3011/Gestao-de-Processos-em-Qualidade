@@ -132,6 +132,7 @@ export interface IStorage {
   // Template methods
   getAllTemplates(): Promise<ProcessTemplate[]>;
   createTemplate(template: InsertProcessTemplate): Promise<ProcessTemplate>;
+  updateTemplate(id: number, updates: Partial<InsertProcessTemplate>): Promise<ProcessTemplate | undefined>;
   deleteTemplate(id: number): Promise<boolean>;
   
   // Feature Toggle methods
@@ -500,6 +501,14 @@ export class DatabaseStorage implements IStorage {
 
   async createTemplate(template: InsertProcessTemplate): Promise<ProcessTemplate> {
     const result = await db.insert(schema.processTemplates).values(template).returning();
+    return result[0];
+  }
+
+  async updateTemplate(id: number, updates: Partial<InsertProcessTemplate>): Promise<ProcessTemplate | undefined> {
+    const result = await db.update(schema.processTemplates)
+      .set(updates)
+      .where(eq(schema.processTemplates.id, id))
+      .returning();
     return result[0];
   }
 

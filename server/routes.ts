@@ -875,6 +875,19 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/templates/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.updateTemplate(id, req.body);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update template" });
+    }
+  });
+
   app.delete("/api/templates/:id", authMiddleware, adminMiddleware, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

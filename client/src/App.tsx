@@ -12,6 +12,9 @@ import AdminUsersPage from "@/pages/admin/users";
 import AdminSettingsPage from "@/pages/admin/settings";
 import AdminLogsPage from "@/pages/admin/logs";
 import AdminBrandingPage from "@/pages/admin/branding";
+import AdminCustomFieldsPage from "@/pages/admin/custom-fields";
+import AdminAutomationsPage from "@/pages/admin/automations";
+import AdminTemplatesPage from "@/pages/admin/templates";
 import CalendarPage from "@/pages/calendar";
 import TimelinePage from "@/pages/timeline";
 import { ChangePasswordModal } from "@/components/change-password-modal";
@@ -52,6 +55,9 @@ function Router() {
         <Route path="/admin/branding" component={AdminBrandingPage} />
         <Route path="/admin/settings" component={AdminSettingsPage} />
         <Route path="/admin/logs" component={AdminLogsPage} />
+        <Route path="/admin/custom-fields" component={AdminCustomFieldsPage} />
+        <Route path="/admin/automations" component={AdminAutomationsPage} />
+        <Route path="/admin/templates" component={AdminTemplatesPage} />
         <Route path="/">
           <Redirect to={currentUser.role === 'admin' ? "/dashboard" : "/kanban"} />
         </Route>

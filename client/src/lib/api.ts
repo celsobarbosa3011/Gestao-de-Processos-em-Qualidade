@@ -439,6 +439,16 @@ export async function createTemplate(template: Omit<ProcessTemplate, 'id' | 'cre
   return response.json();
 }
 
+export async function updateTemplate(id: number, template: Partial<Omit<ProcessTemplate, 'id' | 'createdAt' | 'createdBy'>>): Promise<ProcessTemplate> {
+  const response = await fetch(`${API_BASE}/templates/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(template),
+  });
+  if (!response.ok) throw new Error("Failed to update template");
+  return response.json();
+}
+
 export async function deleteTemplate(id: number): Promise<void> {
   const response = await fetch(`${API_BASE}/templates/${id}`, {
     method: "DELETE",

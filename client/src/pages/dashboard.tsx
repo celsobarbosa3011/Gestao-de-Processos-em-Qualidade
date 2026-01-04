@@ -1,17 +1,51 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { AlertCircle, CheckCircle2, Clock, FileText, Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { differenceInDays } from "date-fns";
+import { differenceInDays, format } from "date-fns";
 import { useProcesses } from "@/hooks/use-processes";
 import { useAlertSettings } from "@/hooks/use-alert-settings";
 import { useAllEvents } from "@/hooks/use-events";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { getCumulativeFlowData } from "@/lib/api";
 
 export default function DashboardPage() {
   const { data: processes = [], isLoading } = useProcesses();
   const { data: alertSettings } = useAlertSettings();
   const { data: events = [] } = useAllEvents();
+  const { data: cfdRawData = [], isLoading: isCfdLoading } = useQuery({
+    queryKey: ["/api/analytics/cumulative-flow"],
+    queryFn: getCumulativeFlowData,
+  });
+
+  const CFD_STATUS_COLORS: Record<string, string> = {
+    new: "#6b7280",
+    analysis: "#3b82f6",
+    pending: "#f59e0b",
+    approved: "#22c55e",
+    rejected: "#ef4444",
+  };
+
+  const CFD_STATUS_LABELS: Record<string, string> = {
+    new: "Novos",
+    analysis: "Em Análise",
+    pending: "Pendentes",
+    approved: "Aprovados",
+    rejected: "Rejeitados",
+  };
+
+  const cfdData = cfdRawData.reduce((acc: Record<string, Record<string, number>>, item) => {
+    if (!acc[item.date]) {
+      acc[item.date] = { date: item.date as unknown as number };
+    }
+    acc[item.date][item.status] = item.count;
+    return acc;
+  }, {} as Record<string, Record<string, number>>);
+
+  const cfdChartData = Object.values(cfdData).sort((a, b) => 
+    new Date(a.date as unknown as string).getTime() - new Date(b.date as unknown as string).getTime()
+  );
 
   const totalProcesses = processes.length;
   const delayedProcesses = processes.filter(p => p.deadline && new Date(p.deadline) < new Date());
@@ -284,6 +318,105 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cumulative Flow Diagram */}
+      <Card className="shadow-sm" data-testid="chart-cumulative-flow">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Fluxo Cumulativo</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Evolução do fluxo de processos ao longo do tempo.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-0">
+          {isCfdLoading ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : (
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={cfdChartData}>
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#888888" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={(value) => {
+                      try {
+                        return format(new Date(value), 'dd/MM');
+                      } catch {
+                        return value;
+                      }
+                    }}
+                  />
+                  <YAxis 
+                    stroke="#888888" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    labelFormatter={(label) => {
+                      try {
+                        return format(new Date(label), 'dd/MM/yyyy');
+                      } catch {
+                        return label;
+                      }
+                    }}
+                    formatter={(value: number, name: string) => [value, CFD_STATUS_LABELS[name] || name]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    iconType="square" 
+                    wrapperStyle={{ fontSize: '12px' }}
+                    formatter={(value) => CFD_STATUS_LABELS[value] || value}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="rejected" 
+                    stackId="1" 
+                    stroke={CFD_STATUS_COLORS.rejected} 
+                    fill={CFD_STATUS_COLORS.rejected} 
+                    fillOpacity={0.8}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="approved" 
+                    stackId="1" 
+                    stroke={CFD_STATUS_COLORS.approved} 
+                    fill={CFD_STATUS_COLORS.approved} 
+                    fillOpacity={0.8}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="pending" 
+                    stackId="1" 
+                    stroke={CFD_STATUS_COLORS.pending} 
+                    fill={CFD_STATUS_COLORS.pending} 
+                    fillOpacity={0.8}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="analysis" 
+                    stackId="1" 
+                    stroke={CFD_STATUS_COLORS.analysis} 
+                    fill={CFD_STATUS_COLORS.analysis} 
+                    fillOpacity={0.8}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="new" 
+                    stackId="1" 
+                    stroke={CFD_STATUS_COLORS.new} 
+                    fill={CFD_STATUS_COLORS.new} 
+                    fillOpacity={0.8}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
