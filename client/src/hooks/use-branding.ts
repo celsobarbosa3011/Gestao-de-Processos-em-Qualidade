@@ -33,11 +33,6 @@ export function useBrandingConfig() {
     if (query.data?.appName) {
       document.title = query.data.appName;
     }
-
-    return () => {
-      root.style.removeProperty('--primary');
-      root.style.removeProperty('--accent');
-    };
   }, [query.data]);
 
   return query;
