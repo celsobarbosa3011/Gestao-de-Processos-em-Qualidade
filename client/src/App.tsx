@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect, useLocation } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -21,39 +21,50 @@ import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { useStore } from "@/lib/store";
-import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+// Temporary placeholders for missing pages
+const Placeholder = ({ title }: { title: string }) => (
+  <div className="p-8 border-2 border-dashed border-border rounded-xl flex items-center justify-center text-muted-foreground">
+    {title} - Em desenvolvimento
+  </div>
+);
+
 function Router() {
-  const { currentUser } = useStore();
-  const [isReady, setIsReady] = useState(false);
-  const [, setLocation] = useLocation();
+  const { currentUser, _hasHydrated } = useStore();
+  console.log("Router rendering - hasHydrated:", _hasHydrated, "currentUser:", !!currentUser);
 
-  // Wait for store to be ready on client side
-  useEffect(() => {
-    setIsReady(true);
-  }, []);
-
-  // Show loading while waiting for hydration
-  if (!isReady) {
+  if (!_hasHydrated) {
+    console.log("Showing loading spinner...");
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  // Not logged in - show auth page
   if (!currentUser) {
-    return <AuthPage />;
+    return (
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/:rest*">
+          <Redirect to="/auth" />
+        </Route>
+      </Switch>
+    );
   }
 
-  // Needs to complete profile
   if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
-    return <ProfileCompletionPage />;
+    return (
+      <Switch>
+        <Route path="/profile-completion" component={ProfileCompletionPage} />
+        <Route path="/:rest*">
+          <Redirect to="/profile-completion" />
+        </Route>
+      </Switch>
+    );
   }
 
-  // Logged in - show main app
   return (
     <Layout>
       <Switch>
@@ -85,6 +96,7 @@ function Router() {
 }
 
 function App() {
+  console.log("App component rendering...");
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
