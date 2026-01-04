@@ -77,7 +77,23 @@ export async function updateProfile(id: string, updates: Partial<Profile>): Prom
   return response.json();
 }
 
-export async function createProfile(data: { name: string; email: string; role: string; unit: string; status: string; avatar?: string }): Promise<Profile> {
+export async function createProfile(data: { 
+  name: string; 
+  email: string; 
+  role: string; 
+  unit: string; 
+  status: string; 
+  avatar?: string;
+  motherName?: string;
+  cpf?: string;
+  cep?: string;
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  secondaryPhone?: string;
+}): Promise<Profile & { emailSent?: boolean }> {
   const response = await fetch(`${API_BASE}/profiles`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

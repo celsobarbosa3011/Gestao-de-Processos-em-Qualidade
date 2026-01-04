@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, MoreVertical, Ban, CheckCircle, Pencil, Trash2, Key, Copy } from "lucide-react";
+import { Plus, MoreVertical, Ban, CheckCircle, Pencil, Trash2, Key, Copy, Loader2, MapPin, Eye } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   DropdownMenu, 
@@ -22,28 +22,48 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAllProfiles, createProfile, updateProfile, deleteProfile, generateProvisionalPassword } from "@/lib/api";
-import type { Profile } from "@shared/schema";
+import { getAllProfiles, createProfile, updateProfile, deleteProfile, generateProvisionalPassword, getAllUnits } from "@/lib/api";
+import type { Profile, Unit } from "@shared/schema";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 const userSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
   role: z.enum(["admin", "user"]),
   unit: z.string().min(1, "Unidade é obrigatória"),
+  motherName: z.string().optional(),
+  cpf: z.string().optional(),
+  cep: z.string().optional(),
+  address: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  phone: z.string().optional(),
+  secondaryPhone: z.string().optional(),
 });
+
+type UserFormData = z.infer<typeof userSchema>;
 
 export default function AdminUsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [isSearchingCep, setIsSearchingCep] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: users = [] } = useQuery({
     queryKey: ['profiles'],
     queryFn: getAllProfiles,
+  });
+
+  const { data: units = [] } = useQuery({
+    queryKey: ['units'],
+    queryFn: getAllUnits,
   });
 
   const createMutation = useMutation({
@@ -67,21 +87,92 @@ export default function AdminUsersPage() {
     },
   });
 
-  const form = useForm<z.infer<typeof userSchema>>({
+  const formatCpf = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const formatCep = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{3})\d+?$/, '$1');
+  };
+
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{4,5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
+  const searchCep = async (cep: string, formInstance: typeof form) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setIsSearchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+      
+      if (data.erro) {
+        toast.error("CEP não encontrado");
+        return;
+      }
+
+      formInstance.setValue('address', data.logradouro || '');
+      formInstance.setValue('neighborhood', data.bairro || '');
+      formInstance.setValue('city', data.localidade || '');
+      formInstance.setValue('state', data.uf || '');
+      toast.success("Endereço preenchido automaticamente");
+    } catch (error) {
+      toast.error("Erro ao buscar CEP");
+    } finally {
+      setIsSearchingCep(false);
+    }
+  };
+
+  const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       name: "",
       email: "",
       role: "user",
       unit: "",
+      motherName: "",
+      cpf: "",
+      cep: "",
+      address: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      phone: "",
+      secondaryPhone: "",
     },
   });
 
-  const onSubmit = (values: z.infer<typeof userSchema>) => {
+  const onSubmit = (values: UserFormData) => {
     createMutation.mutate({
-      ...values,
+      name: values.name,
+      email: values.email,
+      role: values.role,
+      unit: values.unit,
       status: 'active',
-      avatar: undefined
+      avatar: undefined,
+      motherName: values.motherName || undefined,
+      cpf: values.cpf || undefined,
+      cep: values.cep || undefined,
+      address: values.address || undefined,
+      neighborhood: values.neighborhood || undefined,
+      city: values.city || undefined,
+      state: values.state || undefined,
+      phone: values.phone || undefined,
+      secondaryPhone: values.secondaryPhone || undefined,
     }, {
       onSuccess: (data: any) => {
         setIsDialogOpen(false);
@@ -107,13 +198,22 @@ export default function AdminUsersPage() {
     });
   };
 
-  const editForm = useForm<z.infer<typeof userSchema>>({
+  const editForm = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
       name: "",
       email: "",
       role: "user",
       unit: "",
+      motherName: "",
+      cpf: "",
+      cep: "",
+      address: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      phone: "",
+      secondaryPhone: "",
     },
   });
 
@@ -124,13 +224,43 @@ export default function AdminUsersPage() {
       email: user.email,
       role: user.role as "admin" | "user",
       unit: user.unit,
+      motherName: user.motherName || "",
+      cpf: user.cpf || "",
+      cep: user.cep || "",
+      address: user.address || "",
+      neighborhood: user.neighborhood || "",
+      city: user.city || "",
+      state: user.state || "",
+      phone: user.phone || "",
+      secondaryPhone: user.secondaryPhone || "",
     });
     setIsEditDialogOpen(true);
   };
 
-  const onEditSubmit = (values: z.infer<typeof userSchema>) => {
+  const openViewDialog = (user: Profile) => {
+    setSelectedUser(user);
+    setIsViewDialogOpen(true);
+  };
+
+  const onEditSubmit = (values: UserFormData) => {
     if (!selectedUser) return;
-    updateMutation.mutate({ id: selectedUser.id, updates: values }, {
+    updateMutation.mutate({ 
+      id: selectedUser.id, 
+      updates: {
+        name: values.name,
+        role: values.role,
+        unit: values.unit,
+        motherName: values.motherName || null,
+        cpf: values.cpf || null,
+        cep: values.cep || null,
+        address: values.address || null,
+        neighborhood: values.neighborhood || null,
+        city: values.city || null,
+        state: values.state || null,
+        phone: values.phone || null,
+        secondaryPhone: values.secondaryPhone || null,
+      }
+    }, {
       onSuccess: () => {
         setIsEditDialogOpen(false);
         setSelectedUser(null);
@@ -184,6 +314,289 @@ export default function AdminUsersPage() {
     }
   };
 
+  const renderUserForm = (formInstance: typeof form, onFormSubmit: (values: UserFormData) => void, isEdit: boolean = false) => (
+    <Form {...formInstance}>
+      <form onSubmit={formInstance.handleSubmit(onFormSubmit)} className="space-y-4">
+        <ScrollArea className="h-[60vh] pr-4">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm text-muted-foreground">Dados Básicos</h4>
+              <Separator />
+            </div>
+            
+            <FormField
+              control={formInstance.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Completo *</FormLabel>
+                  <FormControl>
+                    <Input data-testid="input-name" placeholder="Ex: Maria Silva" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={formInstance.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email Corporativo *</FormLabel>
+                  <FormControl>
+                    <Input data-testid="input-email" placeholder="maria@empresa.com" {...field} disabled={isEdit} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={formInstance.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Função *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-role">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formInstance.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unidade *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-unit">
+                          <SelectValue placeholder="Selecione a unidade" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {units.length > 0 ? (
+                          units.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.nomeFantasia || unit.razaoSocial}>
+                              {unit.nomeFantasia || unit.razaoSocial}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="manual" disabled>Nenhuma unidade cadastrada</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <h4 className="font-medium text-sm text-muted-foreground">Dados Pessoais</h4>
+              <Separator />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={formInstance.control}
+                name="cpf"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CPF</FormLabel>
+                    <FormControl>
+                      <Input 
+                        data-testid="input-cpf"
+                        placeholder="000.000.000-00" 
+                        {...field}
+                        onChange={(e) => field.onChange(formatCpf(e.target.value))}
+                        maxLength={14}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formInstance.control}
+                name="motherName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome da Mãe</FormLabel>
+                    <FormControl>
+                      <Input data-testid="input-mother-name" placeholder="Nome completo da mãe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <h4 className="font-medium text-sm text-muted-foreground">Endereço</h4>
+              <Separator />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={formInstance.control}
+                name="cep"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CEP</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input 
+                          data-testid="input-cep"
+                          placeholder="00000-000" 
+                          {...field}
+                          onChange={(e) => field.onChange(formatCep(e.target.value))}
+                          onBlur={(e) => searchCep(e.target.value, formInstance)}
+                          maxLength={9}
+                        />
+                        {isSearchingCep && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!isSearchingCep && (
+                          <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formInstance.control}
+                name="state"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estado</FormLabel>
+                    <FormControl>
+                      <Input data-testid="input-state" placeholder="UF" {...field} maxLength={2} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={formInstance.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Endereço</FormLabel>
+                  <FormControl>
+                    <Input data-testid="input-address" placeholder="Rua, Avenida..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={formInstance.control}
+                name="neighborhood"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bairro</FormLabel>
+                    <FormControl>
+                      <Input data-testid="input-neighborhood" placeholder="Bairro" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formInstance.control}
+                name="city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cidade</FormLabel>
+                    <FormControl>
+                      <Input data-testid="input-city" placeholder="Cidade" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2 pt-4">
+              <h4 className="font-medium text-sm text-muted-foreground">Contato</h4>
+              <Separator />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={formInstance.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Celular</FormLabel>
+                    <FormControl>
+                      <Input 
+                        data-testid="input-phone"
+                        placeholder="(00) 00000-0000" 
+                        {...field}
+                        onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                        maxLength={15}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={formInstance.control}
+                name="secondaryPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone Secundário</FormLabel>
+                    <FormControl>
+                      <Input 
+                        data-testid="input-secondary-phone"
+                        placeholder="(00) 0000-0000" 
+                        {...field}
+                        onChange={(e) => field.onChange(formatPhone(e.target.value))}
+                        maxLength={15}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        </ScrollArea>
+        <DialogFooter className="pt-4">
+          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-submit-user">
+            {(createMutation.isPending || updateMutation.isPending) ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              isEdit ? "Atualizar Usuário" : "Salvar Usuário"
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -191,87 +604,19 @@ export default function AdminUsersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Gestão de Usuários</h1>
           <p className="text-muted-foreground mt-1">Controle de acesso e cadastro de colaboradores.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) form.reset(); }}>
           <DialogTrigger asChild>
-            <Button className="gap-2 shadow-sm">
+            <Button className="gap-2 shadow-sm" data-testid="button-add-user">
               <Plus className="w-4 h-4" />
               Adicionar Usuário
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Novo Usuário</DialogTitle>
               <DialogDescription>Preencha as informações para criar um novo usuário.</DialogDescription>
             </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Maria Silva" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Corporativo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="maria@mediflow.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Função</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="user">Usuário</SelectItem>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="unit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unidade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Unidade A" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <DialogFooter className="pt-4">
-                  <Button type="submit">Salvar Usuário</Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            {renderUserForm(form, onSubmit)}
           </DialogContent>
         </Dialog>
       </div>
@@ -284,13 +629,14 @@ export default function AdminUsersPage() {
                 <TableHead className="w-[300px]">Usuário</TableHead>
                 <TableHead>Unidade</TableHead>
                 <TableHead>Função</TableHead>
+                <TableHead>Contato</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
@@ -312,6 +658,9 @@ export default function AdminUsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
+                    <span className="text-sm text-muted-foreground">{user.phone || '-'}</span>
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={user.status === 'active' ? 'secondary' : 'destructive'} className={user.status === 'active' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : ''}>
                       {user.status === 'active' ? 'Ativo' : 'Suspenso'}
                     </Badge>
@@ -324,6 +673,10 @@ export default function AdminUsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openViewDialog(user)} data-testid={`menu-view-${user.id}`}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver Detalhes
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openEditDialog(user)} data-testid={`menu-edit-${user.id}`}>
                           <Pencil className="w-4 h-4 mr-2" />
                           Editar
@@ -359,83 +712,126 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
+      {/* View User Details Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={selectedUser?.avatar ?? undefined} />
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                  {selectedUser?.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {selectedUser?.name}
+            </DialogTitle>
+            <DialogDescription>{selectedUser?.email}</DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[50vh] pr-4">
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-3">Dados Básicos</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Função</p>
+                    <p className="font-medium">{selectedUser?.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Unidade</p>
+                    <p className="font-medium">{selectedUser?.unit || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <Badge variant={selectedUser?.status === 'active' ? 'secondary' : 'destructive'} className={selectedUser?.status === 'active' ? 'bg-emerald-100 text-emerald-700' : ''}>
+                      {selectedUser?.status === 'active' ? 'Ativo' : 'Suspenso'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Perfil Completo</p>
+                    <p className="font-medium">{selectedUser?.profileCompleted ? 'Sim' : 'Não'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-3">Dados Pessoais</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">CPF</p>
+                    <p className="font-medium">{selectedUser?.cpf || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nome da Mãe</p>
+                    <p className="font-medium">{selectedUser?.motherName || '-'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-3">Endereço</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">CEP</p>
+                    <p className="font-medium">{selectedUser?.cep || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Estado</p>
+                    <p className="font-medium">{selectedUser?.state || '-'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-muted-foreground">Endereço</p>
+                    <p className="font-medium">{selectedUser?.address || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Bairro</p>
+                    <p className="font-medium">{selectedUser?.neighborhood || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cidade</p>
+                    <p className="font-medium">{selectedUser?.city || '-'}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-3">Contato</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Celular</p>
+                    <p className="font-medium">{selectedUser?.phone || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Telefone Secundário</p>
+                    <p className="font-medium">{selectedUser?.secondaryPhone || '-'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Fechar</Button>
+            <Button onClick={() => { setIsViewDialogOpen(false); if (selectedUser) openEditDialog(selectedUser); }}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>Atualize as informações do usuário.</DialogDescription>
           </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome Completo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Maria Silva" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={editForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Corporativo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="maria@mediflow.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="role"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Função</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="user">Usuário</SelectItem>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="unit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unidade</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Unidade A" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-                <Button type="submit">Salvar Alterações</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          {renderUserForm(editForm, onEditSubmit, true)}
         </DialogContent>
       </Dialog>
 
