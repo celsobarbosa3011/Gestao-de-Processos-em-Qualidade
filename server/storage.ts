@@ -53,6 +53,12 @@ import type {
   Unit,
   InsertUnit,
   UpdateUnit,
+  ProcessType,
+  InsertProcessType,
+  UpdateProcessType,
+  Priority,
+  InsertPriority,
+  UpdatePriority,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -151,6 +157,20 @@ export interface IStorage {
   createUnit(unit: InsertUnit): Promise<Unit>;
   updateUnit(id: number, updates: UpdateUnit): Promise<Unit | undefined>;
   deleteUnit(id: number): Promise<boolean>;
+
+  // Process Type methods
+  getAllProcessTypes(): Promise<ProcessType[]>;
+  getProcessType(id: number): Promise<ProcessType | undefined>;
+  createProcessType(type: InsertProcessType): Promise<ProcessType>;
+  updateProcessType(id: number, updates: UpdateProcessType): Promise<ProcessType | undefined>;
+  deleteProcessType(id: number): Promise<boolean>;
+
+  // Priority methods
+  getAllPriorities(): Promise<Priority[]>;
+  getPriority(id: number): Promise<Priority | undefined>;
+  createPriority(priority: InsertPriority): Promise<Priority>;
+  updatePriority(id: number, updates: UpdatePriority): Promise<Priority | undefined>;
+  deletePriority(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -838,6 +858,56 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUnit(id: number): Promise<boolean> {
     const result = await db.delete(schema.units).where(eq(schema.units.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Process Type methods
+  async getAllProcessTypes(): Promise<ProcessType[]> {
+    return await db.select().from(schema.processTypes).orderBy(schema.processTypes.order);
+  }
+
+  async getProcessType(id: number): Promise<ProcessType | undefined> {
+    const result = await db.select().from(schema.processTypes).where(eq(schema.processTypes.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createProcessType(type: InsertProcessType): Promise<ProcessType> {
+    const result = await db.insert(schema.processTypes).values(type).returning();
+    return result[0];
+  }
+
+  async updateProcessType(id: number, updates: UpdateProcessType): Promise<ProcessType | undefined> {
+    const result = await db.update(schema.processTypes).set(updates).where(eq(schema.processTypes.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteProcessType(id: number): Promise<boolean> {
+    const result = await db.delete(schema.processTypes).where(eq(schema.processTypes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Priority methods
+  async getAllPriorities(): Promise<Priority[]> {
+    return await db.select().from(schema.priorities).orderBy(schema.priorities.order);
+  }
+
+  async getPriority(id: number): Promise<Priority | undefined> {
+    const result = await db.select().from(schema.priorities).where(eq(schema.priorities.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createPriority(priority: InsertPriority): Promise<Priority> {
+    const result = await db.insert(schema.priorities).values(priority).returning();
+    return result[0];
+  }
+
+  async updatePriority(id: number, updates: UpdatePriority): Promise<Priority | undefined> {
+    const result = await db.update(schema.priorities).set(updates).where(eq(schema.priorities.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePriority(id: number): Promise<boolean> {
+    const result = await db.delete(schema.priorities).where(eq(schema.priorities.id, id)).returning();
     return result.length > 0;
   }
 }

@@ -443,6 +443,130 @@ export async function registerRoutes(
     }
   });
 
+  // ===== PROCESS TYPES ROUTES =====
+  app.get("/api/process-types", authMiddleware, async (req, res) => {
+    try {
+      const types = await storage.getAllProcessTypes();
+      res.json(types);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch process types" });
+    }
+  });
+
+  app.post("/api/process-types", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const { insertProcessTypeSchema } = await import("@shared/schema");
+      const validatedData = insertProcessTypeSchema.parse(req.body);
+      const type = await storage.createProcessType(validatedData);
+      res.status(201).json(type);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "Tipo de processo já existe" });
+      }
+      res.status(500).json({ error: "Failed to create process type" });
+    }
+  });
+
+  app.patch("/api/process-types/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { updateProcessTypeSchema } = await import("@shared/schema");
+      const validatedData = updateProcessTypeSchema.parse(req.body);
+      const type = await storage.updateProcessType(id, validatedData);
+      
+      if (!type) {
+        return res.status(404).json({ error: "Process type not found" });
+      }
+      
+      res.json(type);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to update process type" });
+    }
+  });
+
+  app.delete("/api/process-types/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteProcessType(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Process type not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete process type" });
+    }
+  });
+
+  // ===== PRIORITIES ROUTES =====
+  app.get("/api/priorities", authMiddleware, async (req, res) => {
+    try {
+      const priorities = await storage.getAllPriorities();
+      res.json(priorities);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch priorities" });
+    }
+  });
+
+  app.post("/api/priorities", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const { insertPrioritySchema } = await import("@shared/schema");
+      const validatedData = insertPrioritySchema.parse(req.body);
+      const priority = await storage.createPriority(validatedData);
+      res.status(201).json(priority);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "Prioridade já existe" });
+      }
+      res.status(500).json({ error: "Failed to create priority" });
+    }
+  });
+
+  app.patch("/api/priorities/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { updatePrioritySchema } = await import("@shared/schema");
+      const validatedData = updatePrioritySchema.parse(req.body);
+      const priority = await storage.updatePriority(id, validatedData);
+      
+      if (!priority) {
+        return res.status(404).json({ error: "Priority not found" });
+      }
+      
+      res.json(priority);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to update priority" });
+    }
+  });
+
+  app.delete("/api/priorities/:id", authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deletePriority(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ error: "Priority not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete priority" });
+    }
+  });
+
   // ===== PROCESS ROUTES =====
   app.get("/api/processes", async (req, res) => {
     try {
