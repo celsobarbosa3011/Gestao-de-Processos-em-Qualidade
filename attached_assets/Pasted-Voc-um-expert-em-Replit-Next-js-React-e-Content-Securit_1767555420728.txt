@@ -1,0 +1,24 @@
+Você é um expert em Replit, Next.js/React e Content Security Policy (CSP). Analise estes erros de console (copiados de devtools no Replit, causando tela branca no preview):
+
+[COLE TODO O CONTEÚDO DO paste.txt AQUI - ou descreva: repetidos "The source list for the Content Security Policy directive default-src contains an invalid source unsafe-dynamic. It will be ignored.", "contains report-uri as a source expression. Did you want to add it as a directive and forget a semicolon?", "contains a source with an invalid path api...security?sentrykey... The query component, including the ?, will be ignored.", plus Coframe Replit Enterprise watcher, Stripe, reCAPTCHA, unrecognized features como battery/ambient-light-sensor, sandbox inválido.]
+
+Problemas principais:
+- CSP inválido bloqueando scripts/iframes (unsafe-dynamic, report-uri sem ';', query em paths).
+- Tela branca no Replit preview (provável falha de servidor/porta ou CSP).
+- Menciona Stripe, reCAPTCHA, Sentry – app com pagamentos/pagamentos e autenticação.
+
+Tarefas: Gere código corrigido PASSO A PASSO para Replit:
+1. Crie .replit com run="npm start" e [[ports]] localPort=3000 externalPort=80 para preview funcionar.
+2. Corrija next.config.js ou helmet/middleware para CSP válido: default-src 'self' *; script-src 'self' 'unsafe-inline' 'unsafe-eval' *.stripe.com *.recaptcha.com *.google.com *.sentry.io; style-src 'self' 'unsafe-inline'; img-src * data:; connect-src *; frame-src *.stripe.com *.recaptcha.com; report-uri /api/csp-report (separado por ';').
+3. No server.js ou app.js (Node/Express): app.listen(3000, '0.0.0.0').
+4. Se Next.js: package.json com "start": "next start -H 0.0.0.0 -p 3000".
+5. Ignore warnings de features não reconhecidas (browser-specific).
+6. Adicione headers CSP via middleware: res.setHeader('Content-Security-Policy', '...').
+7. Teste para tela branca: verifique console sem erros CSP, servidor bind 0.0.0.0.
+
+Forneça:
+- Arquivos completos corrigidos (.replit, next.config.js, middleware CSP, server.js).
+- Comandos shell Replit: kill 1; refresh.
+- Diagnóstico: por que CSP causa tela branca (bloqueia JS crítico).
+
+Garanta compatibilidade Replit 2026, zero erros console, preview funcional.
