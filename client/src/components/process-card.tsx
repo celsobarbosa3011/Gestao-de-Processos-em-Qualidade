@@ -1,12 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Calendar, Paperclip, MessageSquare, AlertCircle } from "lucide-react";
+import { Calendar, Paperclip, MessageSquare, AlertCircle, Clock } from "lucide-react";
 import type { Process } from "@shared/schema";
 import type { Profile, AlertSettings } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { differenceInDays } from "date-fns";
 import { Draggable } from "@hello-pangea/dnd";
+import { useTotalTime } from "@/hooks/use-process-extras";
 
 interface ProcessCardProps {
   process: Process;
@@ -17,8 +18,16 @@ interface ProcessCardProps {
 }
 
 export function ProcessCard({ process, index, onClick, profiles, alertSettings }: ProcessCardProps) {
-  
+  const { data: totalTimeData } = useTotalTime(process.id);
   const responsible = profiles?.find(u => u.id === process.responsibleId);
+  
+  const formatMinutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins}min`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}min`;
+  };
   
   const daysUntilDeadline = process.deadline 
     ? differenceInDays(new Date(process.deadline), new Date()) 
@@ -74,7 +83,12 @@ export function ProcessCard({ process, index, onClick, profiles, alertSettings }
             <CardContent className="p-3 pt-2">
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  {/* Comment count removed from card for simplicity */}
+                  {(totalTimeData?.total ?? 0) > 0 && (
+                    <div className="flex items-center gap-1 text-xs" title="Tempo registrado" data-testid={`time-total-card-${process.id}`}>
+                      <Clock className="w-3 h-3" />
+                      <span>{formatMinutesToTime(totalTimeData?.total || 0)}</span>
+                    </div>
+                  )}
                 </div>
                 
                 {responsible && (

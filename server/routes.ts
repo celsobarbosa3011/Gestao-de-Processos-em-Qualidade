@@ -28,6 +28,7 @@ import fs from "fs";
 import { generateToken, authMiddleware, adminMiddleware } from "./auth";
 import { hashPassword, verifyPassword, isHashed } from "./password";
 import { stripHtml } from "./sanitize";
+import { wsManager } from "./websocket";
 
 const uploadDir = path.join(process.cwd(), "client/public/uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -365,6 +366,8 @@ export async function registerRoutes(
         details: 'Processo criado'
       });
       
+      wsManager.broadcast({ type: 'process_created', payload: process });
+      
       res.status(201).json(process);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -393,6 +396,8 @@ export async function registerRoutes(
           details: `Status alterado para ${validatedData.status}`
         });
       }
+      
+      wsManager.broadcast({ type: 'process_updated', payload: process });
       
       res.json(process);
     } catch (error: any) {
@@ -1106,6 +1111,25 @@ export async function registerRoutes(
       res.json(notifications);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post("/api/notifications", authMiddleware, async (req, res) => {
+    try {
+      const validatedData = insertNotificationSchema.parse(req.body);
+      const notification = await storage.createNotification(validatedData);
+      
+      wsManager.broadcastToUser(notification.userId, { 
+        type: 'notification_created', 
+        payload: notification 
+      });
+      
+      res.status(201).json(notification);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create notification" });
     }
   });
 

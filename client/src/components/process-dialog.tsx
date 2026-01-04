@@ -21,8 +21,9 @@ import { useState, useRef } from "react";
 import { useProfiles } from "@/hooks/use-profiles";
 import { useProcessComments, useCreateComment } from "@/hooks/use-comments";
 import { useProcessEvents } from "@/hooks/use-events";
-import { useProcessChecklists, useCreateChecklist, useUpdateChecklist, useDeleteChecklist, useProcessAttachments, useUploadAttachment, useDeleteAttachment, useAllLabels, useProcessLabels, useAddLabelToProcess, useRemoveLabelFromProcess, useCreateLabel } from "@/hooks/use-process-extras";
+import { useProcessChecklists, useCreateChecklist, useUpdateChecklist, useDeleteChecklist, useProcessAttachments, useUploadAttachment, useDeleteAttachment, useAllLabels, useProcessLabels, useAddLabelToProcess, useRemoveLabelFromProcess, useCreateLabel, useTimeEntries, useTotalTime, useCreateTimeEntry, useDeleteTimeEntry } from "@/hooks/use-process-extras";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
 
 interface ProcessDialogProps {
   process: Process | null;
@@ -50,11 +51,26 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const removeLabel = useRemoveLabelFromProcess();
   const createLabel = useCreateLabel();
   
+  const { data: timeEntries = [] } = useTimeEntries(process?.id || null);
+  const { data: totalTimeData } = useTotalTime(process?.id || null);
+  const createTimeEntry = useCreateTimeEntry();
+  const deleteTimeEntry = useDeleteTimeEntry();
+  
   const [commentText, setCommentText] = useState("");
   const [newChecklistText, setNewChecklistText] = useState("");
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6B7280");
+  const [newTimeDescription, setNewTimeDescription] = useState("");
+  const [newTimeMinutes, setNewTimeMinutes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const formatMinutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours === 0) return `${mins}min`;
+    if (mins === 0) return `${hours}h`;
+    return `${hours}h ${mins}min`;
+  };
 
   if (!process) return null;
 
@@ -108,6 +124,26 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
     await createLabel.mutateAsync({ name: newLabelName, color: newLabelColor });
     setNewLabelName("");
     setNewLabelColor("#6B7280");
+  };
+
+  const handleAddTimeEntry = async () => {
+    const minutes = parseInt(newTimeMinutes);
+    if (isNaN(minutes) || minutes <= 0) {
+      toast.error("Informe um tempo válido em minutos");
+      return;
+    }
+    try {
+      await createTimeEntry.mutateAsync({
+        processId: process.id,
+        description: newTimeDescription.trim() || undefined,
+        minutes
+      });
+      setNewTimeDescription("");
+      setNewTimeMinutes("");
+      toast.success("Tempo registrado com sucesso");
+    } catch (error) {
+      toast.error("Erro ao registrar tempo");
+    }
   };
 
   const availableLabels = allLabels.filter(
@@ -183,6 +219,10 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                 <TabsTrigger value="labels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3" data-testid="tab-labels">
                   <Tag className="w-3.5 h-3.5 mr-1" />
                   {processLabels.length}
+                </TabsTrigger>
+                <TabsTrigger value="time" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3" data-testid="tab-time">
+                  <Clock className="w-3.5 h-3.5 mr-1" />
+                  {formatMinutesToTime(totalTimeData?.total || 0)}
                 </TabsTrigger>
                 <TabsTrigger value="comments" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3" data-testid="tab-comments">
                   <MessageSquare className="w-3.5 h-3.5 mr-1" />
@@ -404,6 +444,92 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                   >
                     <Plus className="w-4 h-4" />
                   </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="time" className="flex-1 flex flex-col mt-0 overflow-hidden" data-testid="tab-content-time">
+              <ScrollArea className="flex-1 p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20" data-testid="time-total-display">
+                    <Clock className="w-5 h-5 text-primary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Tempo Total Registrado</p>
+                      <p className="text-lg font-bold text-primary" data-testid="text-total-time">
+                        {formatMinutesToTime(totalTimeData?.total || 0)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Registros de Tempo</h4>
+                    {timeEntries.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        Nenhum tempo registrado.
+                      </div>
+                    )}
+                    {timeEntries.map((entry) => (
+                      <div key={entry.id} className="flex items-center gap-3 p-3 rounded-md border hover:bg-muted/50 group" data-testid={`time-entry-${entry.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate" data-testid={`time-entry-description-${entry.id}`}>
+                            {entry.description || "Sem descrição"}
+                          </p>
+                          <span className="text-xs text-muted-foreground" data-testid={`time-entry-date-${entry.id}`}>
+                            {format(new Date(entry.date), "dd/MM/yyyy", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <div className="text-sm font-semibold text-primary" data-testid={`time-entry-minutes-${entry.id}`}>
+                          {formatMinutesToTime(entry.minutes)}
+                        </div>
+                        <button 
+                          className="h-6 w-6 flex items-center justify-center opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 rounded transition-all"
+                          onClick={() => deleteTimeEntry.mutate({ id: entry.id, processId: process.id })}
+                          data-testid={`button-delete-time-entry-${entry.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </ScrollArea>
+              <div className="p-4 border-t bg-background">
+                <div className="space-y-3">
+                  <div>
+                    <Label htmlFor="time-description" className="text-xs text-muted-foreground">Descrição (opcional)</Label>
+                    <Input 
+                      id="time-description"
+                      data-testid="input-time-description"
+                      placeholder="O que foi feito..." 
+                      value={newTimeDescription}
+                      onChange={(e) => setNewTimeDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label htmlFor="time-minutes" className="text-xs text-muted-foreground">Minutos</Label>
+                      <Input 
+                        id="time-minutes"
+                        data-testid="input-time-minutes"
+                        type="number"
+                        placeholder="Ex: 30" 
+                        value={newTimeMinutes}
+                        onChange={(e) => setNewTimeMinutes(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddTimeEntry()}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <button 
+                        data-testid="button-add-time-entry"
+                        className="h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium text-sm flex items-center gap-2 transition-colors disabled:opacity-50"
+                        onClick={handleAddTimeEntry}
+                        disabled={createTimeEntry.isPending}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Registrar
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </TabsContent>

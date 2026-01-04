@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useStore } from "@/lib/store";
 import { useBrandingConfig } from "@/hooks/use-branding";
+import { useWebSocket } from "@/hooks/use-websocket";
 import { 
   LayoutDashboard, 
   Kanban, 
@@ -20,12 +21,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChatButton } from "@/components/chat";
 import { NotificationsCenter } from "@/components/notifications-center";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useState } from "react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { currentUser, logout } = useStore();
   const { data: branding } = useBrandingConfig();
+  const { status: wsStatus, isConnected } = useWebSocket();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   if (!currentUser) return <>{children}</>;
@@ -193,6 +196,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      isConnected ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    data-testid="websocket-status-indicator"
+                  />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isConnected ? 'Conectado em tempo real' : 'Desconectado'}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <ChatButton />
             <NotificationsCenter />
           </div>

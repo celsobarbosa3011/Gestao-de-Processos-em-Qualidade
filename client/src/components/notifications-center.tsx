@@ -16,11 +16,17 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useWebSocketEvent } from "@/hooks/use-websocket";
 import type { Notification } from "@shared/schema";
 
 export function NotificationsCenter() {
   const { currentUser } = useStore();
   const queryClient = useQueryClient();
+
+  useWebSocketEvent('notification_created', () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+  });
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],

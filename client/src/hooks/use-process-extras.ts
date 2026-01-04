@@ -12,9 +12,13 @@ import {
   deleteLabel,
   getProcessLabels,
   addLabelToProcess,
-  removeLabelFromProcess
+  removeLabelFromProcess,
+  getTimeEntries,
+  createTimeEntry,
+  deleteTimeEntry,
+  getTotalTime
 } from "@/lib/api";
-import type { ProcessChecklist, ProcessAttachment, ProcessLabel } from "@shared/schema";
+import type { ProcessChecklist, ProcessAttachment, ProcessLabel, TimeEntry } from "@shared/schema";
 
 export function useProcessChecklists(processId: number | null) {
   return useQuery<ProcessChecklist[]>({
@@ -143,6 +147,46 @@ export function useRemoveLabelFromProcess() {
       removeLabelFromProcess(processId, labelId),
     onSuccess: (_, { processId }) => {
       queryClient.invalidateQueries({ queryKey: ["process-labels", processId] });
+    },
+  });
+}
+
+export function useTimeEntries(processId: number | null) {
+  return useQuery<TimeEntry[]>({
+    queryKey: ["time-entries", processId],
+    queryFn: () => getTimeEntries(processId!),
+    enabled: !!processId,
+  });
+}
+
+export function useTotalTime(processId: number | null) {
+  return useQuery<{ total: number }>({
+    queryKey: ["total-time", processId],
+    queryFn: () => getTotalTime(processId!),
+    enabled: !!processId,
+  });
+}
+
+export function useCreateTimeEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ processId, description, minutes }: { processId: number; description?: string; minutes: number }) => 
+      createTimeEntry(processId, { description, minutes }),
+    onSuccess: (_, { processId }) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries", processId] });
+      queryClient.invalidateQueries({ queryKey: ["total-time", processId] });
+    },
+  });
+}
+
+export function useDeleteTimeEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, processId }: { id: number; processId: number }) => 
+      deleteTimeEntry(id),
+    onSuccess: (_, { processId }) => {
+      queryClient.invalidateQueries({ queryKey: ["time-entries", processId] });
+      queryClient.invalidateQueries({ queryKey: ["total-time", processId] });
     },
   });
 }
