@@ -2,14 +2,22 @@
 
 ## Overview
 
-MediFlow is a Kanban-based administrative process management system designed for healthcare units. It provides workflow tracking, user management, and reporting capabilities for organizations that manage multiple health units with periodic (biweekly) on-site visits.
+MediFlow (branded as "UP - Qualidade em Saúde") is a Kanban-based administrative process management system designed for healthcare units. It provides workflow tracking, user management, and reporting capabilities for organizations that manage multiple health units with periodic (biweekly) on-site visits.
 
 The system enables:
-- Drag-and-drop Kanban board for process workflow management
+- Drag-and-drop Kanban board for process workflow management with swimlanes
 - Role-based access control (admin vs regular users)
 - Process tracking with deadlines, priorities, and SLA alerts
-- Dashboard with analytics and reporting
+- Dashboard with analytics, cumulative flow diagram, and reporting
 - White-label branding configuration
+- Calendar and Timeline views for process visualization
+- Time tracking on processes
+- Custom fields for processes
+- Workflow automations
+- Real-time updates via WebSocket
+- PWA for mobile access
+- Notification center
+- Process templates
 
 ## User Preferences
 
@@ -40,10 +48,16 @@ Preferred communication style: Simple, everyday language.
 - **Migrations**: Drizzle Kit with `db:push` command
 
 ### Authentication
-- Simple email/password authentication stored in profiles table
+- JWT-based email/password authentication with bcrypt password hashing
 - Session state managed client-side via Zustand persist
 - No external auth providers currently integrated
 - Role field in profiles table controls admin vs user access
+
+### Real-time Communication
+- WebSocket server at `/ws` for real-time updates
+- JWT authentication for WebSocket connections
+- Events: process_created, process_updated, notification_created
+- Auto-reconnect with exponential backoff on client
 
 ### Key Design Patterns
 - **Monorepo Structure**: Client in `/client`, server in `/server`, shared types in `/shared`
