@@ -39,12 +39,26 @@ export default function AdminSettingsPage() {
   }, [alertSettings]);
   
   useEffect(() => {
+    if (wipLimits.length === 0) return;
+    
     const initial: Record<string, { maxItems: number; enabled: boolean }> = {};
     COLUMNS.forEach(col => {
       const limit = wipLimits.find(l => l.columnId === col.id);
       initial[col.id] = { maxItems: limit?.maxItems ?? 10, enabled: limit?.enabled ?? false };
     });
-    setWipValues(initial);
+    
+    setWipValues(prev => {
+      const prevKeys = Object.keys(prev);
+      if (prevKeys.length === 0) return initial;
+      
+      const hasChanged = COLUMNS.some(col => {
+        const prevVal = prev[col.id];
+        const newVal = initial[col.id];
+        return !prevVal || prevVal.maxItems !== newVal.maxItems || prevVal.enabled !== newVal.enabled;
+      });
+      
+      return hasChanged ? initial : prev;
+    });
   }, [wipLimits]);
 
   const handleSave = () => {
