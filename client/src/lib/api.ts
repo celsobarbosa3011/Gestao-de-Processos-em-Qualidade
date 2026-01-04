@@ -1,9 +1,17 @@
 import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig } from "@shared/schema";
+import { useStore } from "./store";
 
 const API_BASE = "/api";
 
+function getAuthHeaders(): HeadersInit {
+  const token = useStore.getState().authToken;
+  return token 
+    ? { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+    : { "Content-Type": "application/json" };
+}
+
 // Auth
-export async function login(email: string, password: string): Promise<Profile & { mustChangePassword?: boolean }> {
+export async function login(email: string, password: string): Promise<Profile & { mustChangePassword?: boolean; token?: string }> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -18,11 +26,11 @@ export async function login(email: string, password: string): Promise<Profile & 
   return response.json();
 }
 
-export async function changePassword(userId: string, currentPassword: string | null, newPassword: string): Promise<Profile> {
+export async function changePassword(currentPassword: string, newPassword: string): Promise<Profile & { token?: string }> {
   const response = await fetch(`${API_BASE}/auth/change-password`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, currentPassword, newPassword }),
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ currentPassword, newPassword }),
   });
   
   if (!response.ok) {
@@ -33,11 +41,10 @@ export async function changePassword(userId: string, currentPassword: string | n
   return response.json();
 }
 
-export async function generateProvisionalPassword(userId: string, adminUserId: string): Promise<{ provisionalPassword: string; expiresAt: string; message: string }> {
+export async function generateProvisionalPassword(userId: string): Promise<{ provisionalPassword: string; expiresAt: string; message: string }> {
   const response = await fetch(`${API_BASE}/profiles/${userId}/provisional-password`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ adminUserId }),
+    headers: getAuthHeaders(),
   });
   
   if (!response.ok) {

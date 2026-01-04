@@ -182,13 +182,10 @@ export default function AdminUsersPage() {
     });
   };
 
-  const { currentUser } = useStore();
-
   const handleGeneratePassword = async (user: Profile) => {
-    if (!currentUser?.id) return;
     setSelectedUser(user);
     try {
-      const result = await generateProvisionalPassword(user.id, currentUser.id);
+      const result = await generateProvisionalPassword(user.id);
       setGeneratedPassword(result.provisionalPassword);
       setIsPasswordDialogOpen(true);
       toast({

@@ -15,6 +15,7 @@ import { fromError } from "zod-validation-error";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { generateToken, authMiddleware, adminMiddleware } from "./auth";
 
 const uploadDir = path.join(process.cwd(), "client/public/uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -94,24 +95,36 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid credentials" });
       }
       
+      const mustChange = profile.mustChangePassword || usedProvisionalPassword;
+      
+      // Generate JWT token
+      const token = generateToken({
+        userId: profile.id,
+        email: profile.email,
+        role: profile.role,
+        mustChangePassword: mustChange,
+      });
+      
       // Don't send password back
       const { password: _, provisionalPassword: __, ...profileWithoutPassword } = profile;
       res.json({
         ...profileWithoutPassword,
-        mustChangePassword: profile.mustChangePassword || usedProvisionalPassword
+        mustChangePassword: mustChange,
+        token,
       });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // Change password endpoint (requires current password or valid provisional password)
-  app.post("/api/auth/change-password", async (req, res) => {
+  // Change password endpoint (authenticated - uses JWT to identify user)
+  app.post("/api/auth/change-password", authMiddleware, async (req, res) => {
     try {
-      const { userId, currentPassword, newPassword } = req.body;
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.auth!.userId;
       
-      if (!userId || !newPassword || !currentPassword) {
-        return res.status(400).json({ error: "ID do usuário, senha atual e nova senha são obrigatórios" });
+      if (!newPassword || !currentPassword) {
+        return res.status(400).json({ error: "Senha atual e nova senha são obrigatórias" });
       }
       
       if (newPassword.length < 8) {
@@ -158,28 +171,25 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Falha ao atualizar senha" });
       }
       
+      // Generate new token with updated mustChangePassword flag
+      const newToken = generateToken({
+        userId: updatedProfile.id,
+        email: updatedProfile.email,
+        role: updatedProfile.role,
+        mustChangePassword: false,
+      });
+      
       const { password: _, provisionalPassword: __, provisionalPasswordExpiresAt: ___, ...sanitizedProfile } = updatedProfile;
-      res.json(sanitizedProfile);
+      res.json({ ...sanitizedProfile, token: newToken });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
   });
 
-  // Generate provisional password for user (admin only - requires adminUserId in body)
-  app.post("/api/profiles/:id/provisional-password", async (req, res) => {
+  // Generate provisional password for user (admin only - JWT authenticated)
+  app.post("/api/profiles/:id/provisional-password", authMiddleware, adminMiddleware, async (req, res) => {
     try {
       const { id } = req.params;
-      const { adminUserId } = req.body;
-      
-      // Verify admin authorization
-      if (!adminUserId) {
-        return res.status(401).json({ error: "Autorização necessária" });
-      }
-      
-      const adminProfile = await storage.getProfile(adminUserId);
-      if (!adminProfile || adminProfile.role !== 'admin') {
-        return res.status(403).json({ error: "Apenas administradores podem gerar senhas provisórias" });
-      }
       
       const profile = await storage.getProfile(id);
       

@@ -41,8 +41,8 @@ export function ChangePasswordModal() {
     
     setIsSubmitting(true);
     try {
-      const updatedProfile = await changePassword(currentUser.id, data.currentPassword, data.newPassword);
-      setCurrentUser({ ...updatedProfile, mustChangePassword: false });
+      const result = await changePassword(data.currentPassword, data.newPassword);
+      setCurrentUser({ ...result, mustChangePassword: false, token: result.token });
       setMustChangePassword(false);
       toast.success("Senha alterada com sucesso!");
       form.reset();
