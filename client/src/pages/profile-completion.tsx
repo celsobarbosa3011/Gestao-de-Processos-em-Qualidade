@@ -24,6 +24,7 @@ const profileSchema = z.object({
   phone: z.string().min(10, "Celular é obrigatório"),
   secondaryPhone: z.string().optional(),
   email: z.string().email("Email inválido"),
+  currentPassword: z.string().min(1, "Senha provisória é obrigatória"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   confirmPassword: z.string().min(6, "Confirme sua senha"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -55,6 +56,7 @@ export default function ProfileCompletionPage() {
       phone: "",
       secondaryPhone: "",
       email: currentUser?.email || "",
+      currentPassword: "",
       password: "",
       confirmPassword: "",
     },
@@ -115,7 +117,7 @@ export default function ProfileCompletionPage() {
 
     setIsLoading(true);
     try {
-      await changePassword(values.password, values.password);
+      await changePassword(values.currentPassword, values.password);
 
       const updatedProfile = await updateProfile(currentUser.id, {
         name: values.name,
@@ -329,6 +331,26 @@ export default function ProfileCompletionPage() {
                       <FormLabel>E-mail *</FormLabel>
                       <FormControl>
                         <Input data-testid="input-email" type="email" placeholder="seu@email.com" {...field} disabled />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Senha Provisória (recebida por email) *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field}
+                          data-testid="input-current-password"
+                          autoComplete="current-password"
+                          type="password"
+                          placeholder="Digite a senha provisória recebida por email" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

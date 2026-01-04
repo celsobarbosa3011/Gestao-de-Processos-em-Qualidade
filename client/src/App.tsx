@@ -50,14 +50,11 @@ function Router() {
   }
 
   if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
-    return (
-      <Switch>
-        <Route path="/profile-completion" component={ProfileCompletionPage} />
-        <Route path="/:rest*">
-          <Redirect to="/profile-completion" />
-        </Route>
-      </Switch>
-    );
+    if (window.location.pathname !== "/profile-completion") {
+      window.location.href = "/profile-completion";
+      return null;
+    }
+    return <ProfileCompletionPage />;
   }
 
   return (

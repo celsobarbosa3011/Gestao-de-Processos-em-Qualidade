@@ -1,0 +1,233 @@
+---
+
+## PROMPT TÉCNICO (Lovable/Emergent para o sistema não alucinar) — RBAC + Autorização por Permissão + Zero Regressão 
+
+Você é um engenheiro de software responsável por **implementar controle de acesso (RBAC)** no sistema **sem causar regressão**. O sistema já possui funcionalidades em produção e **tudo que funciona deve permanecer funcionando**.
+
+Entenda que isso é uma implementação e você não pode fazer nenhuma alteração no que já foi programado e esta funcionando para que o sistema não alucine, em caso de corrigir itens que estão errados tudo bem, mas não pode fazer o sistema alucionar tem que fazer as correções sem alterar o sistema ok.
+
+
+### 0) Objetivo
+
+Implementar:
+
+* **Perfis (roles):** `ADMIN` e `USER` (extensível).
+* **Permissões (permissions):** granularidade por recurso/ação (ex.: `users.read`, `users.write`, `billing.view`, `admin.panel`).
+* **Autorização em 3 camadas:** UI + Rotas + API/Backend.
+* **Auditoria mínima:** log de tentativas negadas.
+* **Zero regressão:** mudanças mínimas e cirúrgicas.
+
+---
+
+## 1) Regras inegociáveis (Anti-alucinação / Zero regressão)
+
+1. **Não refatorar o que já funciona.**
+   Apenas inserir checks de autorização nos pontos mínimos necessários.
+2. **Não alterar contratos de API** (payloads, endpoints, status codes) exceto para retornar `401/403` quando aplicável.
+3. **Não renomear componentes/rotas existentes.**
+4. Qualquer acesso restrito deve ser negado em **backend**, mesmo que a UI oculte.
+
+---
+
+## 2) Modelo de dados (placeholders) — mínimo necessário
+
+Criar/ajustar as entidades sem quebrar as existentes. Use nomes compatíveis com o projeto.
+
+### 2.1 Tabelas/coleções (exemplos)
+
+* `users`
+
+  * `id`
+  * `role` (`ADMIN` | `USER`) **(default: USER)**
+  * `isActive` (bool)
+* `permissions`
+
+  * `id`
+  * `key` (string, ex.: `admin.panel`, `users.read`)
+  * `description`
+* `role_permissions`
+
+  * `role` (`ADMIN` | `USER`)
+  * `permissionKey`
+* `user_permissions` (opcional, para exceções)
+
+  * `userId`
+  * `permissionKey`
+  * `granted` (bool)
+
+### 2.2 Defaults (importante)
+
+* `ADMIN` tem **todas as permissões** (wildcard lógico).
+* `USER` tem apenas permissões explicitamente atribuídas (via role ou user).
+
+---
+
+## 3) Lista de permissões base (starter pack)
+
+Crie a enum/lista no código e sincronize no banco (seed leve):
+
+**Admin/Core**
+
+* `admin.panel`
+* `admin.users.manage`
+* `admin.permissions.manage`
+* `audit.view`
+
+**Usuários**
+
+* `users.read`
+* `users.write`
+
+**Financeiro/Billing** (exemplo)
+
+* `billing.view`
+* `billing.manage`
+
+**Configurações**
+
+* `settings.view`
+* `settings.manage`
+
+> Observação: você deve mapear as telas/rotas reais do sistema e atribuir permissões coerentes, sem inventar funcionalidades.
+
+---
+
+## 4) Serviço central de autorização (única fonte de verdade)
+
+Criar um módulo central (ex.: `authz`) com estas funções:
+
+* `getUserContext(userId)` → retorna `{ role, permissions[] }`
+* `hasPermission(ctx, permissionKey)` → boolean
+* `requirePermission(permissionKey)` → middleware/guard que bloqueia
+* `canAccess(resource, action, ctx)` (opcional) para ABAC leve
+
+**Regras**
+
+* Se `role === ADMIN` → `true` para tudo (ou `*`).
+* Senão, verifica `role_permissions + user_permissions(granted=true)`.
+
+---
+
+## 5) UI (Frontend) — esconder e bloquear
+
+### 5.1 Diretriz
+
+* **Ocultar** menus, botões e cards se não tiver permissão.
+* **Bloquear** ações (onClick, submit) com fallback seguro: mensagem “Acesso não autorizado”.
+
+### 5.2 Componentes padrão
+
+Criar wrapper padrão:
+
+* `<Can permission="billing.view"> ... </Can>`
+* `useCan("billing.view")` → boolean
+
+### 5.3 Padrão de UX
+
+* Se o usuário tentar acessar via URL:
+
+  * Mostrar página `403` com CTA “Solicitar acesso ao administrador” (sem fluxo complexo).
+
+---
+
+## 6) Rotas (Frontend Router) — Route Guard
+
+Implementar guard sem reestruturar rotas existentes:
+
+* Para rotas sensíveis: adicionar metadata `requiredPermission`.
+* Antes de renderizar a rota:
+
+  * se não autenticado → `401`/redirect login
+  * se sem permissão → `403` page
+
+Exemplo de padrão:
+
+* `/admin/*` → `admin.panel`
+* `/users` → `users.read`
+* `/billing` → `billing.view`
+
+---
+
+## 7) Backend/API — middleware obrigatório
+
+### 7.1 Regra de ouro
+
+**Nunca confiar no frontend.** Toda API sensível deve validar `permission`.
+
+### 7.2 Middleware
+
+* `authenticate()` → injeta `req.user`
+* `authorize(permissionKey)` → se falhar retorna `403`
+
+### 7.3 Onde aplicar
+
+* Endpoints administrativos
+* Endpoints que retornam dados sensíveis
+* Endpoints que alteram estado (POST/PUT/DELETE)
+
+---
+
+## 8) Auditoria mínima (sem exagero)
+
+Adicionar logs para:
+
+* `AUTHZ_DENIED`: userId, role, permissionKey, endpoint/route, timestamp
+
+Sem armazenar dados sensíveis no log.
+
+---
+
+## 9) Plano de implementação (ordem segura)
+
+1. **Inventariar rotas/telas existentes** e classificar:
+
+   * Públicas
+   * Usuário comum
+   * Restritas (admin/sensível)
+2. Criar o módulo `authz` (sem tocar em features existentes).
+3. Aplicar middleware no backend nas rotas sensíveis.
+4. Adicionar guards no router.
+5. Ocultar UI com `<Can />`.
+6. Seed de permissões e mapeamento role-permissions.
+7. Testes de regressão e cenários críticos.
+
+---
+
+## 10) Critérios de aceite (testes)
+
+### 10.1 Admin
+
+* Acessa todas as rotas/telas
+* Consegue executar ações sensíveis (criar/editar/excluir)
+
+### 10.2 User sem permissão
+
+* Não vê menus/botões restritos
+* Acesso direto por URL retorna 403
+* Chamadas diretas à API retornam 403
+
+### 10.3 User com permissão concedida
+
+* Passa a ver e acessar somente o que foi liberado
+
+---
+
+## 11) Restrições finais (anti-“mexer demais”)
+
+* Não reescreva autenticação existente.
+* Não altere o layout geral.
+* Não crie novos fluxos de cadastro/login sem pedido explícito.
+* Faça commits/mudanças pequenas e localizadas.
+
+---
+
+## 12) Checklist do que você deve me entregar no final
+
+1. Mapa **Rota/Tela → Permissão**
+2. Lista de permissões criadas
+3. Onde foi aplicado no backend (`authorize()`)
+4. Onde foi aplicado no frontend (guards + `<Can />`)
+5. Evidência de testes (casos Admin/User)
+
+---
+
