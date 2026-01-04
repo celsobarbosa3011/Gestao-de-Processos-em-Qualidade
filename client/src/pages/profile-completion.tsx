@@ -207,25 +207,26 @@ export default function ProfileCompletionPage() {
                   name="cep"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CEP *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                      <FormLabel htmlFor="input-cep">CEP *</FormLabel>
+                      <div className="relative">
+                        <FormControl>
                           <Input 
+                            {...field}
+                            id="input-cep"
                             data-testid="input-cep"
                             placeholder="00000-000" 
-                            {...field}
                             onChange={(e) => field.onChange(formatCep(e.target.value))}
                             onBlur={(e) => searchCep(e.target.value)}
                             maxLength={9}
                           />
-                          {isSearchingCep && (
-                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                          )}
-                          {!isSearchingCep && (
-                            <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      </FormControl>
+                        </FormControl>
+                        {isSearchingCep && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!isSearchingCep && (
+                          <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -348,24 +349,26 @@ export default function ProfileCompletionPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nova Senha *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                      <FormLabel htmlFor="input-password">Nova Senha *</FormLabel>
+                      <div className="relative">
+                        <FormControl>
                           <Input 
+                            {...field}
+                            id="input-password"
                             data-testid="input-password"
+                            autoComplete="new-password"
                             type={showPassword ? "text" : "password"}
                             placeholder="Sua nova senha" 
-                            {...field} 
                           />
-                          <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
+                        </FormControl>
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -376,24 +379,26 @@ export default function ProfileCompletionPage() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirmar Senha *</FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                      <FormLabel htmlFor="input-confirm-password">Confirmar Senha *</FormLabel>
+                      <div className="relative">
+                        <FormControl>
                           <Input 
+                            {...field}
+                            id="input-confirm-password"
                             data-testid="input-confirm-password"
+                            autoComplete="new-password"
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder="Confirme sua senha" 
-                            {...field} 
                           />
-                          <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          >
-                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
+                        </FormControl>
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
