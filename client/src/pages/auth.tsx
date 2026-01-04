@@ -124,23 +124,25 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
-                          <Input 
-                            {...field}
-                            autoComplete="current-password"
-                            data-testid="input-password"
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Sua senha" 
-                          />
+                          <div className="relative">
+                            <Input 
+                              {...field}
+                              autoComplete="current-password"
+                              data-testid="input-password"
+                              type={showPassword ? "text" : "password"}
+                              placeholder="Sua senha"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPassword(!showPassword)}
+                              data-testid="toggle-password-visibility"
+                            >
+                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
                         </FormControl>
-                        <button
-                          type="button"
-                          className="absolute right-3 top-9 text-muted-foreground hover:text-foreground"
-                          onClick={() => setShowPassword(!showPassword)}
-                          data-testid="toggle-password-visibility"
-                          style={{ position: 'relative', marginTop: '-30px', float: 'right', marginRight: '10px' }}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                         <FormMessage />
                       </FormItem>
                     )}

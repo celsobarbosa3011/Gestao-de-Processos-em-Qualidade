@@ -364,13 +364,24 @@ export default function ProfileCompletionPage() {
                     <FormItem>
                       <FormLabel>Nova Senha *</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field}
-                          data-testid="input-password"
-                          autoComplete="new-password"
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Sua nova senha" 
-                        />
+                        <div className="relative">
+                          <Input 
+                            {...field}
+                            data-testid="input-password"
+                            autoComplete="new-password"
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Sua nova senha"
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                            data-testid="toggle-password-visibility"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -384,13 +395,24 @@ export default function ProfileCompletionPage() {
                     <FormItem>
                       <FormLabel>Confirmar Senha *</FormLabel>
                       <FormControl>
-                        <Input 
-                          {...field}
-                          data-testid="input-confirm-password"
-                          autoComplete="new-password"
-                          type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirme sua senha" 
-                        />
+                        <div className="relative">
+                          <Input 
+                            {...field}
+                            data-testid="input-confirm-password"
+                            autoComplete="new-password"
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirme sua senha"
+                            className="pr-10"
+                          />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            data-testid="toggle-confirm-password-visibility"
+                          >
+                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

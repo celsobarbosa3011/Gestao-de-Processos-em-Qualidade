@@ -1,8 +1,6 @@
 import { Resend } from 'resend';
 
-let connectionSettings: any;
-
-async function getCredentials() {
+async function getCredentials(): Promise<{ apiKey: string; fromEmail: string }> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY 
     ? 'repl ' + process.env.REPL_IDENTITY 
@@ -11,10 +9,16 @@ async function getCredentials() {
     : null;
 
   if (!xReplitToken) {
+    console.error('[Email] X_REPLIT_TOKEN not found for repl/depl');
     throw new Error('X_REPLIT_TOKEN not found for repl/depl');
   }
 
-  connectionSettings = await fetch(
+  if (!hostname) {
+    console.error('[Email] REPLIT_CONNECTORS_HOSTNAME not set');
+    throw new Error('REPLIT_CONNECTORS_HOSTNAME not set');
+  }
+
+  const response = await fetch(
     'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
     {
       headers: {
@@ -22,15 +26,26 @@ async function getCredentials() {
         'X_REPLIT_TOKEN': xReplitToken
       }
     }
-  ).then(res => res.json()).then(data => data.items?.[0]);
+  );
 
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
+  const data = await response.json();
+  const connectionSettings = data.items?.[0];
+
+  if (!connectionSettings || !connectionSettings.settings?.api_key) {
+    console.error('[Email] Resend not connected or API key missing. Settings:', JSON.stringify(connectionSettings?.settings || {}));
     throw new Error('Resend not connected');
   }
-  return { apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email };
+
+  const fromEmail = connectionSettings.settings.from_email || 'UP Qualidade <noreply@resend.dev>';
+  console.log('[Email] Resend credentials loaded, from:', fromEmail);
+
+  return { 
+    apiKey: connectionSettings.settings.api_key, 
+    fromEmail 
+  };
 }
 
-async function getUncachableResendClient() {
+async function getUncachableResendClient(): Promise<{ client: Resend; fromEmail: string }> {
   const { apiKey, fromEmail } = await getCredentials();
   return {
     client: new Resend(apiKey),
@@ -111,8 +126,9 @@ export async function sendProvisionalPasswordEmail(
     
     console.log(`Email sent successfully to ${toEmail}`);
     return true;
-  } catch (error) {
-    console.error('Failed to send email:', error);
+  } catch (error: any) {
+    console.error('[Email] Failed to send provisional password email to', toEmail);
+    console.error('[Email] Error details:', error?.message || error);
     return false;
   }
 }
