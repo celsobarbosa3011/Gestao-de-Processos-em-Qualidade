@@ -21,6 +21,7 @@ import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { useStore } from "@/lib/store";
+import { Loader2 } from "lucide-react";
 
 // Temporary placeholders for missing pages
 const Placeholder = ({ title }: { title: string }) => (
@@ -30,7 +31,15 @@ const Placeholder = ({ title }: { title: string }) => (
 );
 
 function Router() {
-  const { currentUser } = useStore();
+  const { currentUser, _hasHydrated } = useStore();
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
