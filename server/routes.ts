@@ -32,6 +32,7 @@ import { generateToken, authMiddleware, adminMiddleware } from "./auth";
 import { hashPassword, verifyPassword, isHashed } from "./password";
 import { stripHtml } from "./sanitize";
 import { wsManager } from "./websocket";
+import { sendProvisionalPasswordEmail } from "./email";
 
 const uploadDir = path.join(process.cwd(), "client/public/uploads");
 if (!fs.existsSync(uploadDir)) {
@@ -260,11 +261,22 @@ export async function registerRoutes(
         return res.status(500).json({ error: "Failed to generate provisional password" });
       }
       
+      // Send email with provisional password
+      const emailSent = await sendProvisionalPasswordEmail(
+        profile.email,
+        profile.name,
+        provisionalPassword,
+        expiresAt
+      );
+      
       // Return the plaintext provisional password to the admin (one-time display only)
       res.json({ 
         provisionalPassword,
         expiresAt,
-        message: "Senha provisória gerada. O usuário deve trocá-la em até 24 horas."
+        emailSent,
+        message: emailSent 
+          ? "Senha provisória gerada e enviada por email. O usuário deve trocá-la em até 24 horas."
+          : "Senha provisória gerada. O email não pôde ser enviado, informe a senha manualmente."
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to generate provisional password" });
@@ -285,9 +297,33 @@ export async function registerRoutes(
   app.post("/api/profiles", async (req, res) => {
     try {
       const validatedData = insertProfileSchema.parse(req.body);
-      const profile = await storage.createProfile(validatedData);
+      
+      // Generate provisional password for new users
+      const provisionalPassword = Math.random().toString(36).slice(-8).toUpperCase();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const hashedProvisionalPassword = await hashPassword(provisionalPassword);
+      
+      // Use the provisional password as both the main password and provisional password
+      // User must use the provisional password to login initially
+      const profile = await storage.createProfile({
+        ...validatedData,
+        password: hashedProvisionalPassword, // Use same hash for initial login
+        provisionalPassword: hashedProvisionalPassword,
+        provisionalPasswordExpiresAt: expiresAt,
+        mustChangePassword: true,
+        profileCompleted: false,
+      } as any);
+      
+      // Send email with provisional password
+      const emailSent = await sendProvisionalPasswordEmail(
+        profile.email,
+        profile.name,
+        provisionalPassword,
+        expiresAt
+      );
+      
       const { password: _, provisionalPassword: __, provisionalPasswordExpiresAt: ___, ...sanitizedProfile } = profile;
-      res.status(201).json(sanitizedProfile);
+      res.status(201).json({ ...sanitizedProfile, emailSent });
     } catch (error: any) {
       if (error.name === "ZodError") {
         return res.status(400).json({ error: fromError(error).toString() });

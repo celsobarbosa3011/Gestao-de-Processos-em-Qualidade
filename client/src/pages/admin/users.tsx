@@ -83,10 +83,14 @@ export default function AdminUsersPage() {
       status: 'active',
       avatar: undefined
     }, {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
         setIsDialogOpen(false);
         form.reset();
-        toast.success(`${values.name} foi adicionado com sucesso`);
+        if (data.emailSent) {
+          toast.success(`${values.name} foi adicionado. Credenciais enviadas por email.`);
+        } else {
+          toast.success(`${values.name} foi adicionado. Email não pôde ser enviado automaticamente.`);
+        }
       },
       onError: () => {
         toast.error("Não foi possível criar o usuário");
@@ -163,7 +167,11 @@ export default function AdminUsersPage() {
       const result = await generateProvisionalPassword(user.id);
       setGeneratedPassword(result.provisionalPassword);
       setIsPasswordDialogOpen(true);
-      toast.success("Senha provisória gerada - expira em 24 horas");
+      if (result.emailSent) {
+        toast.success("Senha provisória gerada e enviada por email - expira em 24 horas");
+      } else {
+        toast.success("Senha provisória gerada - expira em 24 horas. Email não pôde ser enviado.");
+      }
     } catch (error: any) {
       toast.error(error.message || "Não foi possível gerar a senha provisória");
     }

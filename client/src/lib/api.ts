@@ -44,7 +44,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
   return response.json();
 }
 
-export async function generateProvisionalPassword(userId: string): Promise<{ provisionalPassword: string; expiresAt: string; message: string }> {
+export async function generateProvisionalPassword(userId: string): Promise<{ provisionalPassword: string; expiresAt: string; message: string; emailSent?: boolean }> {
   const response = await fetch(`${API_BASE}/profiles/${userId}/provisional-password`, {
     method: "POST",
     headers: getAuthHeaders(),
