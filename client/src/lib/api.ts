@@ -96,8 +96,8 @@ export async function createProfile(data: {
 }): Promise<Profile & { emailSent?: boolean }> {
   const response = await fetch(`${API_BASE}/profiles`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...data, password: 'senha123' }),
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
   });
   if (!response.ok) throw new Error("Failed to create profile");
   return response.json();
