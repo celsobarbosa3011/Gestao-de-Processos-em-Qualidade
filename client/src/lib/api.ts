@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit, ProcessType, Priority } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -808,4 +808,84 @@ export async function resetDashboardWidgets(): Promise<DashboardWidget[]> {
   });
   if (!response.ok) throw new Error("Failed to reset widgets");
   return response.json();
+}
+
+// Process Types
+export async function getAllProcessTypes(): Promise<ProcessType[]> {
+  const response = await fetch(`${API_BASE}/process-types`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch process types");
+  return response.json();
+}
+
+export async function createProcessType(data: { name: string; description?: string; color?: string; order?: number; active?: boolean }): Promise<ProcessType> {
+  const response = await fetch(`${API_BASE}/process-types`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to create process type");
+  }
+  return response.json();
+}
+
+export async function updateProcessType(id: number, updates: { name?: string; description?: string; color?: string; order?: number; active?: boolean }): Promise<ProcessType> {
+  const response = await fetch(`${API_BASE}/process-types/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update process type");
+  return response.json();
+}
+
+export async function deleteProcessType(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/process-types/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete process type");
+}
+
+// Priorities
+export async function getAllPriorities(): Promise<Priority[]> {
+  const response = await fetch(`${API_BASE}/priorities`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch priorities");
+  return response.json();
+}
+
+export async function createPriority(data: { name: string; level?: number; color?: string; order?: number; active?: boolean }): Promise<Priority> {
+  const response = await fetch(`${API_BASE}/priorities`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Failed to create priority");
+  }
+  return response.json();
+}
+
+export async function updatePriority(id: number, updates: { name?: string; level?: number; color?: string; order?: number; active?: boolean }): Promise<Priority> {
+  const response = await fetch(`${API_BASE}/priorities/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update priority");
+  return response.json();
+}
+
+export async function deletePriority(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/priorities/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete priority");
 }

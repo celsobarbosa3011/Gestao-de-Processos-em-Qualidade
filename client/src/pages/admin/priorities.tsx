@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePriorities } from "@/hooks/use-priorities";
+import { createPriority, updatePriority, deletePriority } from "@/lib/api";
 import type { Priority } from "@shared/schema";
 
 const prioritySchema = z.object({
@@ -27,46 +28,6 @@ const prioritySchema = z.object({
 });
 
 type PriorityFormData = z.infer<typeof prioritySchema>;
-
-async function createPriority(data: PriorityFormData): Promise<Priority> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch("/api/priorities", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Failed to create priority");
-  }
-  return res.json();
-}
-
-async function updatePriority(id: number, data: Partial<PriorityFormData>): Promise<Priority> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch(`/api/priorities/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update priority");
-  return res.json();
-}
-
-async function deletePriority(id: number): Promise<void> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch(`/api/priorities/${id}`, {
-    method: "DELETE",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error("Failed to delete priority");
-}
 
 export default function AdminPrioritiesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

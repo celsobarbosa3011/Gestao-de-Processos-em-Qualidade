@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useProcessTypes } from "@/hooks/use-process-types";
+import { createProcessType, updateProcessType, deleteProcessType } from "@/lib/api";
 import type { ProcessType } from "@shared/schema";
 
 const typeSchema = z.object({
@@ -27,46 +28,6 @@ const typeSchema = z.object({
 });
 
 type TypeFormData = z.infer<typeof typeSchema>;
-
-async function createProcessType(data: TypeFormData): Promise<ProcessType> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch("/api/process-types", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Failed to create process type");
-  }
-  return res.json();
-}
-
-async function updateProcessType(id: number, data: Partial<TypeFormData>): Promise<ProcessType> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch(`/api/process-types/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update process type");
-  return res.json();
-}
-
-async function deleteProcessType(id: number): Promise<void> {
-  const token = localStorage.getItem("auth_token");
-  const res = await fetch(`/api/process-types/${id}`, {
-    method: "DELETE",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error("Failed to delete process type");
-}
 
 export default function AdminProcessTypesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
