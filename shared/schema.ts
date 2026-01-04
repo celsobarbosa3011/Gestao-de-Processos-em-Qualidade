@@ -68,7 +68,7 @@ export type Process = typeof processes.$inferSelect;
 // Process Comments Table
 export const processComments = pgTable("process_comments", {
   id: serial("id").primaryKey(),
-  processId: serial("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => profiles.id),
   text: text("text").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -85,7 +85,7 @@ export type ProcessComment = typeof processComments.$inferSelect;
 // Process History/Events Table
 export const processEvents = pgTable("process_events", {
   id: serial("id").primaryKey(),
-  processId: serial("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
   userId: varchar("user_id").notNull().references(() => profiles.id),
   action: text("action").notNull(),
   details: text("details").notNull(),
@@ -140,6 +140,66 @@ export const updateBrandingConfigSchema = createInsertSchema(brandingConfig).omi
 
 export type UpdateBrandingConfig = z.infer<typeof updateBrandingConfigSchema>;
 export type BrandingConfig = typeof brandingConfig.$inferSelect;
+
+// Process Checklists Table
+export const processChecklists = pgTable("process_checklists", {
+  id: serial("id").primaryKey(),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  text: text("text").notNull(),
+  completed: boolean("completed").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProcessChecklistSchema = createInsertSchema(processChecklists).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProcessChecklist = z.infer<typeof insertProcessChecklistSchema>;
+export type ProcessChecklist = typeof processChecklists.$inferSelect;
+
+// Process Attachments Table
+export const processAttachments = pgTable("process_attachments", {
+  id: serial("id").primaryKey(),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => profiles.id),
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertProcessAttachmentSchema = createInsertSchema(processAttachments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProcessAttachment = z.infer<typeof insertProcessAttachmentSchema>;
+export type ProcessAttachment = typeof processAttachments.$inferSelect;
+
+// Process Labels Table
+export const processLabels = pgTable("process_labels", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  color: text("color").notNull().default('#6B7280'),
+});
+
+export const insertProcessLabelSchema = createInsertSchema(processLabels).omit({
+  id: true,
+});
+
+export type InsertProcessLabel = z.infer<typeof insertProcessLabelSchema>;
+export type ProcessLabel = typeof processLabels.$inferSelect;
+
+// Process to Labels Junction Table
+export const processToLabels = pgTable("process_to_labels", {
+  id: serial("id").primaryKey(),
+  processId: integer("process_id").notNull().references(() => processes.id, { onDelete: 'cascade' }),
+  labelId: integer("label_id").notNull().references(() => processLabels.id, { onDelete: 'cascade' }),
+});
+
+export type ProcessToLabel = typeof processToLabels.$inferSelect;
 
 // WIP (Work In Progress) Limits per Column
 export const wipLimits = pgTable("wip_limits", {

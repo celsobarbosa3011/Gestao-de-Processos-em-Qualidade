@@ -10,7 +10,10 @@ import {
   insertProcessEventSchema,
   updateAlertSettingsSchema,
   updateBrandingConfigSchema,
-  updateWipLimitSchema
+  updateWipLimitSchema,
+  insertProcessChecklistSchema,
+  insertProcessAttachmentSchema,
+  insertProcessLabelSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import multer from "multer";
@@ -494,6 +497,183 @@ export async function registerRoutes(
         return res.status(400).json({ error: fromError(error).toString() });
       }
       res.status(500).json({ error: "Failed to update WIP limit" });
+    }
+  });
+
+  // ===== CHECKLIST ROUTES =====
+  app.get("/api/processes/:processId/checklists", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const checklists = await storage.getChecklistsByProcess(processId);
+      res.json(checklists);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch checklists" });
+    }
+  });
+
+  app.post("/api/processes/:processId/checklists", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const { text } = req.body;
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ error: "Text is required" });
+      }
+      const checklist = await storage.createChecklist({ processId, text, completed: false });
+      res.json(checklist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create checklist item" });
+    }
+  });
+
+  app.patch("/api/checklists/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { completed } = req.body;
+      if (typeof completed !== 'boolean') {
+        return res.status(400).json({ error: "Completed must be a boolean" });
+      }
+      const checklist = await storage.updateChecklist(id, completed);
+      if (!checklist) {
+        return res.status(404).json({ error: "Checklist item not found" });
+      }
+      res.json(checklist);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update checklist item" });
+    }
+  });
+
+  app.delete("/api/checklists/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteChecklist(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Checklist item not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete checklist item" });
+    }
+  });
+
+  // ===== ATTACHMENT ROUTES =====
+  app.get("/api/processes/:processId/attachments", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const attachments = await storage.getAttachmentsByProcess(processId);
+      res.json(attachments);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch attachments" });
+    }
+  });
+
+  app.post("/api/processes/:processId/attachments", authMiddleware, upload.single('file'), async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const userId = req.auth?.userId;
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const attachment = await storage.createAttachment({
+        processId,
+        userId,
+        fileName: req.file.originalname,
+        fileUrl: `/uploads/${req.file.filename}`,
+        fileType: req.file.mimetype,
+        fileSize: req.file.size,
+      });
+      res.json(attachment);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to upload attachment" });
+    }
+  });
+
+  app.delete("/api/attachments/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteAttachment(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete attachment" });
+    }
+  });
+
+  // ===== LABEL ROUTES =====
+  app.get("/api/labels", authMiddleware, async (req, res) => {
+    try {
+      const labels = await storage.getAllLabels();
+      res.json(labels);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch labels" });
+    }
+  });
+
+  app.post("/api/labels", authMiddleware, async (req, res) => {
+    try {
+      const validatedData = insertProcessLabelSchema.parse(req.body);
+      const label = await storage.createLabel(validatedData);
+      res.json(label);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: fromError(error).toString() });
+      }
+      res.status(500).json({ error: "Failed to create label" });
+    }
+  });
+
+  app.delete("/api/labels/:id", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteLabel(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Label not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete label" });
+    }
+  });
+
+  app.get("/api/processes/:processId/labels", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const labels = await storage.getLabelsByProcess(processId);
+      res.json(labels);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch process labels" });
+    }
+  });
+
+  app.post("/api/processes/:processId/labels/:labelId", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const labelId = parseInt(req.params.labelId);
+      const junction = await storage.addLabelToProcess(processId, labelId);
+      res.json(junction);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add label to process" });
+    }
+  });
+
+  app.delete("/api/processes/:processId/labels/:labelId", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const labelId = parseInt(req.params.labelId);
+      const deleted = await storage.removeLabelFromProcess(processId, labelId);
+      if (!deleted) {
+        return res.status(404).json({ error: "Label not found on process" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove label from process" });
     }
   });
 

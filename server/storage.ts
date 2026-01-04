@@ -20,6 +20,13 @@ import type {
   WipLimit,
   InsertWipLimit,
   UpdateWipLimit,
+  ProcessChecklist,
+  InsertProcessChecklist,
+  ProcessAttachment,
+  InsertProcessAttachment,
+  ProcessLabel,
+  InsertProcessLabel,
+  ProcessToLabel,
 } from "@shared/schema";
 
 const pool = new Pool({
@@ -65,6 +72,25 @@ export interface IStorage {
   getAllWipLimits(): Promise<WipLimit[]>;
   getWipLimit(columnId: string): Promise<WipLimit | undefined>;
   upsertWipLimit(columnId: string, updates: UpdateWipLimit): Promise<WipLimit>;
+  
+  // Checklist methods
+  getChecklistsByProcess(processId: number): Promise<ProcessChecklist[]>;
+  createChecklist(checklist: InsertProcessChecklist): Promise<ProcessChecklist>;
+  updateChecklist(id: number, completed: boolean): Promise<ProcessChecklist | undefined>;
+  deleteChecklist(id: number): Promise<boolean>;
+  
+  // Attachment methods
+  getAttachmentsByProcess(processId: number): Promise<ProcessAttachment[]>;
+  createAttachment(attachment: InsertProcessAttachment): Promise<ProcessAttachment>;
+  deleteAttachment(id: number): Promise<boolean>;
+  
+  // Label methods
+  getAllLabels(): Promise<ProcessLabel[]>;
+  createLabel(label: InsertProcessLabel): Promise<ProcessLabel>;
+  deleteLabel(id: number): Promise<boolean>;
+  getLabelsByProcess(processId: number): Promise<ProcessLabel[]>;
+  addLabelToProcess(processId: number, labelId: number): Promise<ProcessToLabel>;
+  removeLabelFromProcess(processId: number, labelId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -227,6 +253,101 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result[0];
     }
+  }
+
+  // Checklist methods
+  async getChecklistsByProcess(processId: number): Promise<ProcessChecklist[]> {
+    return await db.select().from(schema.processChecklists)
+      .where(eq(schema.processChecklists.processId, processId))
+      .orderBy(schema.processChecklists.createdAt);
+  }
+
+  async createChecklist(checklist: InsertProcessChecklist): Promise<ProcessChecklist> {
+    const result = await db.insert(schema.processChecklists).values(checklist).returning();
+    return result[0];
+  }
+
+  async updateChecklist(id: number, completed: boolean): Promise<ProcessChecklist | undefined> {
+    const result = await db.update(schema.processChecklists)
+      .set({ completed })
+      .where(eq(schema.processChecklists.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteChecklist(id: number): Promise<boolean> {
+    const result = await db.delete(schema.processChecklists)
+      .where(eq(schema.processChecklists.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Attachment methods
+  async getAttachmentsByProcess(processId: number): Promise<ProcessAttachment[]> {
+    return await db.select().from(schema.processAttachments)
+      .where(eq(schema.processAttachments.processId, processId))
+      .orderBy(desc(schema.processAttachments.createdAt));
+  }
+
+  async createAttachment(attachment: InsertProcessAttachment): Promise<ProcessAttachment> {
+    const result = await db.insert(schema.processAttachments).values(attachment).returning();
+    return result[0];
+  }
+
+  async deleteAttachment(id: number): Promise<boolean> {
+    const result = await db.delete(schema.processAttachments)
+      .where(eq(schema.processAttachments.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Label methods
+  async getAllLabels(): Promise<ProcessLabel[]> {
+    return await db.select().from(schema.processLabels);
+  }
+
+  async createLabel(label: InsertProcessLabel): Promise<ProcessLabel> {
+    const result = await db.insert(schema.processLabels).values(label).returning();
+    return result[0];
+  }
+
+  async deleteLabel(id: number): Promise<boolean> {
+    const result = await db.delete(schema.processLabels)
+      .where(eq(schema.processLabels.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getLabelsByProcess(processId: number): Promise<ProcessLabel[]> {
+    const junctions = await db.select()
+      .from(schema.processToLabels)
+      .where(eq(schema.processToLabels.processId, processId));
+    
+    if (junctions.length === 0) return [];
+    
+    const labelIds = junctions.map(j => j.labelId);
+    const labels = await db.select()
+      .from(schema.processLabels)
+      .where(sql`${schema.processLabels.id} = ANY(ARRAY[${sql.join(labelIds, sql`, `)}]::integer[])`);
+    
+    return labels;
+  }
+
+  async addLabelToProcess(processId: number, labelId: number): Promise<ProcessToLabel> {
+    const result = await db.insert(schema.processToLabels)
+      .values({ processId, labelId })
+      .returning();
+    return result[0];
+  }
+
+  async removeLabelFromProcess(processId: number, labelId: number): Promise<boolean> {
+    const result = await db.delete(schema.processToLabels)
+      .where(and(
+        eq(schema.processToLabels.processId, processId),
+        eq(schema.processToLabels.labelId, labelId)
+      ))
+      .returning();
+    return result.length > 0;
   }
 }
 

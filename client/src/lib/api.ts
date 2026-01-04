@@ -1,13 +1,16 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
 
-function getAuthHeaders(): HeadersInit {
+function getAuthHeaders(includeContentType: boolean = true): HeadersInit {
   const token = useStore.getState().authToken;
-  return token 
-    ? { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
-    : { "Content-Type": "application/json" };
+  if (includeContentType) {
+    return token 
+      ? { "Content-Type": "application/json", "Authorization": `Bearer ${token}` }
+      : { "Content-Type": "application/json" };
+  }
+  return token ? { "Authorization": `Bearer ${token}` } : {};
 }
 
 // Auth
@@ -207,4 +210,122 @@ export async function updateWipLimit(columnId: string, updates: UpdateWipLimit):
     throw new Error(errorData.error || `Failed to update WIP limit (${response.status})`);
   }
   return response.json();
+}
+
+// Checklists
+export async function getProcessChecklists(processId: number): Promise<ProcessChecklist[]> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/checklists`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch checklists");
+  return response.json();
+}
+
+export async function createProcessChecklist(processId: number, text: string): Promise<ProcessChecklist> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/checklists`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) throw new Error("Failed to create checklist item");
+  return response.json();
+}
+
+export async function updateProcessChecklist(id: number, completed: boolean): Promise<ProcessChecklist> {
+  const response = await fetch(`${API_BASE}/checklists/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ completed }),
+  });
+  if (!response.ok) throw new Error("Failed to update checklist item");
+  return response.json();
+}
+
+export async function deleteProcessChecklist(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/checklists/${id}`, { 
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to delete checklist item");
+}
+
+// Attachments
+export async function getProcessAttachments(processId: number): Promise<ProcessAttachment[]> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/attachments`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch attachments");
+  return response.json();
+}
+
+export async function uploadProcessAttachment(processId: number, file: File): Promise<ProcessAttachment> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch(`${API_BASE}/processes/${processId}/attachments`, {
+    method: "POST",
+    headers: getAuthHeaders(false),
+    body: formData,
+  });
+  if (!response.ok) throw new Error("Failed to upload attachment");
+  return response.json();
+}
+
+export async function deleteProcessAttachment(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/attachments/${id}`, { 
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete attachment");
+}
+
+// Labels
+export async function getAllLabels(): Promise<ProcessLabel[]> {
+  const response = await fetch(`${API_BASE}/labels`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch labels");
+  return response.json();
+}
+
+export async function createLabel(name: string, color: string): Promise<ProcessLabel> {
+  const response = await fetch(`${API_BASE}/labels`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ name, color }),
+  });
+  if (!response.ok) throw new Error("Failed to create label");
+  return response.json();
+}
+
+export async function deleteLabel(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/labels/${id}`, { 
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete label");
+}
+
+export async function getProcessLabels(processId: number): Promise<ProcessLabel[]> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/labels`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch process labels");
+  return response.json();
+}
+
+export async function addLabelToProcess(processId: number, labelId: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/labels/${labelId}`, {
+    method: "POST",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to add label to process");
+}
+
+export async function removeLabelFromProcess(processId: number, labelId: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/processes/${processId}/labels/${labelId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to remove label from process");
 }
