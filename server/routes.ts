@@ -80,10 +80,16 @@ export async function registerRoutes(
   // ===== AUTH ROUTES =====
   app.post("/api/auth/login", async (req, res) => {
     try {
-      const { email, password } = req.body;
+      // Sanitize inputs - remove extra spaces (common on mobile devices)
+      const email = (req.body.email || '').trim().toLowerCase();
+      const password = (req.body.password || '').toString().trim();
+      
+      console.log(`[auth] Login attempt for email: "${email}" (length: ${email.length})`);
+      
       const profile = await storage.getProfileByEmail(email);
       
       if (!profile) {
+        console.log(`[auth] No profile found for email: "${email}"`);
         return res.status(401).json({ error: "Invalid credentials" });
       }
       

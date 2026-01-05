@@ -39,7 +39,11 @@ export default function AuthPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      const user = await apiLogin(values.email, values.password);
+      // Sanitize inputs - remove extra spaces (common on mobile keyboards)
+      const email = values.email.trim().toLowerCase();
+      const password = values.password.trim();
+      
+      const user = await apiLogin(email, password);
       setCurrentUser(user);
       toast.success(`Bem-vindo, ${user.name}!`);
       setLocation("/kanban");
