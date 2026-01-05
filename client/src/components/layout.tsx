@@ -279,8 +279,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  const backgroundStyle = branding?.backgroundColor 
+    ? { backgroundColor: branding.backgroundColor } 
+    : {};
+
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans">
+    <div className="flex min-h-screen text-foreground font-sans" style={backgroundStyle}>
       {/* Desktop Sidebar */}
       <aside className="hidden md:block w-64 border-r border-border fixed h-full bg-sidebar z-30">
         <NavContent />
@@ -288,7 +292,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
-        <header className="h-16 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
+        <header className="h-16 border-b border-border bg-white/80 backdrop-blur-md sticky top-0 z-20 px-4 md:px-6 flex items-center justify-between">
           <div className="md:hidden">
             <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
               <SheetTrigger asChild>

@@ -21,6 +21,7 @@ const brandingSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal (#RRGGBB)"),
   primaryForeground: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal"),
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal").optional().or(z.literal('')),
+  backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Cor deve estar no formato hexadecimal").optional().or(z.literal('')),
   footerText: z.string().optional(),
   supportEmail: z.string().email("Email inválido").optional().or(z.literal('')),
   customDomain: z.string().optional(),
@@ -46,6 +47,7 @@ export default function BrandingPage() {
       primaryColor: "#0F766E",
       primaryForeground: "#FFFFFF",
       accentColor: "#14B8A6",
+      backgroundColor: "#E8EEFF",
       footerText: "",
       supportEmail: "",
       customDomain: "",
@@ -62,6 +64,7 @@ export default function BrandingPage() {
         primaryColor: branding.primaryColor || "#0F766E",
         primaryForeground: branding.primaryForeground || "#FFFFFF",
         accentColor: branding.accentColor || "#14B8A6",
+        backgroundColor: branding.backgroundColor || "#E8EEFF",
         footerText: branding.footerText || "",
         supportEmail: branding.supportEmail || "",
         customDomain: branding.customDomain || "",
@@ -127,6 +130,7 @@ export default function BrandingPage() {
       logoUrl: values.logoUrl || undefined,
       faviconUrl: values.faviconUrl || undefined,
       accentColor: values.accentColor || undefined,
+      backgroundColor: values.backgroundColor || undefined,
       supportEmail: values.supportEmail || undefined,
       customDomain: values.customDomain || undefined,
       userId: currentUser.id,
@@ -389,6 +393,30 @@ export default function BrandingPage() {
                           placeholder="#14B8A6"
                         />
                       </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="backgroundColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cor de Fundo</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input data-testid="input-background-color" type="color" className="w-14 h-10 p-1 cursor-pointer" value={field.value || "#E8EEFF"} onChange={field.onChange} />
+                        </FormControl>
+                        <Input 
+                          value={field.value || ""} 
+                          onChange={field.onChange}
+                          className="flex-1 font-mono uppercase"
+                          maxLength={7}
+                          placeholder="#E8EEFF"
+                        />
+                      </div>
+                      <FormDescription className="text-xs">Cor de fundo do sistema (azul lavanda suave padrão)</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

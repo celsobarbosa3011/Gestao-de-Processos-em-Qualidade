@@ -179,6 +179,7 @@ export const brandingConfig = pgTable("branding_config", {
   primaryColor: text("primary_color").notNull().default('#0F766E'), // Teal-700
   primaryForeground: text("primary_foreground").notNull().default('#FFFFFF'),
   accentColor: text("accent_color").default('#14B8A6'), // Teal-500
+  backgroundColor: text("background_color").default('#E8EEFF'), // Soft lavender blue
   footerText: text("footer_text").default('© 2025 Todos os direitos reservados'),
   supportEmail: text("support_email"),
   customDomain: text("custom_domain"),
