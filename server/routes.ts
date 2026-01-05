@@ -240,6 +240,68 @@ export async function registerRoutes(
     }
   });
 
+  // Self-registration endpoint (no auth required)
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { email, password, confirmPassword } = req.body;
+      
+      // Validate inputs
+      if (!email || !password || !confirmPassword) {
+        return res.status(400).json({ error: "Email, senha e confirmação são obrigatórios" });
+      }
+      
+      const sanitizedEmail = email.trim().toLowerCase();
+      
+      if (password !== confirmPassword) {
+        return res.status(400).json({ error: "As senhas não coincidem" });
+      }
+      
+      if (password.length < 8) {
+        return res.status(400).json({ error: "A senha deve ter pelo menos 8 caracteres" });
+      }
+      
+      // Check if email already exists
+      const existingProfile = await storage.getProfileByEmail(sanitizedEmail);
+      if (existingProfile) {
+        return res.status(400).json({ error: "Este email já está cadastrado" });
+      }
+      
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+      
+      // Create profile with minimal data - user will complete later
+      const newProfile = await storage.createProfile({
+        email: sanitizedEmail,
+        password: hashedPassword,
+        name: sanitizedEmail.split('@')[0], // Temporary name from email
+        role: 'user',
+        unit: 'Pendente', // Will be set when profile is completed
+        status: 'active',
+        profileCompleted: false,
+        mustChangePassword: false,
+      });
+      
+      // Generate JWT token
+      const token = generateToken({
+        userId: newProfile.id,
+        email: newProfile.email,
+        role: newProfile.role,
+        mustChangePassword: false,
+      });
+      
+      const { password: _, provisionalPassword: __, ...profileWithoutPassword } = newProfile;
+      
+      res.status(201).json({
+        ...profileWithoutPassword,
+        token,
+        message: "Conta criada com sucesso! Complete seu cadastro para acessar o sistema."
+      });
+    } catch (error: any) {
+      console.error('[auth] Registration error:', error);
+      res.status(500).json({ error: error.message || "Erro ao criar conta" });
+    }
+  });
+
   // Generate provisional password for user (admin only - JWT authenticated)
   app.post("/api/profiles/:id/provisional-password", authMiddleware, adminMiddleware, async (req, res) => {
     try {
