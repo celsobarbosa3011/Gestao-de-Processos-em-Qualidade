@@ -819,7 +819,7 @@ export async function reorderDashboardWidgets(positions: { id: number; position:
 export async function resetDashboardWidgets(): Promise<DashboardWidget[]> {
   const response = await fetch(`${API_BASE}/dashboard/widgets/reset`, {
     method: "POST",
-    headers: getAuthHeaders(false),
+    headers: getAuthHeaders(),
   });
   if (!response.ok) throw new Error("Failed to reset widgets");
   return response.json();
