@@ -510,6 +510,8 @@ export default function DashboardPage() {
     if (!newWidgetType) return;
     
     const widgetInfo = WIDGET_TYPES.find(w => w.value === newWidgetType);
+    console.log('[Dashboard] Adding widget:', { type: newWidgetType, title: newWidgetTitle });
+    
     createWidgetMutation.mutate({
       widgetType: newWidgetType,
       title: newWidgetTitle || widgetInfo?.label || 'Widget',
@@ -517,6 +519,11 @@ export default function DashboardPage() {
       width: ['recent_processes', 'activity_feed', 'cumulative_flow'].includes(newWidgetType) ? 2 : 1,
       height: 1,
       visible: true,
+    }, {
+      onError: (error: any) => {
+        console.error('[Dashboard] Error adding widget:', error);
+        toast.error(`Erro ao adicionar widget: ${error.message}`);
+      }
     });
   };
 
