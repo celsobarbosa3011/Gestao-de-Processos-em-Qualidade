@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { differenceInDays } from "date-fns";
 import { Draggable } from "@hello-pangea/dnd";
 import { useTotalTime } from "@/hooks/use-process-extras";
+import { getPriorityBgColor } from "@/lib/priority-colors";
 
 interface ProcessCardProps {
   process: Process;
@@ -40,11 +41,26 @@ export function ProcessCard({ process, index, onClick, profiles, alertSettings }
     else if (daysUntilDeadline <= alertSettings.warningDays) deadlineStatus = "text-yellow-600";
   }
 
-  const priorityColors = {
-    low: "bg-slate-100 text-slate-700 hover:bg-slate-200",
-    medium: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+  const priorityColors: Record<string, string> = {
+    low: "bg-green-100 text-green-700 hover:bg-green-200",
+    medium: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
     high: "bg-orange-100 text-orange-700 hover:bg-orange-200",
     critical: "bg-red-100 text-red-700 hover:bg-red-200",
+    "Baixa": "bg-green-100 text-green-700 hover:bg-green-200",
+    "Média": "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
+    "Alta": "bg-orange-100 text-orange-700 hover:bg-orange-200",
+    "Crítica": "bg-red-100 text-red-700 hover:bg-red-200",
+  };
+  
+  const priorityBorderColors: Record<string, string> = {
+    low: "border-l-green-500",
+    medium: "border-l-yellow-500",
+    high: "border-l-orange-500",
+    critical: "border-l-red-500",
+    "Baixa": "border-l-green-500",
+    "Média": "border-l-yellow-500",
+    "Alta": "border-l-orange-500",
+    "Crítica": "border-l-red-500",
   };
 
   return (
@@ -62,11 +78,11 @@ export function ProcessCard({ process, index, onClick, profiles, alertSettings }
           )}
           data-testid={`card-process-${process.id}`}
         >
-          <Card className="cursor-pointer border-l-4 border-l-transparent hover:border-l-primary/50 shadow-sm hover:shadow-md transition-shadow">
+          <Card className={cn("cursor-pointer border-l-4 shadow-sm hover:shadow-md transition-shadow", priorityBorderColors[process.priority] || "border-l-gray-500")}>
             <CardHeader className="p-3 pb-0 space-y-2">
               <div className="flex justify-between items-start gap-2">
-                <Badge variant="secondary" className={cn("text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider", priorityColors[process.priority as keyof typeof priorityColors])}>
-                  {process.priority === 'critical' && <AlertCircle className="w-3 h-3 mr-1 inline" />}
+                <Badge variant="secondary" className={cn("text-xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider", priorityColors[process.priority] || "bg-gray-100 text-gray-700")}>
+                  {(process.priority === 'critical' || process.priority === 'Crítica') && <AlertCircle className="w-3 h-3 mr-1 inline" />}
                   {process.priority}
                 </Badge>
                 {process.deadline && (

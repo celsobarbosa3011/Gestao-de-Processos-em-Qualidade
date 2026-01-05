@@ -116,21 +116,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </AccordionContent>
             </AccordionItem>
 
-            {currentUser.role === 'admin' && (
-              <AccordionItem value="management" className="border-none">
-                <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Gestão
-                </AccordionTrigger>
-                <AccordionContent className="space-y-1 pt-1 pb-2">
-                  <Button 
-                    variant={location === '/dashboard' ? 'secondary' : 'ghost'} 
-                    className="w-full justify-start gap-3 font-medium h-9"
-                    onClick={() => { setLocation('/dashboard'); setIsMobileOpen(false); }}
-                    data-testid="nav-dashboard"
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </Button>
+            <AccordionItem value="management" className="border-none">
+              <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Gestão
+              </AccordionTrigger>
+              <AccordionContent className="space-y-1 pt-1 pb-2">
+                <Button 
+                  variant={location === '/dashboard' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/dashboard'); setIsMobileOpen(false); }}
+                  data-testid="nav-dashboard"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Dashboard
+                </Button>
+                {currentUser.role === 'admin' && (
                   <Button 
                     variant={location === '/admin/logs' ? 'secondary' : 'ghost'} 
                     className="w-full justify-start gap-3 font-medium h-9"
@@ -140,9 +140,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     <FileClock className="w-4 h-4" />
                     Logs de Auditoria
                   </Button>
-                </AccordionContent>
-              </AccordionItem>
-            )}
+                )}
+              </AccordionContent>
+            </AccordionItem>
 
             {currentUser.role === 'admin' && (
               <AccordionItem value="admin" className="border-none">
@@ -221,6 +221,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <FileText className="w-4 h-4" />
                     Templates
+                  </Button>
+                  <Button 
+                    variant={location === '/admin/permissions' ? 'secondary' : 'ghost'} 
+                    className="w-full justify-start gap-3 font-medium h-9"
+                    onClick={() => { setLocation('/admin/permissions'); setIsMobileOpen(false); }}
+                    data-testid="nav-permissions"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Permissões
                   </Button>
                   <Button 
                     variant={location === '/admin/settings' ? 'secondary' : 'ghost'} 

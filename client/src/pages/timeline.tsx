@@ -27,8 +27,10 @@ import {
 import { ptBR } from "date-fns/locale";
 import { useProcesses } from "@/hooks/use-processes";
 import { useProfiles } from "@/hooks/use-profiles";
+import { usePriorities } from "@/hooks/use-priorities";
 import type { Process, Profile } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getPriorityBgColor, getTitleAbbreviation, DEFAULT_PRIORITY_BG } from "@/lib/priority-colors";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-gray-400",
@@ -376,14 +378,14 @@ export default function TimelinePage() {
                           </div>
                           <div
                             className={`absolute top-1 bottom-1 rounded-md ${
-                              STATUS_COLORS[process.status]
+                              getPriorityBgColor(process.priority)
                             } shadow-sm flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity`}
                             style={{
                               left: barPosition.left,
                               width: barPosition.width,
-                              minWidth: "30px",
+                              minWidth: "50px",
                             }}
-                            title={`${process.title}\nStatus: ${
+                            title={`${process.title}\nPrioridade: ${process.priority}\nStatus: ${
                               STATUS_LABELS[process.status]
                             }\nCriado: ${format(
                               new Date(process.createdAt),
@@ -398,9 +400,16 @@ export default function TimelinePage() {
                             }`}
                             data-testid={`timeline-bar-${process.id}`}
                           >
-                            <span className="text-white text-[10px] font-medium px-2 truncate">
-                              {process.title}
-                            </span>
+                            <div className="flex flex-col items-center justify-center text-white">
+                              <span className="text-[10px] font-bold">
+                                {getTitleAbbreviation(process.title)}
+                              </span>
+                              {process.deadline && (
+                                <span className="text-[8px] opacity-90">
+                                  {format(new Date(process.deadline), "dd/MM")}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

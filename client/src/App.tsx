@@ -18,6 +18,7 @@ import AdminAutomationsPage from "@/pages/admin/automations";
 import AdminTemplatesPage from "@/pages/admin/templates";
 import AdminProcessTypesPage from "@/pages/admin/process-types";
 import AdminPrioritiesPage from "@/pages/admin/priorities";
+import AdminPermissionsPage from "@/pages/admin/permissions";
 import CalendarPage from "@/pages/calendar";
 import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
@@ -82,6 +83,7 @@ function Router() {
         <Route path="/admin/templates" component={AdminTemplatesPage} />
         <Route path="/admin/process-types" component={AdminProcessTypesPage} />
         <Route path="/admin/priorities" component={AdminPrioritiesPage} />
+        <Route path="/admin/permissions" component={AdminPermissionsPage} />
         <Route path="/">
           <Redirect to={currentUser.role === 'admin' ? "/dashboard" : "/kanban"} />
         </Route>
