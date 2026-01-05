@@ -283,10 +283,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ? { backgroundColor: branding.backgroundColor } 
     : {};
 
+  const sidebarStyle = branding?.sidebarBackground 
+    ? { backgroundColor: branding.sidebarBackground } 
+    : {};
+
   return (
     <div className="flex min-h-screen text-foreground font-sans" style={backgroundStyle}>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 border-r border-border fixed h-full bg-sidebar z-30">
+      <aside className="hidden md:block w-64 border-r border-border fixed h-full z-30" style={sidebarStyle}>
         <NavContent />
       </aside>
 
