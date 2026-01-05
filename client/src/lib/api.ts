@@ -3,7 +3,7 @@ import { useStore } from "./store";
 
 const API_BASE = "/api";
 
-function getAuthHeaders(includeContentType: boolean = true): HeadersInit {
+export function getAuthHeaders(includeContentType: boolean = true): HeadersInit {
   const token = useStore.getState().authToken;
   if (includeContentType) {
     return token 
