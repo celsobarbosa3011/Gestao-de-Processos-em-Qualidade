@@ -29,21 +29,6 @@ export async function login(email: string, password: string): Promise<Profile & 
   return response.json();
 }
 
-export async function registerUser(email: string, password: string, confirmPassword: string): Promise<Profile & { token?: string; message?: string }> {
-  const response = await fetch(`${API_BASE}/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, confirmPassword }),
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || "Falha ao criar conta");
-  }
-  
-  return response.json();
-}
-
 export async function changePassword(currentPassword: string, newPassword: string): Promise<Profile & { token?: string }> {
   const response = await fetch(`${API_BASE}/auth/change-password`, {
     method: "POST",

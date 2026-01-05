@@ -52,10 +52,9 @@ function Router() {
     return <AuthPage />;
   }
 
-  // Redirect to profile completion if profile is not completed OR user must change password
-  if (!currentUser.profileCompleted || currentUser.mustChangePassword) {
-    if (window.location.pathname !== "/complete-profile") {
-      window.location.href = "/complete-profile";
+  if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
+    if (window.location.pathname !== "/profile-completion") {
+      window.location.href = "/profile-completion";
       return null;
     }
     return <ProfileCompletionPage />;
@@ -65,9 +64,6 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/auth">
-          <Redirect to="/kanban" />
-        </Route>
-        <Route path="/complete-profile">
           <Redirect to="/kanban" />
         </Route>
         <Route path="/profile-completion">
