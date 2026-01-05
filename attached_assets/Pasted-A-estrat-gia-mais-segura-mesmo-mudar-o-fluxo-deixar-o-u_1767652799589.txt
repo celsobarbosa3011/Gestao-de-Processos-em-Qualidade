@@ -1,0 +1,74 @@
+A estratégia mais segura é mesmo mudar o fluxo: deixar o usuário se cadastrar diretamente na tela inicial (com login e senha + confirmação), fazer o primeiro login e, logo depois, abrir automaticamente a tela de “Novo Usuário” para completar os dados administrativos, sem mexer em nada que já funciona no restante do sistema.[1][2]
+
+## Ideia do novo fluxo
+
+- Manter todo o código atual de gestão de usuários na rota/menu existente, apenas **reutilizando** a lógica de “Novo Usuário” após o primeiro login do cadastro simplificado.[1]
+- Remover (ou ignorar) a etapa de envio automático de e‑mail com login e senha provisória, já que essa parte não está funcionando de forma confiável.[3]
+
+## Comportamento desejado na tela inicial
+
+- A tela da imagem passa a ter duas áreas: “Já tenho conta” (login normal) e “Criar conta”.[4]
+- Em “Criar conta”, o usuário informa: nome, e‑mail, senha e confirmação de senha; ao salvar, o sistema cria o registro mínimo de autenticação e já faz login automático ou redireciona para login com esses dados.[3]
+
+## Passos após o primeiro login
+
+- Depois do primeiro login de quem acabou de se cadastrar, o sistema redireciona automaticamente para a mesma tela de “Novo Usuário” usada hoje em Usuários > Gestão de Usuários > + Adicionar Usuário.[5]
+- Essa tela é carregada já com o e‑mail e o nome trazidos do cadastro de login, o usuário completa os campos obrigatórios, salva, e só então o sistema libera o restante dos menus para uso.[6]
+
+## Prompt sugerido para o Replit Agent
+
+Use este texto (ajuste só nomes de arquivos/rotas se necessário):
+
+> “Você é o desenvolvedor responsável por **implementar novas funcionalidades sem alterar nada do que já funciona** no meu sistema atual. A aplicação já possui:  
+> - Tela de login funcional, que autentica usuário por e‑mail e senha.  
+> - Módulo de gestão de usuários acessível por `Sidebar > Usuário > Gestão de Usuários > + Adicionar Usuário`, com a tela de `Novo Usuário` já funcionando.  
+> - Toda a parte de permissões, menus e acesso ao sistema já está correta e **não pode ser modificada**.  
+>  
+> Preciso que você implemente **apenas** o seguinte fluxo, preservando o código existente e criando novos componentes/rotas quando necessário:  
+>  
+> 1. Transformar a tela inicial (a tela atual de login, arquivo X) em uma tela com duas seções:  
+>    - ‘Já tenho conta’: mantém exatamente o comportamento atual de login.  
+>    - ‘Criar conta’: novo formulário de cadastro simplificado.  
+> 2. O formulário ‘Criar conta’ deve ter os campos: nome completo, e‑mail, senha, confirmação de senha.  
+>    - Validar que senha e confirmação são iguais.  
+>    - Validar formato básico do e‑mail.  
+>    - Ao enviar o formulário, criar um novo registro de usuário **apenas na tabela/coleção de autenticação/login**, sem mexer na tabela de usuários administrativos já usada pelo módulo de gestão de usuários.  
+>    - Não enviar e‑mail automático nem gerar senha provisória.  
+> 3. Após o cadastro bem-sucedido, o usuário deve:  
+>    - ou ser autenticado automaticamente e redirecionado,  
+>    - ou ser redirecionado para a tela de login com o campo e‑mail já preenchido.  
+> 4. No primeiro login desse novo usuário, o sistema deve verificar se já existe um registro correspondente na tabela usada pelo módulo `Usuário > Gestão de Usuários`.  
+>    - Se **não existir**, redirecionar automaticamente para a tela já existente de `Novo Usuário`, reutilizando o mesmo componente/rota atual.  
+>    - Pré-preencher o e‑mail e o nome com os dados do cadastro de login.  
+>    - Ao salvar o `Novo Usuário`, liberar automaticamente o acesso normal ao sistema (menus, dashboards etc.), sem alterar as regras de permissão já implementadas.  
+> 5. Não remova nem modifique nenhuma funcionalidade existente, especialmente:  
+>    - Login atual de usuários já cadastrados.  
+>    - Tela e lógica de `Gestão de Usuários` e `Novo Usuário`.  
+>    - Permissões, papéis e demais regras de negócio.  
+> 6. Caso seja necessário criar novos arquivos, rotas ou serviços, documente no código onde foi feita cada alteração e mantenha a arquitetura existente.  
+>  
+> Antes de qualquer mudança crítica, analise o projeto para garantir que o novo fluxo convive com o fluxo antigo, sem quebrar nada.”  
+
+Esse prompt deixa claro o problema, a nova estratégia e a restrição de não alterar o que já está funcionando, o que tende a gerar um resultado mais previsível no Replit Agent.[2][7]
+
+[1](https://docs.replit.com/replitai/agent)
+[2](https://docs.replit.com/tutorials/effective-prompting)
+[3](https://www.regpacks.com/blog/saas-registration-process/)
+[4](https://userpilot.com/blog/saas-signup-flow/)
+[5](https://ppl-ai-file-upload.s3.amazonaws.com/web/direct-files/attachments/images/79375443/93c33298-4fe1-410e-8e79-2d71f84bb5ff/image.jpg?AWSAccessKeyId=ASIA2F3EMEYE4GWU2MM3&Signature=4%2F8zOuBlayFIqDDd%2B6%2FUeionTjM%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEIf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJGMEQCIGe6DKsC5HLODaWzWEPTxwAN0kn%2FG4jKd7yMn2r2NzfkAiBSVvvBrMxnkqlhtTyI%2Foe0QbwHHKuxtf2ga0TqlBqMiCrzBAhPEAEaDDY5OTc1MzMwOTcwNSIMNaJ3rSEgU302SVDGKtAEPcULg430V7dfEyy0gi0%2BWWN%2BOoofkFnsI6tmTm3CQUBg1cf72xZlO41kEQodAKmGfOXYn41F8%2B5v2fs4f4IblEKyKfmSaXOWUTfp7wskqUFqG2kGmS5sGd1GiTE4E34g9pRENLoFa7W6zXkk%2BfnfHUY2c7J2tWakwYxu3xCWHcodEH4ZlABm8gj%2BIUvo41BSWvXhIg774VZ1HxV2QaUUjSLXgSbmpAg2lkkvddLAwRLS40yQkDr1MfC3gvS0YqIIdEeHtBNVPZ6bozeTv8dmbEgA%2BVsbzskdqfG6WD8cSFrtQ1iNXddULz3CpXKvcCq1jzLpsZrqqaURoxiJSDQ3RlDUhdJrwxZMYcSMY6xaYWYI%2Fl7lSNdmWj8OGYhGI7LCeXzmLMaUsd3wGGYM6r2dJSAeB77sYUlM7HUOZXHNvEVeNh%2B3R4MaFWsgVt2j8ioT9gq3jBU6QfvXqvSRU6EVqzKlwYvWydNPzShpBq%2FS%2BFHyipgQyWBYFO4cpLzmxzg1lhhEqdcz66PFPMDsH%2F%2BUUKNkbB0OGvrq0HqKTuCeoNPQWgFjp6eLgrGvDUQ3H8O4CYdmWwFB8bzEr13TnPQavMA8ki9lWZPOce7%2Bwh29ImtYbudgcvaA4S9FEeqN2FdVbaa8vJ7IKdd3G7UL%2FdGOXc7MeHIl4SzAWpRkszJ1wR7%2B4ROobpL9kyovErPO6%2BoN3EBAK24ijx7QPxTqUng9LhY4vkh3qUXms%2BT%2BocEEbdx4kvlF4hGwzVVP%2FTBFeYaNXJWgc80mjoaartrKqg12ujDP7%2FDKBjqZAa9XbC%2FW8bMygAdLjio55V70GL7O53nWNsUpOtPYZh5%2BhjKGT%2BY96OWvTcQRV9UW7PAh8QqQjoIKfmDw0jH6bJFuZMFP4jnn8HsLIsc3DLZkl4G5kuzMN%2BR8hZv9J05OuXl59%2BgePG8wNMTUKsuniYJn8Z02nH3UW1%2FtT5tzII6MrBd40PakbPFJi4eyWjyRwerJJM5bN9kzZw%3D%3D&Expires=1767653374)
+[6](https://userguiding.com/blog/signup-flows-saas)
+[7](https://www.datacamp.com/pt/tutorial/replit-agent-ai-code-editor)
+[8](https://lovable.dev/guides/lovable-vs-replit-vs-bubble-comparison)
+[9](https://www.youtube.com/watch?v=8pb8Qr-CAEs)
+[10](https://lovable.dev/blog/2025-01-16-lovable-prompting-handbook)
+[11](https://www.reddit.com/r/LocalLLaMA/comments/1ma88wd/full_lovable_agent_system_prompt_and_tools_updated/)
+[12](https://blog.bakingai.com/replit-agent-ai-coding-revolution/)
+[13](https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools)
+[14](https://www.eesel.ai/pt/blog/replit-ai)
+[15](https://beyondthepixel.studio/saas-signup-flows/)
+[16](https://replit.com/discover/replit-vs-lovable)
+[17](https://replit.com/ai)
+[18](https://www.eleken.co/blog-posts/sign-up-flow)
+[19](https://refine.dev/blog/replit-ai-agent/)
+[20](https://www.youtube.com/watch?v=IIFb08rLpOg)
+[21](https://dev.to/aaronksaunders/the-true-cost-of-an-ai-engineer-a-deep-dive-into-replit-agent-vs-lovabledev-2djh)
