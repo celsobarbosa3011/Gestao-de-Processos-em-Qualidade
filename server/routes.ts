@@ -26,6 +26,7 @@ import {
   updateUnitSchema
 } from "@shared/schema";
 import { fromError } from "zod-validation-error";
+import { z } from "zod";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -152,6 +153,74 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Self-registration endpoint (public - for new users to create their own account)
+  // SECURITY: Only accepts name, email, password, confirmPassword - all other fields are set securely by the server
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      // Only extract allowed fields - ignore any attempt to set role, status, etc.
+      const { name, email, password, confirmPassword } = req.body;
+      
+      // Validate using Zod schema for security
+      const registerSchema = z.object({
+        name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+        email: z.string().email("Email inválido"),
+        password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+        confirmPassword: z.string().min(1, "Confirmação de senha obrigatória"),
+      }).refine((data) => data.password === data.confirmPassword, {
+        message: "As senhas não coincidem",
+        path: ["confirmPassword"],
+      });
+      
+      const validation = registerSchema.safeParse({ name, email, password, confirmPassword });
+      if (!validation.success) {
+        const validationError = fromError(validation.error);
+        return res.status(400).json({ error: validationError.toString() });
+      }
+      
+      const validatedData = validation.data;
+      const sanitizedEmail = validatedData.email.trim().toLowerCase();
+      
+      // Check if email already exists
+      const existingProfile = await storage.getProfileByEmail(sanitizedEmail);
+      if (existingProfile) {
+        return res.status(409).json({ error: "Este email já está cadastrado" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await hashPassword(validatedData.password);
+      
+      // Create profile with SECURE defaults - never trust client input for sensitive fields
+      const newProfile = await storage.createProfile({
+        name: validatedData.name.trim(),
+        email: sanitizedEmail,
+        password: hashedPassword,
+        role: 'user', // SECURITY: Always set to 'user' - never allow client to set this
+        unit: 'pendente', // Will be set when completing profile
+        status: 'active', // SECURITY: Always set to 'active' - never allow client to set this
+        profileCompleted: false, // Must complete profile
+        mustChangePassword: false, // User created their own password
+      });
+      
+      // Generate JWT token for auto-login
+      const token = generateToken({
+        userId: newProfile.id,
+        email: newProfile.email,
+        role: newProfile.role,
+        mustChangePassword: false,
+      });
+      
+      // Don't send password back
+      const { password: _, provisionalPassword: __, ...profileWithoutPassword } = newProfile;
+      res.status(201).json({
+        ...profileWithoutPassword,
+        token,
+      });
+    } catch (error: any) {
+      console.error('[auth] Registration error:', error);
+      res.status(500).json({ error: "Erro ao criar conta. Tente novamente." });
     }
   });
 

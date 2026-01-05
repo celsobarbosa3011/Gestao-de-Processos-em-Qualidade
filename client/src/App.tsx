@@ -22,6 +22,7 @@ import AdminPermissionsPage from "@/pages/admin/permissions";
 import CalendarPage from "@/pages/calendar";
 import TimelinePage from "@/pages/timeline";
 import ProfileCompletionPage from "@/pages/profile-completion";
+import CompleteProfilePage from "@/pages/complete-profile";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { useStore } from "@/lib/store";
 import { Loader2 } from "lucide-react";
@@ -52,12 +53,22 @@ function Router() {
     return <AuthPage />;
   }
 
-  if (currentUser.mustChangePassword && !currentUser.profileCompleted) {
+  // Users who need to change password (from provisional password flow)
+  if (currentUser.mustChangePassword) {
     if (window.location.pathname !== "/profile-completion") {
       window.location.href = "/profile-completion";
       return null;
     }
     return <ProfileCompletionPage />;
+  }
+
+  // Users who self-registered and need to complete their profile
+  if (currentUser.profileCompleted === false) {
+    if (window.location.pathname !== "/completar-perfil") {
+      window.location.href = "/completar-perfil";
+      return null;
+    }
+    return <CompleteProfilePage />;
   }
 
   return (
@@ -67,6 +78,9 @@ function Router() {
           <Redirect to="/kanban" />
         </Route>
         <Route path="/profile-completion">
+          <Redirect to="/kanban" />
+        </Route>
+        <Route path="/completar-perfil">
           <Redirect to="/kanban" />
         </Route>
         <Route path="/kanban" component={KanbanPage} />

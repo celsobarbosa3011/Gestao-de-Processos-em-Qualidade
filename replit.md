@@ -52,6 +52,10 @@ Preferred communication style: Simple, everyday language.
 - Session state managed client-side via Zustand persist
 - No external auth providers currently integrated
 - Role field in profiles table controls admin vs user access
+- **Self-registration flow**: Users can create their own accounts via the "Criar conta" tab on the login page
+  - Registration creates a minimal profile with `profileCompleted: false` and `unit: 'pendente'`
+  - After first login, users are redirected to `/completar-perfil` to complete their profile data
+  - The flow preserves the existing admin-created user flow with provisional passwords
 
 ### Real-time Communication
 - WebSocket server at `/ws` for real-time updates
