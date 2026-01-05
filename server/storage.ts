@@ -915,6 +915,76 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(schema.priorities).where(eq(schema.priorities.id, id)).returning();
     return result.length > 0;
   }
+
+  // Initialize database with default admin user if empty
+  async initializeDefaultData(): Promise<void> {
+    try {
+      // Check if any profiles exist
+      const existingProfiles = await this.getAllProfiles();
+      
+      if (existingProfiles.length === 0) {
+        console.log('[init] No users found in database, creating default admin...');
+        
+        // Import hashPassword dynamically to avoid circular dependencies
+        const { hashPassword } = await import('./password');
+        const hashedPassword = await hashPassword('admin123');
+        
+        // Create default admin user
+        await this.createProfile({
+          name: 'Administrador',
+          email: 'admin@mediflow.com',
+          password: hashedPassword,
+          role: 'admin',
+          unit: 'Administração Central',
+          status: 'active',
+        });
+        
+        console.log('[init] Default admin created: admin@mediflow.com / admin123');
+      }
+
+      // Check if default priorities exist
+      const existingPriorities = await this.getAllPriorities();
+      if (existingPriorities.length === 0) {
+        console.log('[init] Creating default priorities...');
+        await this.createPriority({ name: 'Baixa', color: '#22c55e', order: 1 });
+        await this.createPriority({ name: 'Média', color: '#eab308', order: 2 });
+        await this.createPriority({ name: 'Alta', color: '#f97316', order: 3 });
+        await this.createPriority({ name: 'Crítica', color: '#ef4444', order: 4 });
+        console.log('[init] Default priorities created');
+      }
+
+      // Check if default process types exist
+      const existingTypes = await this.getAllProcessTypes();
+      if (existingTypes.length === 0) {
+        console.log('[init] Creating default process types...');
+        await this.createProcessType({ name: 'Administrativo', description: 'Processos administrativos gerais', color: '#3b82f6' });
+        await this.createProcessType({ name: 'Compras', description: 'Processos de compras e aquisições', color: '#22c55e' });
+        await this.createProcessType({ name: 'Jurídico', description: 'Processos jurídicos e legais', color: '#8b5cf6' });
+        await this.createProcessType({ name: 'Financeiro', description: 'Processos financeiros', color: '#f59e0b' });
+        console.log('[init] Default process types created');
+      }
+
+      // Initialize default branding if not exists
+      try {
+        const branding = await this.getBrandingConfig();
+        if (!branding || !branding.appName) {
+          console.log('[init] Setting up default branding...');
+        }
+      } catch (e) {
+        // Branding will be created by getBrandingConfig if not exists
+      }
+
+      // Initialize default alert settings if not exists
+      try {
+        await this.getAlertSettings();
+      } catch (e) {
+        // Alert settings will be created if not exists
+      }
+
+    } catch (error) {
+      console.error('[init] Error initializing default data:', error);
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { wsManager } from "./websocket";
+import { storage } from "./storage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -74,6 +75,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Initialize default data (creates admin user if database is empty)
+  await storage.initializeDefaultData();
+  
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
