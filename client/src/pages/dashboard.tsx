@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { DashboardWidget, Process, ProcessEvent } from "@shared/schema";
+import { getPriorityColor, getPriorityHexColor } from "@/lib/priority-colors";
 
 const WIDGET_TYPES = [
   { value: 'process_count', label: 'Total de Processos', description: 'Número total de processos' },
@@ -265,13 +266,18 @@ function WidgetRenderer({ widget, processes, events, alertSettings, cfdChartData
             ) : (
               <div className="space-y-2">
                 {recentProcesses.map(p => (
-                  <div key={p.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg" data-testid={`widget-recent-process-${p.id}`}>
+                  <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border-l-4 bg-card shadow-sm hover:shadow-md transition-shadow" style={{ borderLeftColor: getPriorityHexColor(p.priority) }} data-testid={`widget-recent-process-${p.id}`}>
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-sm truncate">{p.title}</div>
                       <div className="text-xs text-muted-foreground">#{p.id} • {p.unit}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground ml-2 whitespace-nowrap">
-                      {format(new Date(p.createdAt), 'dd/MM')}
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getPriorityColor(p.priority)}`}>
+                        {p.priority}
+                      </span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(p.createdAt), 'dd/MM')}
+                      </span>
                     </div>
                   </div>
                 ))}

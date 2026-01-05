@@ -47,8 +47,8 @@
 }
 
 :root {
-  /* Clean, Medical/Admin Blue-Teal Theme */
-  --background: 210 40% 98%; /* Soft cool white */
+  /* Modern Healthcare Theme - Vibrant but Professional */
+  --background: 210 30% 98%; /* Soft warm white */
   --foreground: 222 47% 11%; /* Deep slate */
 
   --card: 0 0% 100%;
@@ -57,41 +57,41 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
 
-  --primary: 176 61% 19%; /* Teal 900 - Professional, solid */
-  --primary-foreground: 210 40% 98%;
+  --primary: 199 89% 48%; /* Vibrant Sky Blue - Modern healthcare */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 40% 96.1%; /* Slate 100 */
+  --secondary: 210 40% 96.1%; /* Soft gray */
   --secondary-foreground: 222 47% 11.2%;
 
   --muted: 210 40% 96.1%;
   --muted-foreground: 215.4 16.3% 46.9%;
 
-  --accent: 175 40% 96%; /* Very light teal */
-  --accent-foreground: 176 61% 19%;
+  --accent: 172 66% 50%; /* Teal accent for highlights */
+  --accent-foreground: 0 0% 100%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 176 61% 19%;
+  --ring: 199 89% 48%;
 
-  --radius: 0.5rem;
+  --radius: 0.625rem;
 
-  --chart-1: 176 61% 19%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
+  --chart-1: 199 89% 48%; /* Sky Blue */
+  --chart-2: 172 66% 50%; /* Teal */
+  --chart-3: 262 83% 58%; /* Purple */
+  --chart-4: 25 95% 53%; /* Orange */
+  --chart-5: 142 71% 45%; /* Emerald */
 
-  --sidebar: 210 40% 98%;
+  --sidebar: 220 20% 97%;
   --sidebar-foreground: 222 47% 11%;
-  --sidebar-primary: 176 61% 19%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 175 40% 96%;
-  --sidebar-accent-foreground: 176 61% 19%;
+  --sidebar-primary: 199 89% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 199 89% 95%;
+  --sidebar-accent-foreground: 199 89% 38%;
   --sidebar-border: 220 13% 91%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-ring: 199 89% 48%;
 }
 
 .dark {
@@ -146,4 +146,39 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+@layer components {
+  /* Enhanced button styles */
+  .btn-gradient-primary {
+    @apply bg-gradient-to-r from-primary to-accent text-white font-medium shadow-md hover:shadow-lg transition-all duration-200;
+  }
+  
+  /* Card enhancements */
+  .card-elevated {
+    @apply bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  
+  /* Priority badge styles */
+  .priority-badge {
+    @apply px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+  
+  /* Colored borders for cards */
+  .border-priority-low { border-left-color: #22C55E; }
+  .border-priority-medium { border-left-color: #EAB308; }
+  .border-priority-high { border-left-color: #F97316; }
+  .border-priority-critical { border-left-color: #EF4444; }
+  
+  /* Soft gradient backgrounds */
+  .bg-gradient-soft {
+    @apply bg-gradient-to-br from-background via-background to-accent/5;
+  }
+  
+  /* Status colors */
+  .status-new { @apply bg-slate-100 text-slate-700 border-slate-200; }
+  .status-analysis { @apply bg-blue-50 text-blue-700 border-blue-200; }
+  .status-pending { @apply bg-amber-50 text-amber-700 border-amber-200; }
+  .status-approved { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+  .status-rejected { @apply bg-red-50 text-red-700 border-red-200; }
 }
