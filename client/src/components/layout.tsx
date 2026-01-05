@@ -79,44 +79,42 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         
         <nav className="space-y-1">
           <Accordion type="multiple" defaultValue={["operational", "management", "admin"]} className="w-full space-y-2">
-            {currentUser.role !== 'admin' && (
-              <AccordionItem value="operational" className="border-none">
-                <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Operacional
-                </AccordionTrigger>
-                <AccordionContent className="space-y-1 pt-1 pb-2">
-                  <Button 
-                    variant={location === '/kanban' ? 'secondary' : 'ghost'} 
-                    className="w-full justify-start gap-3 font-medium h-9"
-                    onClick={() => { setLocation('/kanban'); setIsMobileOpen(false); }}
-                    data-testid="nav-kanban"
-                  >
-                    <Kanban className="w-4 h-4" />
-                    Processos
-                  </Button>
+            <AccordionItem value="operational" className="border-none">
+              <AccordionTrigger className="hover:no-underline py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Operacional
+              </AccordionTrigger>
+              <AccordionContent className="space-y-1 pt-1 pb-2">
+                <Button 
+                  variant={location === '/kanban' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/kanban'); setIsMobileOpen(false); }}
+                  data-testid="nav-kanban"
+                >
+                  <Kanban className="w-4 h-4" />
+                  Processos
+                </Button>
 
-                  <Button 
-                    variant={location === '/calendar' ? 'secondary' : 'ghost'} 
-                    className="w-full justify-start gap-3 font-medium h-9"
-                    onClick={() => { setLocation('/calendar'); setIsMobileOpen(false); }}
-                    data-testid="nav-calendar"
-                  >
-                    <Calendar className="w-4 h-4" />
-                    Calendário
-                  </Button>
+                <Button 
+                  variant={location === '/calendar' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/calendar'); setIsMobileOpen(false); }}
+                  data-testid="nav-calendar"
+                >
+                  <Calendar className="w-4 h-4" />
+                  Calendário
+                </Button>
 
-                  <Button 
-                    variant={location === '/timeline' ? 'secondary' : 'ghost'} 
-                    className="w-full justify-start gap-3 font-medium h-9"
-                    onClick={() => { setLocation('/timeline'); setIsMobileOpen(false); }}
-                    data-testid="nav-timeline"
-                  >
-                    <GanttChart className="w-4 h-4" />
-                    Timeline
-                  </Button>
-                </AccordionContent>
-              </AccordionItem>
-            )}
+                <Button 
+                  variant={location === '/timeline' ? 'secondary' : 'ghost'} 
+                  className="w-full justify-start gap-3 font-medium h-9"
+                  onClick={() => { setLocation('/timeline'); setIsMobileOpen(false); }}
+                  data-testid="nav-timeline"
+                >
+                  <GanttChart className="w-4 h-4" />
+                  Timeline
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
 
             {currentUser.role === 'admin' && (
               <AccordionItem value="management" className="border-none">
