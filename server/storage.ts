@@ -181,7 +181,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProfileByEmail(email: string): Promise<Profile | undefined> {
-    const result = await db.select().from(schema.profiles).where(eq(schema.profiles.email, email)).limit(1);
+    // Case-insensitive email search to handle different devices/keyboards
+    const result = await db.select().from(schema.profiles).where(sql`LOWER(${schema.profiles.email}) = LOWER(${email})`).limit(1);
     return result[0];
   }
 
