@@ -226,7 +226,7 @@ export default function KanbanPage() {
 
   const renderKanbanColumns = (swimlaneProcesses: Process[], swimlaneKey: string) => {
     return (
-      <div className="flex gap-6 min-w-[1200px]">
+      <div className="flex gap-4 lg:gap-6 pb-4" style={{ minWidth: 'max-content' }}>
         {COLUMNS.map(column => {
           const columnProcesses = swimlaneProcesses.filter(p => p.status === column.id);
           const totalColumnCount = processes.filter(p => p.status === column.id).length;
@@ -237,7 +237,7 @@ export default function KanbanPage() {
           
           return (
             <div key={`${swimlaneKey}-${column.id}`} className={cn(
-              "flex-1 flex flex-col min-w-[280px] max-w-[350px] rounded-xl border",
+              "flex-1 flex flex-col w-[260px] sm:w-[280px] lg:w-[300px] flex-shrink-0 rounded-xl border",
               swimlaneGrouping === 'none' ? "h-full" : "min-h-[200px]",
               isAtLimit ? "bg-red-500/10 border-red-500/50" : 
               isNearLimit ? "bg-yellow-500/10 border-yellow-500/50" : 
@@ -319,13 +319,24 @@ export default function KanbanPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Gestão de Processos</h1>
-          <p className="text-muted-foreground mt-1">Gerencie solicitações e acompanhe o fluxo de trabalho.</p>
+      <div className="flex flex-col gap-4 mb-4 lg:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">Gestão de Processos</h1>
+            <p className="text-sm text-muted-foreground mt-1 hidden sm:block">Gerencie solicitações e acompanhe o fluxo de trabalho.</p>
+          </div>
+          <Button 
+            data-testid="button-new-process"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm w-full sm:w-auto"
+            onClick={() => setIsCreateOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Processo
+          </Button>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-           <div className="relative w-full sm:w-64">
+        
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
+           <div className="relative flex-1 sm:flex-none sm:w-64">
              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
              <Input 
                data-testid="input-search"
@@ -336,44 +347,38 @@ export default function KanbanPage() {
              />
            </div>
            
-           <Select value={swimlaneGrouping} onValueChange={(v) => setSwimlaneGrouping(v as SwimlaneGrouping)}>
-             <SelectTrigger className="w-[180px]" data-testid="select-swimlane-grouping">
-               <Layers className="w-4 h-4 mr-2" />
-               <SelectValue placeholder="Agrupar por" />
-             </SelectTrigger>
-             <SelectContent>
-               {SWIMLANE_OPTIONS.map(option => (
-                 <SelectItem key={option.value} value={option.value} data-testid={`swimlane-option-${option.value}`}>
-                   {option.label}
-                 </SelectItem>
-               ))}
-             </SelectContent>
-           </Select>
-           
-           {currentUser?.role === 'admin' && (
-             <Select value={unitFilter} onValueChange={setUnitFilter}>
-               <SelectTrigger className="w-[180px]" data-testid="select-unit-filter">
-                 <Filter className="w-4 h-4 mr-2" />
-                 <SelectValue placeholder="Filtrar Unidade" />
+           <div className="flex items-center gap-2 flex-wrap">
+             <Select value={swimlaneGrouping} onValueChange={(v) => setSwimlaneGrouping(v as SwimlaneGrouping)}>
+               <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-swimlane-grouping">
+                 <Layers className="w-4 h-4 mr-2" />
+                 <SelectValue placeholder="Agrupar por" />
                </SelectTrigger>
                <SelectContent>
-                 <SelectItem value="all">Todas Unidades</SelectItem>
-                 {units.map((unit) => (
-                   <SelectItem key={unit.id} value={unit.razaoSocial}>
-                     {unit.nomeFantasia || unit.razaoSocial}
+                 {SWIMLANE_OPTIONS.map(option => (
+                   <SelectItem key={option.value} value={option.value} data-testid={`swimlane-option-${option.value}`}>
+                     {option.label}
                    </SelectItem>
                  ))}
                </SelectContent>
              </Select>
-           )}
-           <Button 
-             data-testid="button-new-process"
-             className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-             onClick={() => setIsCreateOpen(true)}
-           >
-             <Plus className="w-4 h-4 mr-2" />
-             Novo Processo
-           </Button>
+             
+             {currentUser?.role === 'admin' && (
+               <Select value={unitFilter} onValueChange={setUnitFilter}>
+                 <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-unit-filter">
+                   <Filter className="w-4 h-4 mr-2" />
+                   <SelectValue placeholder="Filtrar Unidade" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">Todas Unidades</SelectItem>
+                   {units.map((unit) => (
+                     <SelectItem key={unit.id} value={unit.razaoSocial}>
+                       {unit.nomeFantasia || unit.razaoSocial}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             )}
+           </div>
         </div>
       </div>
 
