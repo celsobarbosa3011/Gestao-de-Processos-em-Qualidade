@@ -69,10 +69,12 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const STATUS_OPTIONS = [
+    { id: 'new', label: 'Novo', color: 'bg-slate-500' },
     { id: 'analysis', label: 'Em Análise', color: 'bg-blue-500' },
-    { id: 'pending', label: 'Pendente', color: 'bg-yellow-500' },
-    { id: 'approved', label: 'Aprovado', color: 'bg-green-500' },
-    { id: 'completed', label: 'Concluído', color: 'bg-emerald-600' },
+    { id: 'pending', label: 'Pendentes', color: 'bg-yellow-500' },
+    { id: 'approved', label: 'Aprovados', color: 'bg-green-500' },
+    { id: 'completed', label: 'Concluídos', color: 'bg-emerald-600' },
+    { id: 'rejected', label: 'Rejeitados', color: 'bg-red-500' },
   ] as const;
   
   const handleChangeStatus = (newStatus: string) => {
