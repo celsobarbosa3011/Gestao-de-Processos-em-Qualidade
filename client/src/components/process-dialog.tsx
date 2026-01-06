@@ -69,7 +69,7 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const STATUS_OPTIONS = [
-    { id: 'new', label: 'Novo', color: 'bg-slate-500' },
+    { id: 'new', label: 'Novos', color: 'bg-slate-500' },
     { id: 'analysis', label: 'Em Análise', color: 'bg-blue-500' },
     { id: 'pending', label: 'Pendentes', color: 'bg-yellow-500' },
     { id: 'approved', label: 'Aprovados', color: 'bg-green-500' },
