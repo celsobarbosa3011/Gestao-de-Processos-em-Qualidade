@@ -29,8 +29,8 @@ const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'analysis', title: 'Em Análise' },
   { id: 'pending', title: 'Pendentes' },
   { id: 'approved', title: 'Aprovados' },
-  { id: 'completed', title: 'Concluídos' },
   { id: 'rejected', title: 'Rejeitados' },
+  { id: 'completed', title: 'Concluídos' },
 ];
 
 const SWIMLANE_OPTIONS: { value: SwimlaneGrouping; label: string }[] = [
@@ -227,7 +227,7 @@ export default function KanbanPage() {
 
   const renderKanbanColumns = (swimlaneProcesses: Process[], swimlaneKey: string) => {
     return (
-      <div className="flex gap-4 lg:gap-6 pb-4" style={{ minWidth: 'max-content' }}>
+      <div className="flex gap-4 lg:gap-6 pb-4 min-w-full">
         {COLUMNS.map(column => {
           const columnProcesses = swimlaneProcesses.filter(p => p.status === column.id);
           const totalColumnCount = processes.filter(p => p.status === column.id).length;
@@ -238,7 +238,7 @@ export default function KanbanPage() {
           
           return (
             <div key={`${swimlaneKey}-${column.id}`} className={cn(
-              "flex-1 flex flex-col w-[260px] sm:w-[280px] lg:w-[300px] flex-shrink-0 rounded-xl border",
+              "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px] rounded-xl border",
               swimlaneGrouping === 'none' ? "h-full" : "min-h-[200px]",
               isAtLimit ? "bg-red-500/10 border-red-500/50" : 
               isNearLimit ? "bg-yellow-500/10 border-yellow-500/50" : 
@@ -251,11 +251,11 @@ export default function KanbanPage() {
                 "bg-secondary/50 border-border/50"
               )}>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm uppercase tracking-wide text-foreground/80">{column.title}</h3>
+                  <h3 className="font-semibold text-[10px] sm:text-xs uppercase tracking-wide text-foreground/80 truncate">{column.title}</h3>
                   <span 
                     data-testid={swimlaneKey === 'all' ? `count-${column.id}` : `count-${swimlaneKey}-${column.id}`}
                     className={cn(
-                      "text-xs font-bold px-2 py-0.5 rounded-full border shadow-sm",
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full border shadow-sm",
                       isAtLimit ? "bg-red-500 text-white border-red-600" :
                       isNearLimit ? "bg-yellow-500 text-white border-yellow-600" :
                       "bg-background text-foreground"
@@ -263,18 +263,6 @@ export default function KanbanPage() {
                   >
                     {columnProcesses.length}{wipLimit?.enabled && swimlaneKey === 'all' ? `/${wipLimit.maxItems}` : ''}
                   </span>
-                  {isAtLimit && swimlaneKey === 'all' && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Limite WIP atingido</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
                 </div>
               </div>
               
@@ -285,7 +273,7 @@ export default function KanbanPage() {
                     ref={provided.innerRef}
                     data-testid={swimlaneKey === 'all' ? `droppable-${column.id}` : `droppable-${swimlaneKey}-${column.id}`}
                     className={cn(
-                      "flex-1 p-3 overflow-y-auto space-y-3 transition-colors rounded-b-xl scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40",
+                      "flex-1 p-2 overflow-y-auto space-y-2 transition-colors rounded-b-xl scrollbar-none",
                       snapshot.isDraggingOver ? "bg-primary/5" : ""
                     )}
                   >
