@@ -397,6 +397,7 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.mp3,.wav,.mp4,.avi,.zip,.rar"
                 />
                 <Button 
                   data-testid="button-upload-attachment"
