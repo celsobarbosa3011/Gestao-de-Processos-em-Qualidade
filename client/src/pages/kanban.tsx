@@ -227,7 +227,7 @@ export default function KanbanPage() {
 
   const renderKanbanColumns = (swimlaneProcesses: Process[], swimlaneKey: string) => {
     return (
-      <div className="flex gap-4 lg:gap-6 pb-4 min-w-full">
+      <div className="flex flex-col md:flex-row gap-4 lg:gap-6 pb-4 md:min-w-full overflow-x-auto md:overflow-x-visible">
         {COLUMNS.map(column => {
           const columnProcesses = swimlaneProcesses.filter(p => p.status === column.id);
           const totalColumnCount = processes.filter(p => p.status === column.id).length;
@@ -238,24 +238,24 @@ export default function KanbanPage() {
           
           return (
             <div key={`${swimlaneKey}-${column.id}`} className={cn(
-              "flex-1 flex flex-col min-w-[180px] lg:min-w-[200px] rounded-xl border",
-              swimlaneGrouping === 'none' ? "h-full" : "min-h-[200px]",
+              "flex-1 flex flex-col min-w-full md:min-w-[150px] lg:min-w-[180px] rounded-xl border",
+              swimlaneGrouping === 'none' ? "h-full" : "min-h-[150px] md:min-h-[200px]",
               isAtLimit ? "bg-red-500/10 border-red-500/50" : 
               isNearLimit ? "bg-yellow-500/10 border-yellow-500/50" : 
               "bg-secondary/30 border-border/50"
             )}>
               <div className={cn(
-                "p-4 border-b flex items-center justify-between rounded-t-xl sticky top-0 z-10 backdrop-blur-sm",
+                "p-3 md:p-4 border-b flex items-center justify-between rounded-t-xl sticky top-0 z-10 backdrop-blur-sm",
                 isAtLimit ? "bg-red-500/20 border-red-500/50" :
                 isNearLimit ? "bg-yellow-500/20 border-yellow-500/50" :
                 "bg-secondary/50 border-border/50"
               )}>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-[10px] sm:text-xs uppercase tracking-wide text-foreground/80 truncate">{column.title}</h3>
+                <div className="flex items-center gap-1.5 md:gap-2 overflow-hidden">
+                  <h3 className="font-semibold text-[10px] sm:text-[11px] md:text-xs uppercase tracking-wide text-foreground/80 truncate">{column.title}</h3>
                   <span 
                     data-testid={swimlaneKey === 'all' ? `count-${column.id}` : `count-${swimlaneKey}-${column.id}`}
                     className={cn(
-                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full border shadow-sm",
+                      "text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded-full border shadow-sm",
                       isAtLimit ? "bg-red-500 text-white border-red-600" :
                       isNearLimit ? "bg-yellow-500 text-white border-yellow-600" :
                       "bg-background text-foreground"
@@ -372,9 +372,9 @@ export default function KanbanPage() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex-1 overflow-auto pb-4">
+        <div className="flex-1 overflow-auto pb-4 px-2 md:px-0">
           {swimlaneGrouping === 'none' ? (
-            <div className="h-full overflow-x-auto">
+            <div className="h-full md:overflow-x-auto">
               {renderKanbanColumns(visibleProcesses, 'all')}
             </div>
           ) : (
@@ -390,34 +390,34 @@ export default function KanbanPage() {
                     onOpenChange={() => toggleSwimlane(swimlane.key)}
                     data-testid={`swimlane-${swimlane.key}`}
                   >
-                    <div className="border rounded-lg bg-background/50">
+                    <div className="border rounded-lg bg-background/50 overflow-hidden">
                       <CollapsibleTrigger asChild>
                         <Button
                           variant="ghost"
-                          className="w-full justify-start p-4 h-auto hover:bg-muted/50"
+                          className="w-full justify-start p-3 md:p-4 h-auto hover:bg-muted/50"
                           data-testid={`swimlane-toggle-${swimlane.key}`}
                         >
-                          <div className="flex items-center gap-3 w-full">
+                          <div className="flex items-center gap-2 md:gap-3 w-full overflow-hidden">
                             {isCollapsed ? (
-                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                              <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
                             ) : (
-                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                              <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
                             )}
-                            <span className="font-semibold text-lg" data-testid={`swimlane-label-${swimlane.key}`}>
+                            <span className="font-semibold text-base md:text-lg truncate" data-testid={`swimlane-label-${swimlane.key}`}>
                               {swimlane.label}
                             </span>
                             <span 
-                              className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded-full"
+                              className="text-[10px] md:text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full flex-shrink-0"
                               data-testid={`swimlane-count-${swimlane.key}`}
                             >
-                              {processCount} {processCount === 1 ? 'processo' : 'processos'}
+                              {processCount}
                             </span>
                           </div>
                         </Button>
                       </CollapsibleTrigger>
                       
                       <CollapsibleContent>
-                        <div className="p-4 pt-0 overflow-x-auto">
+                        <div className="p-2 md:p-4 pt-0 md:overflow-x-auto">
                           {renderKanbanColumns(swimlane.processes, swimlane.key)}
                         </div>
                       </CollapsibleContent>
