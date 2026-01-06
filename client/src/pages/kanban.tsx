@@ -21,7 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Process, Profile } from "@shared/schema";
 
-type ProcessStatus = 'new' | 'analysis' | 'pending' | 'approved' | 'rejected';
+type ProcessStatus = 'new' | 'analysis' | 'pending' | 'approved' | 'completed' | 'rejected';
 type SwimlaneGrouping = 'none' | 'unit' | 'type' | 'priority' | 'responsible';
 
 const COLUMNS: { id: ProcessStatus; title: string }[] = [
@@ -29,6 +29,7 @@ const COLUMNS: { id: ProcessStatus; title: string }[] = [
   { id: 'analysis', title: 'Em Análise' },
   { id: 'pending', title: 'Pendentes' },
   { id: 'approved', title: 'Aprovados' },
+  { id: 'completed', title: 'Concluídos' },
   { id: 'rejected', title: 'Rejeitados' },
 ];
 

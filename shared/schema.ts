@@ -98,7 +98,7 @@ export const processes = pgTable("processes", {
   unit: text("unit").notNull(),
   type: text("type").notNull(),
   priority: text("priority").notNull().default('medium'), // low, medium, high, critical
-  status: text("status").notNull().default('new'), // new, analysis, pending, approved, rejected
+  status: text("status").notNull().default('new'), // new, analysis, pending, approved, completed, rejected
   responsibleId: varchar("responsible_id").references(() => profiles.id),
   deadline: timestamp("deadline"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -258,7 +258,7 @@ export type ProcessToLabel = typeof processToLabels.$inferSelect;
 // WIP (Work In Progress) Limits per Column
 export const wipLimits = pgTable("wip_limits", {
   id: serial("id").primaryKey(),
-  columnId: text("column_id").notNull().unique(), // 'new', 'analysis', 'pending', 'approved', 'rejected'
+  columnId: text("column_id").notNull().unique(), // 'new', 'analysis', 'pending', 'approved', 'completed', 'rejected'
   maxItems: integer("max_items").notNull().default(10),
   enabled: boolean("enabled").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -12,16 +12,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Process } from "@shared/schema";
 import { useStore } from "@/lib/store";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, Clock, User, MessageSquare, Send, CheckSquare, Paperclip, Tag, Plus, X, Upload, FileText, Image, Trash2 } from "lucide-react";
+import { Calendar, Clock, User, MessageSquare, Send, CheckSquare, Paperclip, Tag, Plus, X, Upload, FileText, Image, Trash2, ArrowRight, UserPlus, Settings2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { useProfiles } from "@/hooks/use-profiles";
 import { useProcessComments, useCreateComment } from "@/hooks/use-comments";
 import { useProcessEvents } from "@/hooks/use-events";
 import { useProcessChecklists, useCreateChecklist, useUpdateChecklist, useDeleteChecklist, useProcessAttachments, useUploadAttachment, useDeleteAttachment, useAllLabels, useProcessLabels, useAddLabelToProcess, useRemoveLabelFromProcess, useCreateLabel, useTimeEntries, useTotalTime, useCreateTimeEntry, useDeleteTimeEntry } from "@/hooks/use-process-extras";
+import { useUpdateProcess } from "@/hooks/use-processes";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 
@@ -55,6 +57,7 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const { data: totalTimeData } = useTotalTime(process?.id || null);
   const createTimeEntry = useCreateTimeEntry();
   const deleteTimeEntry = useDeleteTimeEntry();
+  const updateProcess = useUpdateProcess();
   
   const [commentText, setCommentText] = useState("");
   const [newChecklistText, setNewChecklistText] = useState("");
@@ -62,7 +65,32 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const [newLabelColor, setNewLabelColor] = useState("#6B7280");
   const [newTimeDescription, setNewTimeDescription] = useState("");
   const [newTimeMinutes, setNewTimeMinutes] = useState("");
+  const [selectedResponsible, setSelectedResponsible] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const STATUS_OPTIONS = [
+    { id: 'analysis', label: 'Em Análise', color: 'bg-blue-500' },
+    { id: 'pending', label: 'Pendente', color: 'bg-yellow-500' },
+    { id: 'approved', label: 'Aprovado', color: 'bg-green-500' },
+    { id: 'completed', label: 'Concluído', color: 'bg-emerald-600' },
+  ] as const;
+  
+  const handleChangeStatus = (newStatus: string) => {
+    if (!process) return;
+    updateProcess.mutate({ 
+      id: process.id, 
+      updates: { status: newStatus } 
+    });
+  };
+  
+  const handleForwardToUser = () => {
+    if (!process || !selectedResponsible) return;
+    updateProcess.mutate({ 
+      id: process.id, 
+      updates: { responsibleId: selectedResponsible } 
+    });
+    setSelectedResponsible("");
+  };
   
   const formatMinutesToTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -230,6 +258,10 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                 </TabsTrigger>
                 <TabsTrigger value="history" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3" data-testid="tab-history">
                   Histórico ({events.length})
+                </TabsTrigger>
+                <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3" data-testid="tab-actions">
+                  <Settings2 className="w-3.5 h-3.5 mr-1" />
+                  Ações
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -608,6 +640,76 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                    );
                  })}
                </div>
+            </TabsContent>
+
+            <TabsContent value="actions" className="flex-1 overflow-y-auto p-6 mt-0">
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4" />
+                    Encaminhar para Status
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {STATUS_OPTIONS.map((status) => (
+                      <Button
+                        key={status.id}
+                        variant={process.status === status.id ? "default" : "outline"}
+                        className="justify-start gap-2"
+                        onClick={() => handleChangeStatus(status.id)}
+                        disabled={process.status === status.id || updateProcess.isPending}
+                        data-testid={`button-status-${status.id}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${status.color}`} />
+                        {status.label}
+                        {process.status === status.id && (
+                          <Badge variant="secondary" className="ml-auto text-xs">Atual</Badge>
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-6 space-y-3">
+                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Encaminhar para Usuário
+                  </h3>
+                  <div className="flex gap-3">
+                    <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                      <SelectTrigger className="flex-1" data-testid="select-forward-user">
+                        <SelectValue placeholder="Selecione um usuário..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {profiles
+                          .filter(p => p.status === 'active' && p.id !== process.responsibleId)
+                          .map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id}>
+                              <div className="flex items-center gap-2">
+                                <span>{profile.name}</span>
+                                {profile.role === 'admin' && (
+                                  <Badge variant="secondary" className="text-xs">Admin</Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={handleForwardToUser}
+                      disabled={!selectedResponsible || updateProcess.isPending}
+                      data-testid="button-forward-user"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Encaminhar
+                    </Button>
+                  </div>
+                  {responsible && (
+                    <p className="text-sm text-muted-foreground">
+                      Responsável atual: <span className="font-medium">{responsible.name}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
