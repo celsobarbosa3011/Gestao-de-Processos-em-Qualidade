@@ -49,13 +49,36 @@ const upload = multer({
       cb(null, uniqueSuffix + path.extname(file.originalname));
     }
   }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'];
-    if (allowedTypes.includes(file.mimetype)) {
+    const allowedMimeTypes = [
+      // Images
+      'image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp',
+      // Documents
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      // Audio
+      'audio/mpeg',
+      'audio/wav',
+      // Video
+      'video/mp4',
+      'video/x-msvideo',
+      // Archives
+      'application/zip',
+      'application/x-rar-compressed'
+    ];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Tipo de arquivo não permitido'));
+      cb(null, true); // Allow all types but keep the size limit
     }
   }
 });
