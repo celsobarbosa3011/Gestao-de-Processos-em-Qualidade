@@ -428,6 +428,25 @@ export async function getChatConversation(userId: string): Promise<ChatMessage[]
   return response.json();
 }
 
+export interface ChatConversationSummary {
+  otherUserId: string;
+  otherUserName: string;
+  otherUserUnit: string;
+  lastMessage: string;
+  lastMessageSenderId: string;
+  lastMessageSenderName: string;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export async function getUserConversations(): Promise<ChatConversationSummary[]> {
+  const response = await fetch(`${API_BASE}/chat/conversations`, {
+    headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to fetch conversations");
+  return response.json();
+}
+
 export async function sendChatMessage(receiverId: string | null, message: string): Promise<ChatMessage> {
   const response = await fetch(`${API_BASE}/chat/messages`, {
     method: "POST",

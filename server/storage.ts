@@ -127,6 +127,16 @@ export interface IStorage {
   // Chat methods
   getChatMessages(userId: string): Promise<ChatMessage[]>;
   getChatConversation(userId1: string, userId2: string): Promise<ChatMessage[]>;
+  getUserConversations(userId: string): Promise<{
+    otherUserId: string;
+    otherUserName: string;
+    otherUserUnit: string;
+    lastMessage: string;
+    lastMessageSenderId: string;
+    lastMessageSenderName: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }[]>;
   sendChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   markMessagesAsRead(senderId: string, receiverId: string): Promise<void>;
   getUnreadCount(userId: string): Promise<number>;
@@ -470,6 +480,67 @@ export class DatabaseStorage implements IStorage {
         eq(schema.chatMessages.isRead, false)
       ));
     return result[0]?.count || 0;
+  }
+
+  async getUserConversations(userId: string): Promise<{
+    otherUserId: string;
+    otherUserName: string;
+    otherUserUnit: string;
+    lastMessage: string;
+    lastMessageSenderId: string;
+    lastMessageSenderName: string;
+    lastMessageAt: Date;
+    unreadCount: number;
+  }[]> {
+    // Get all messages where the user is involved (as sender or receiver)
+    const messages = await db.select()
+      .from(schema.chatMessages)
+      .where(sql`(${schema.chatMessages.senderId} = ${userId} OR ${schema.chatMessages.receiverId} = ${userId}) AND ${schema.chatMessages.receiverId} IS NOT NULL`)
+      .orderBy(desc(schema.chatMessages.createdAt));
+
+    // Get all profiles for name lookup
+    const profiles = await db.select().from(schema.profiles);
+    const profileMap = new Map(profiles.map(p => [p.id, p]));
+
+    // Group by conversation partner and get latest message
+    const conversationMap = new Map<string, {
+      otherUserId: string;
+      otherUserName: string;
+      otherUserUnit: string;
+      lastMessage: string;
+      lastMessageSenderId: string;
+      lastMessageSenderName: string;
+      lastMessageAt: Date;
+      unreadCount: number;
+    }>();
+
+    for (const msg of messages) {
+      const otherUserId = msg.senderId === userId ? msg.receiverId! : msg.senderId;
+      
+      if (!conversationMap.has(otherUserId)) {
+        const otherProfile = profileMap.get(otherUserId);
+        const senderProfile = profileMap.get(msg.senderId);
+        
+        conversationMap.set(otherUserId, {
+          otherUserId,
+          otherUserName: otherProfile?.name || 'Usuário Desconhecido',
+          otherUserUnit: otherProfile?.unit || '',
+          lastMessage: msg.message,
+          lastMessageSenderId: msg.senderId,
+          lastMessageSenderName: senderProfile?.name || 'Usuário Desconhecido',
+          lastMessageAt: msg.createdAt,
+          unreadCount: 0,
+        });
+      }
+
+      // Count unread messages from the other user
+      if (msg.senderId === otherUserId && msg.receiverId === userId && !msg.isRead) {
+        const conv = conversationMap.get(otherUserId)!;
+        conv.unreadCount++;
+      }
+    }
+
+    return Array.from(conversationMap.values());
   }
 
   // Permission methods

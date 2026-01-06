@@ -1052,6 +1052,16 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/chat/conversations", authMiddleware, async (req, res) => {
+    try {
+      const userId = req.auth!.userId;
+      const conversations = await storage.getUserConversations(userId);
+      res.json(conversations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch conversations" });
+    }
+  });
+
   app.get("/api/chat/conversation/:userId", authMiddleware, async (req, res) => {
     try {
       const currentUserId = req.auth!.userId;
