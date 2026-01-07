@@ -34,6 +34,7 @@ import { generateToken, authMiddleware, adminMiddleware } from "./auth";
 import { hashPassword, verifyPassword, isHashed } from "./password";
 import { stripHtml } from "./sanitize";
 import { wsManager } from "./websocket";
+import { registerObjectStorageRoutes, ObjectStorageService } from "./replit_integrations/object_storage";
 import { sendProvisionalPasswordEmail } from "./email";
 
 const uploadDir = path.join(process.cwd(), "client/public/uploads");
@@ -87,6 +88,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Register Object Storage routes for persistent file storage
+  registerObjectStorageRoutes(app);
+  const objectStorageService = new ObjectStorageService();
   
   // ===== UPLOAD ROUTES =====
   app.post("/api/upload", upload.single('file'), (req, res) => {
@@ -946,6 +951,17 @@ export async function registerRoutes(
   app.get("/api/processes/:processId/attachments", authMiddleware, async (req, res) => {
     try {
       const processId = parseInt(req.params.processId);
+      const userId = req.auth?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, processId)) {
+        return res.status(403).json({ error: "Access denied to this process" });
+      }
+
       const attachments = await storage.getAttachmentsByProcess(processId);
       res.json(attachments);
     } catch (error) {
@@ -953,6 +969,148 @@ export async function registerRoutes(
     }
   });
 
+  // Helper function to check if user can access a process
+  async function canAccessProcess(userId: string, processId: number): Promise<boolean> {
+    const user = await storage.getProfile(userId);
+    if (!user) return false;
+    
+    // Admin can access all processes
+    if (user.role === 'admin') return true;
+    
+    const process = await storage.getProcess(processId);
+    if (!process) return false;
+    
+    // User can access if they belong to the same unit or are responsible
+    return process.unit === user.unit || process.responsibleId === userId;
+  }
+
+  // Request presigned URL for attachment upload (Object Storage)
+  app.post("/api/processes/:processId/attachments/request-url", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const userId = req.auth?.userId;
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, processId)) {
+        return res.status(403).json({ error: "Access denied to this process" });
+      }
+
+      const { name, size, contentType } = req.body;
+      if (!name) {
+        return res.status(400).json({ error: "Missing required field: name" });
+      }
+
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+
+      res.json({
+        uploadURL,
+        objectPath,
+        metadata: { name, size, contentType },
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Save attachment metadata after successful upload to Object Storage
+  app.post("/api/processes/:processId/attachments/save", authMiddleware, async (req, res) => {
+    try {
+      const processId = parseInt(req.params.processId);
+      const userId = req.auth?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, processId)) {
+        return res.status(403).json({ error: "Access denied to this process" });
+      }
+
+      const { objectPath, fileName, fileType, fileSize } = req.body;
+      
+      if (!objectPath || !fileName) {
+        return res.status(400).json({ error: "Missing required fields: objectPath, fileName" });
+      }
+
+      // Validate that file exists in Object Storage before saving metadata
+      try {
+        const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+        
+        // Set private ACL policy - files are accessed only via authenticated endpoint
+        await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+          owner: userId,
+          visibility: "private",
+        });
+      } catch (fileError) {
+        console.error("File not found in Object Storage:", fileError);
+        return res.status(400).json({ error: "File upload not confirmed. Please try again." });
+      }
+
+      const attachment = await storage.createAttachment({
+        processId,
+        userId,
+        fileName,
+        fileUrl: objectPath,
+        fileType: fileType || "application/octet-stream",
+        fileSize: fileSize || 0,
+      });
+      res.json(attachment);
+    } catch (error) {
+      console.error("Error saving attachment:", error);
+      res.status(500).json({ error: "Failed to save attachment" });
+    }
+  });
+
+  // Authenticated download endpoint for attachments stored in Object Storage
+  app.get("/api/attachments/:id/download", authMiddleware, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.auth?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const attachment = await storage.getAttachment(id);
+      if (!attachment) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, attachment.processId)) {
+        return res.status(403).json({ error: "Access denied to this attachment" });
+      }
+
+      // Handle Object Storage files
+      if (attachment.fileUrl.startsWith("/objects/")) {
+        try {
+          const objectFile = await objectStorageService.getObjectEntityFile(attachment.fileUrl);
+          
+          // Set content disposition for download
+          res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(attachment.fileName)}"`);
+          
+          await objectStorageService.downloadObject(objectFile, res);
+        } catch (error) {
+          console.error("Error downloading from Object Storage:", error);
+          return res.status(404).json({ error: "File not found in storage" });
+        }
+      } else {
+        // Legacy local file - redirect to static path
+        return res.redirect(attachment.fileUrl);
+      }
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      res.status(500).json({ error: "Failed to download attachment" });
+    }
+  });
+
+  // Legacy upload route (fallback for local storage - kept for compatibility)
   app.post("/api/processes/:processId/attachments", authMiddleware, upload.single('file'), async (req, res) => {
     try {
       const processId = parseInt(req.params.processId);
@@ -964,6 +1122,11 @@ export async function registerRoutes(
       
       if (!userId) {
         return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, processId)) {
+        return res.status(403).json({ error: "Access denied to this process" });
       }
       
       const attachment = await storage.createAttachment({
@@ -983,6 +1146,22 @@ export async function registerRoutes(
   app.delete("/api/attachments/:id", authMiddleware, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      const userId = req.auth?.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const attachment = await storage.getAttachment(id);
+      if (!attachment) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+
+      // Check process access authorization
+      if (!await canAccessProcess(userId, attachment.processId)) {
+        return res.status(403).json({ error: "Access denied to delete this attachment" });
+      }
+
       const deleted = await storage.deleteAttachment(id);
       if (!deleted) {
         return res.status(404).json({ error: "Attachment not found" });

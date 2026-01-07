@@ -113,6 +113,7 @@ export interface IStorage {
   
   // Attachment methods
   getAttachmentsByProcess(processId: number): Promise<ProcessAttachment[]>;
+  getAttachment(id: number): Promise<ProcessAttachment | null>;
   createAttachment(attachment: InsertProcessAttachment): Promise<ProcessAttachment>;
   deleteAttachment(id: number): Promise<boolean>;
   
@@ -382,6 +383,13 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(schema.processAttachments)
       .where(eq(schema.processAttachments.processId, processId))
       .orderBy(desc(schema.processAttachments.createdAt));
+  }
+
+  async getAttachment(id: number): Promise<ProcessAttachment | null> {
+    const result = await db.select().from(schema.processAttachments)
+      .where(eq(schema.processAttachments.id, id))
+      .limit(1);
+    return result[0] || null;
   }
 
   async createAttachment(attachment: InsertProcessAttachment): Promise<ProcessAttachment> {

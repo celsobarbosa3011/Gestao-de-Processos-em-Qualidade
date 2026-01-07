@@ -176,6 +176,50 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
     }
   };
 
+  const handleDownloadAttachment = async (attachmentId: number, fileName: string, fileUrl: string) => {
+    try {
+      // For Object Storage files, use authenticated download
+      if (fileUrl.startsWith("/objects/")) {
+        // Get fresh token at download time (not stale from callback creation)
+        const token = localStorage.getItem("token");
+        
+        if (!token) {
+          toast.error("Sessão expirada. Faça login novamente.");
+          return;
+        }
+        
+        const response = await fetch(`/api/attachments/${attachmentId}/download`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            toast.error("Sessão expirada. Faça login novamente.");
+            return;
+          }
+          throw new Error("Failed to download");
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        // For legacy local files, open directly
+        window.open(fileUrl, "_blank");
+      }
+    } catch (error) {
+      toast.error("Erro ao baixar anexo");
+    }
+  };
+
   const availableLabels = allLabels.filter(
     label => !processLabels.some(pl => pl.id === label.id)
   );
@@ -366,14 +410,13 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
                     <div key={attachment.id} className="flex items-center gap-3 p-3 rounded-md border hover:bg-muted/50 group" data-testid={`attachment-${attachment.id}`}>
                       {getFileIcon(attachment.fileName)}
                       <div className="flex-1 min-w-0">
-                        <a 
-                          href={attachment.fileUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium hover:underline truncate block"
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(attachment.id, attachment.fileName, attachment.fileUrl)}
+                          className="text-sm font-medium hover:underline truncate block text-left cursor-pointer text-primary"
                         >
                           {attachment.fileName}
-                        </a>
+                        </button>
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(attachment.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                         </span>

@@ -340,16 +340,53 @@ export async function getProcessAttachments(processId: number): Promise<ProcessA
 }
 
 export async function uploadProcessAttachment(processId: number, file: File): Promise<ProcessAttachment> {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const response = await fetch(`${API_BASE}/processes/${processId}/attachments`, {
+  // Step 1: Request presigned URL for Object Storage upload
+  const urlResponse = await fetch(`${API_BASE}/processes/${processId}/attachments/request-url`, {
     method: "POST",
-    headers: getAuthHeaders(false),
-    body: formData,
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      name: file.name,
+      size: file.size,
+      contentType: file.type || "application/octet-stream",
+    }),
   });
-  if (!response.ok) throw new Error("Failed to upload attachment");
-  return response.json();
+  
+  if (!urlResponse.ok) {
+    throw new Error("Failed to get upload URL");
+  }
+  
+  const { uploadURL, objectPath } = await urlResponse.json();
+  
+  // Step 2: Upload file directly to Object Storage (presigned URL)
+  const uploadResponse = await fetch(uploadURL, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+  });
+  
+  if (!uploadResponse.ok) {
+    throw new Error("Failed to upload file to storage");
+  }
+  
+  // Step 3: Save attachment metadata to database
+  const saveResponse = await fetch(`${API_BASE}/processes/${processId}/attachments/save`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      objectPath,
+      fileName: file.name,
+      fileType: file.type || "application/octet-stream",
+      fileSize: file.size,
+    }),
+  });
+  
+  if (!saveResponse.ok) {
+    throw new Error("Failed to save attachment");
+  }
+  
+  return saveResponse.json();
 }
 
 export async function deleteProcessAttachment(id: number): Promise<void> {
