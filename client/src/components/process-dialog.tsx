@@ -179,7 +179,7 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
   const handleDownloadAttachment = async (attachmentId: number, fileName: string, fileUrl: string) => {
     try {
       // Always use authenticated download endpoint for all files
-      const token = localStorage.getItem("token");
+      const token = useStore.getState().authToken;
       
       if (!token) {
         toast.error("Sessão expirada. Faça login novamente.");
