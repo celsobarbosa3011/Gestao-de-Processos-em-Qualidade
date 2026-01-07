@@ -178,43 +178,47 @@ export function ProcessDialog({ process, open, onOpenChange }: ProcessDialogProp
 
   const handleDownloadAttachment = async (attachmentId: number, fileName: string, fileUrl: string) => {
     try {
-      // For Object Storage files, use authenticated download
-      if (fileUrl.startsWith("/objects/")) {
-        // Get fresh token at download time (not stale from callback creation)
-        const token = localStorage.getItem("token");
-        
-        if (!token) {
+      // Always use authenticated download endpoint for all files
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+      
+      const response = await fetch(`/api/attachments/${attachmentId}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
           toast.error("Sessão expirada. Faça login novamente.");
           return;
         }
-        
-        const response = await fetch(`/api/attachments/${attachmentId}/download`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            toast.error("Sessão expirada. Faça login novamente.");
-            return;
-          }
-          throw new Error("Failed to download");
+        if (response.status === 410) {
+          // Legacy file unavailable
+          const errorData = await response.json();
+          toast.error(errorData.error || "Arquivo não disponível. Por favor, faça upload novamente.");
+          return;
         }
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        // For legacy local files, open directly
-        window.open(fileUrl, "_blank");
+        if (response.status === 404) {
+          toast.error("Arquivo não encontrado no servidor.");
+          return;
+        }
+        throw new Error("Failed to download");
       }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       toast.error("Erro ao baixar anexo");
     }

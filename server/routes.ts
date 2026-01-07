@@ -1100,9 +1100,26 @@ export async function registerRoutes(
           console.error("Error downloading from Object Storage:", error);
           return res.status(404).json({ error: "File not found in storage" });
         }
+      } else if (attachment.fileUrl.startsWith("/uploads/")) {
+        // Legacy local file - check if file exists
+        // Files are stored in client/public/uploads with filename only
+        const fileName = attachment.fileUrl.replace("/uploads/", "");
+        const filePath = path.join(uploadDir, fileName);
+        
+        if (fs.existsSync(filePath)) {
+          // File exists locally, stream it
+          res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(attachment.fileName)}"`);
+          const fileStream = fs.createReadStream(filePath);
+          fileStream.pipe(res);
+        } else {
+          // Legacy file was lost (common in production deployments)
+          return res.status(410).json({ 
+            error: "Este arquivo foi enviado antes da migração para armazenamento permanente e não está mais disponível. Por favor, faça upload do arquivo novamente.",
+            code: "LEGACY_FILE_UNAVAILABLE"
+          });
+        }
       } else {
-        // Legacy local file - redirect to static path
-        return res.redirect(attachment.fileUrl);
+        return res.status(400).json({ error: "Invalid file URL format" });
       }
     } catch (error) {
       console.error("Error downloading attachment:", error);
