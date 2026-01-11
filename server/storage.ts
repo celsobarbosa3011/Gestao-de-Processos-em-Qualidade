@@ -61,11 +61,22 @@ import type {
   UpdatePriority,
 } from "@shared/schema";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL!,
-});
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import path from "path";
 
-export const db = drizzle(pool, { schema });
+// Initialize PGlite database (persisted in ./data directory)
+const client = new PGlite("./data");
+export const db = drizzle(client, { schema });
+
+// Helper to run migrations on startup
+export async function runMigrations() {
+  console.log('[db] Running migrations...');
+  await migrate(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
+  console.log('[db] Migrations completed');
+}
+
 
 export interface IStorage {
   // Profile/User methods
@@ -82,41 +93,41 @@ export interface IStorage {
   getAllProcesses(): Promise<Process[]>;
   createProcess(process: InsertProcess): Promise<Process>;
   updateProcess(id: number, updates: UpdateProcess): Promise<Process | undefined>;
-  
+
   // Process Comments methods
   getCommentsByProcess(processId: number): Promise<ProcessComment[]>;
   createComment(comment: InsertProcessComment): Promise<ProcessComment>;
-  
+
   // Process Events methods
   getEventsByProcess(processId: number): Promise<ProcessEvent[]>;
   getAllEvents(): Promise<ProcessEvent[]>;
   createEvent(event: InsertProcessEvent): Promise<ProcessEvent>;
-  
+
   // Alert Settings methods
   getAlertSettings(): Promise<AlertSettings | undefined>;
   updateAlertSettings(settings: UpdateAlertSettings): Promise<AlertSettings>;
-  
+
   // Branding Config methods
   getBrandingConfig(): Promise<BrandingConfig>;
   updateBrandingConfig(config: UpdateBrandingConfig): Promise<BrandingConfig>;
-  
+
   // WIP Limits methods
   getAllWipLimits(): Promise<WipLimit[]>;
   getWipLimit(columnId: string): Promise<WipLimit | undefined>;
   upsertWipLimit(columnId: string, updates: UpdateWipLimit): Promise<WipLimit>;
-  
+
   // Checklist methods
   getChecklistsByProcess(processId: number): Promise<ProcessChecklist[]>;
   createChecklist(checklist: InsertProcessChecklist): Promise<ProcessChecklist>;
   updateChecklist(id: number, completed: boolean): Promise<ProcessChecklist | undefined>;
   deleteChecklist(id: number): Promise<boolean>;
-  
+
   // Attachment methods
   getAttachmentsByProcess(processId: number): Promise<ProcessAttachment[]>;
   getAttachment(id: number): Promise<ProcessAttachment | null>;
   createAttachment(attachment: InsertProcessAttachment): Promise<ProcessAttachment>;
   deleteAttachment(id: number): Promise<boolean>;
-  
+
   // Label methods
   getAllLabels(): Promise<ProcessLabel[]>;
   createLabel(label: InsertProcessLabel): Promise<ProcessLabel>;
@@ -124,7 +135,7 @@ export interface IStorage {
   getLabelsByProcess(processId: number): Promise<ProcessLabel[]>;
   addLabelToProcess(processId: number, labelId: number): Promise<ProcessToLabel>;
   removeLabelFromProcess(processId: number, labelId: number): Promise<boolean>;
-  
+
   // Chat methods
   getChatMessages(userId: string): Promise<ChatMessage[]>;
   getChatConversation(userId1: string, userId2: string): Promise<ChatMessage[]>;
@@ -141,7 +152,7 @@ export interface IStorage {
   sendChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   markMessagesAsRead(senderId: string, receiverId: string): Promise<void>;
   getUnreadCount(userId: string): Promise<number>;
-  
+
   // Permission methods
   getAllPermissions(): Promise<Permission[]>;
   createPermission(permission: InsertPermission): Promise<Permission>;
@@ -150,17 +161,17 @@ export interface IStorage {
   removeRolePermission(role: string, permissionKey: string): Promise<boolean>;
   getUserPermissions(userId: string): Promise<UserPermission[]>;
   setUserPermission(userId: string, permissionKey: string, granted: boolean): Promise<UserPermission>;
-  
+
   // Template methods
   getAllTemplates(): Promise<ProcessTemplate[]>;
   createTemplate(template: InsertProcessTemplate): Promise<ProcessTemplate>;
   updateTemplate(id: number, updates: Partial<InsertProcessTemplate>): Promise<ProcessTemplate | undefined>;
   deleteTemplate(id: number): Promise<boolean>;
-  
+
   // Feature Toggle methods
   getAllFeatureToggles(): Promise<FeatureToggle[]>;
   updateFeatureToggle(featureKey: string, enabled: boolean): Promise<FeatureToggle>;
-  
+
   // Unit methods
   getAllUnits(): Promise<Unit[]>;
   getUnit(id: number): Promise<Unit | undefined>;
@@ -425,14 +436,14 @@ export class DatabaseStorage implements IStorage {
     const junctions = await db.select()
       .from(schema.processToLabels)
       .where(eq(schema.processToLabels.processId, processId));
-    
+
     if (junctions.length === 0) return [];
-    
+
     const labelIds = junctions.map(j => j.labelId);
     const labels = await db.select()
       .from(schema.processLabels)
       .where(sql`${schema.processLabels.id} = ANY(ARRAY[${sql.join(labelIds, sql`, `)}]::integer[])`);
-    
+
     return labels;
   }
 
@@ -524,11 +535,11 @@ export class DatabaseStorage implements IStorage {
 
     for (const msg of messages) {
       const otherUserId = msg.senderId === userId ? msg.receiverId! : msg.senderId;
-      
+
       if (!conversationMap.has(otherUserId)) {
         const otherProfile = profileMap.get(otherUserId);
         const senderProfile = profileMap.get(msg.senderId);
-        
+
         conversationMap.set(otherUserId, {
           otherUserId,
           otherUserName: otherProfile?.name || 'Usuário Desconhecido',
@@ -595,7 +606,7 @@ export class DatabaseStorage implements IStorage {
         eq(schema.userPermissions.permissionKey, permissionKey)
       ))
       .limit(1);
-    
+
     if (existing.length > 0) {
       const result = await db.update(schema.userPermissions)
         .set({ granted })
@@ -603,7 +614,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result[0];
     }
-    
+
     const result = await db.insert(schema.userPermissions)
       .values({ userId, permissionKey, granted })
       .returning();
@@ -645,7 +656,7 @@ export class DatabaseStorage implements IStorage {
     const existing = await db.select().from(schema.featureToggles)
       .where(eq(schema.featureToggles.featureKey, featureKey))
       .limit(1);
-    
+
     if (existing.length > 0) {
       const result = await db.update(schema.featureToggles)
         .set({ enabled, updatedAt: new Date() })
@@ -653,7 +664,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result[0];
     }
-    
+
     const result = await db.insert(schema.featureToggles)
       .values({ featureKey, name: featureKey, enabled })
       .returning();
@@ -724,7 +735,7 @@ export class DatabaseStorage implements IStorage {
         eq(schema.customFieldValues.fieldId, fieldId)
       ))
       .limit(1);
-    
+
     if (existing.length > 0) {
       const result = await db.update(schema.customFieldValues)
         .set({ value })
@@ -732,7 +743,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result[0];
     }
-    
+
     const result = await db.insert(schema.customFieldValues)
       .values({ processId, fieldId, value })
       .returning();
@@ -853,9 +864,9 @@ export class DatabaseStorage implements IStorage {
       date: sql<string>`DATE(${schema.processes.createdAt})`,
       count: sql<number>`count(*)`,
     })
-    .from(schema.processes)
-    .groupBy(schema.processes.status, sql`DATE(${schema.processes.createdAt})`)
-    .orderBy(sql`DATE(${schema.processes.createdAt})`);
+      .from(schema.processes)
+      .groupBy(schema.processes.status, sql`DATE(${schema.processes.createdAt})`)
+      .orderBy(sql`DATE(${schema.processes.createdAt})`);
     return result;
   }
 
@@ -906,7 +917,7 @@ export class DatabaseStorage implements IStorage {
       { userId, widgetType: 'recent_processes', title: 'Processos Recentes', position: 4, width: 2, height: 1, visible: true },
       { userId, widgetType: 'activity_feed', title: 'Atividade Recente', position: 5, width: 2, height: 1, visible: true },
     ];
-    
+
     const widgets: DashboardWidget[] = [];
     for (const widget of defaultWidgets) {
       const created = await this.createDashboardWidget(widget);
@@ -1000,14 +1011,14 @@ export class DatabaseStorage implements IStorage {
     try {
       // Check if any profiles exist
       const existingProfiles = await this.getAllProfiles();
-      
+
       if (existingProfiles.length === 0) {
         console.log('[init] No users found in database, creating default admin...');
-        
+
         // Import hashPassword dynamically to avoid circular dependencies
         const { hashPassword } = await import('./password');
         const hashedPassword = await hashPassword('admin123');
-        
+
         // Create default admin user
         await this.createProfile({
           name: 'Administrador',
@@ -1017,7 +1028,7 @@ export class DatabaseStorage implements IStorage {
           unit: 'Administração Central',
           status: 'active',
         });
-        
+
         console.log('[init] Default admin created: admin@mediflow.com / admin123');
       }
 
