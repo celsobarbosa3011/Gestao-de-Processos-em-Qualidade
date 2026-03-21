@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc --noEmit --project client/tsconfig.json)",
+      "Bash(ls node_modules/.bin/tsc*)",
+      "Bash(ls client/src/pages/*.tsx)",
+      "Bash(xargs -I {} basename {} .tsx)",
+      "Bash(wc -l client/src/pages/*.tsx)",
+      "Bash(npm run:*)",
+      "Bash(npm install:*)",
+      "Bash(cross-env NODE_ENV=development tsx server/index.ts)",
+      "Bash(npx cross-env:*)",
+      "Bash(ls node_modules/.bin/cross-env* node_modules/.bin/tsx*)",
+      "Bash(curl -s http://localhost:5000/api/auth/me)",
+      "Bash(curl -s http://localhost:3000/api/auth/me)",
+      "Bash(node -e \"import\\(''''./node_modules/@electric-sql/pglite/dist/index.js''''\\).then\\(m => console.log\\(''''pglite loaded''''\\)\\).catch\\(e => console.log\\(''''error:'''', e.message\\)\\)\")",
+      "Read(//c/Users/Celso/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Celso Barbosa\\.claude\\projects\\c--Users-Celso-Barbosa-OneDrive--rea-de-Trabalho-Meus-desenvolvimentos-no-antygravity-Gestao-Qualidade-emSaude\\memory"
+    ]
+  }
+}

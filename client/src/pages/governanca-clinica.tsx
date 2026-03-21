@@ -1,192 +1,426 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
+import {
+  HeartPulse, TrendingUp, AlertTriangle, ChevronRight,
+  Activity, BarChart3, Building2, Users, AlertCircle,
+  CheckCircle2, Download, Filter, Star, Eye, Clock
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
-  HeartPulse, TrendingUp, AlertTriangle, ClipboardList,
-  Activity, BarChart3, Construction, ChevronRight
-} from "lucide-react";
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, ReferenceLine
+} from "recharts";
 
-const features = [
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const clinicalIndicators = [
   {
-    icon: <BarChart3 className="w-6 h-6 text-rose-500" />,
-    title: "Painel Clínico Executivo",
-    description: "Dashboard consolidado com indicadores de mortalidade, reinternação, infecção relacionada à assistência e segurança do paciente.",
-    status: "V2",
+    id: 1, code: "IGC-001", name: "Taxa de Mortalidade Institucional",
+    value: 4.2, unit: "%", target: 5.0, benchmark: 3.8,
+    trend: "down", status: "ok",
+    category: "Desfecho",
+    description: "Óbitos / Total de saídas × 100",
+    lastUpdate: "Mar/26",
+    history: [4.8, 4.6, 4.5, 4.3, 4.2, 4.2],
   },
   {
-    icon: <HeartPulse className="w-6 h-6 text-pink-500" />,
-    title: "Desfechos por Linha de Cuidado",
-    description: "Acompanhamento de desfechos clínicos estratificados por patologia, unidade e período com benchmarking setorial.",
-    status: "V2",
+    id: 2, code: "IGC-002", name: "Taxa de Reinternação em 30 dias",
+    value: 8.7, unit: "%", target: 8.0, benchmark: 7.5,
+    trend: "up", status: "alert",
+    category: "Desfecho",
+    description: "Reinternações ≤30 dias / Total de altas × 100",
+    lastUpdate: "Mar/26",
+    history: [7.9, 8.1, 8.3, 8.5, 8.6, 8.7],
   },
   {
-    icon: <TrendingUp className="w-6 h-6 text-rose-600" />,
-    title: "Indicadores Clínicos com Série Histórica",
-    description: "Gráficos de tendência com limites de controle estatístico (UCL/LCL) e detecção automática de desvios.",
-    status: "V2",
+    id: 3, code: "IGC-003", name: "Densidade de IPCS — UTI",
+    value: 1.8, unit: "/1.000 CVC-dia", target: 2.0, benchmark: 1.5,
+    trend: "stable", status: "ok",
+    category: "Segurança",
+    description: "Infecções Primárias da Corrente Sanguínea / 1.000 dias de CVC",
+    lastUpdate: "Mar/26",
+    history: [2.1, 2.0, 1.9, 1.8, 1.9, 1.8],
   },
   {
-    icon: <AlertTriangle className="w-6 h-6 text-amber-500" />,
-    title: "Desvios Assistenciais com Geração de Ação",
-    description: "Identificação de desvios e geração automática de Plano de Ação vinculado ao indicador e à unidade responsável.",
-    status: "V2",
+    id: 4, code: "IGC-004", name: "Taxa de Infecção do Sítio Cirúrgico",
+    value: 2.1, unit: "%", target: 2.5, benchmark: 1.8,
+    trend: "stable", status: "ok",
+    category: "Segurança",
+    description: "ISC / Total de procedimentos cirúrgicos × 100",
+    lastUpdate: "Mar/26",
+    history: [2.4, 2.3, 2.2, 2.1, 2.2, 2.1],
   },
   {
-    icon: <ClipboardList className="w-6 h-6 text-pink-600" />,
-    title: "Comissões Clínicas Integradas",
-    description: "Gestão de CCIHs, CMEs e outras comissões com pautas, atas e indicadores próprios.",
-    status: "V3",
+    id: 5, code: "IGC-005", name: "Queda de Paciente com Dano",
+    value: 0.8, unit: "/1.000 paciente-dia", target: 1.0, benchmark: 0.6,
+    trend: "up", status: "alert",
+    category: "Segurança",
+    description: "Quedas com dano / 1.000 pacientes-dia",
+    lastUpdate: "Mar/26",
+    history: [0.5, 0.6, 0.7, 0.7, 0.8, 0.8],
   },
   {
-    icon: <Activity className="w-6 h-6 text-rose-400" />,
-    title: "Alertas Automáticos de Desvio",
-    description: "Notificações em tempo real para gestores quando indicadores ultrapassam limites estabelecidos.",
-    status: "V3",
+    id: 6, code: "IGC-006", name: "Tempo Médio de Permanência — UTI",
+    value: 6.4, unit: "dias", target: 7.0, benchmark: 5.8,
+    trend: "stable", status: "ok",
+    category: "Processo",
+    description: "Soma dos dias de internação UTI / Total de saídas UTI",
+    lastUpdate: "Mar/26",
+    history: [6.8, 6.7, 6.5, 6.5, 6.4, 6.4],
   },
 ];
 
-const mockIndicators = [
-  { name: "Taxa de Mortalidade Geral", value: "3,2%", meta: "≤ 4,0%", status: "ok", unit: "Geral" },
-  { name: "Taxa de Reinternação 30 dias", value: "8,7%", meta: "≤ 8,0%", status: "warn", unit: "Clínica Médica" },
-  { name: "Densidade de IRAS (ICSAC)", value: "1,8 /1000 cvc-d", meta: "≤ 2,5", status: "ok", unit: "UTI Adulto" },
-  { name: "Taxa de Úlcera por Pressão", value: "1,1%", meta: "≤ 1,5%", status: "ok", unit: "Oncologia" },
-  { name: "Tempo Porta-Balão (IAM)", value: "74 min", meta: "≤ 90 min", status: "ok", unit: "Hemodinâmica" },
+const monthLabels = ["Out/25", "Nov/25", "Dez/25", "Jan/26", "Fev/26", "Mar/26"];
+
+const mortalityTrend = monthLabels.map((month, i) => ({
+  month,
+  mortalidade: clinicalIndicators[0].history[i],
+  meta: 5.0,
+}));
+
+const reinternacaoTrend = monthLabels.map((month, i) => ({
+  month,
+  reinternacao: clinicalIndicators[1].history[i],
+  meta: 8.0,
+}));
+
+const unitRanking = [
+  { unit: "UTI Adulto",       score: 91, desfecho: 95, seguranca: 90, processo: 88 },
+  { unit: "Centro Obstétrico", score: 88, desfecho: 90, seguranca: 88, processo: 86 },
+  { unit: "Pronto-Socorro",    score: 82, desfecho: 80, seguranca: 85, processo: 81 },
+  { unit: "Internação",        score: 78, desfecho: 78, seguranca: 80, processo: 76 },
+  { unit: "Centro Cirúrgico",  score: 76, desfecho: 75, seguranca: 78, processo: 75 },
 ];
 
-const roadmap = [
-  { version: "V1 (Atual)", item: "Indicadores de qualidade no Dashboard principal", done: true },
-  { version: "V2", item: "Painel clínico executivo com desfechos e benchmarking", done: false },
-  { version: "V2", item: "Desvios assistenciais com geração de ação automática", done: false },
-  { version: "V3", item: "Comissões clínicas integradas e alertas em tempo real", done: false },
+const alerts = [
+  { id: 1, indicator: "IGC-002 — Reinternação 30 dias", message: "Acima da meta por 3 meses consecutivos", severity: "alta", unit: "Internação" },
+  { id: 2, indicator: "IGC-005 — Queda com dano", message: "Tendência de alta — 4 eventos em Mar/26", severity: "media", unit: "PS + Internação" },
+  { id: 3, indicator: "IGC-003 — IPCS UTI", message: "Acima do benchmark nacional (1.5)", severity: "baixa", unit: "UTI Adulto" },
 ];
 
-export default function GovernancaClinicaPage() {
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function indicatorStatus(ind: typeof clinicalIndicators[0]) {
+  if (ind.status === "alert") return { cls: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" };
+  if (ind.status === "critical") return { cls: "bg-rose-100 text-rose-700 border-rose-200", dot: "bg-rose-500" };
+  return { cls: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" };
+}
+
+function severityMeta(s: string) {
+  if (s === "alta") return "bg-rose-100 text-rose-700 border-rose-200";
+  if (s === "media") return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-sky-100 text-sky-700 border-sky-200";
+}
+
+function scoreBg(score: number) {
+  if (score >= 85) return "text-emerald-700";
+  if (score >= 75) return "text-amber-700";
+  return "text-rose-700";
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function GovernancaClinical() {
   const [, navigate] = useLocation();
+  const [filterCat, setFilterCat] = useState("all");
+
+  const filtered = clinicalIndicators.filter(
+    (i) => filterCat === "all" || i.category === filterCat
+  );
+
+  const alertCount = clinicalIndicators.filter((i) => i.status === "alert").length;
+  const okCount = clinicalIndicators.filter((i) => i.status === "ok").length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50 p-6 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg flex-shrink-0">
-            <HeartPulse className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-slate-50">
+      {/* ── Page Header ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-5">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-3">
+            <span className="hover:text-slate-700 cursor-pointer" onClick={() => navigate("/")}>Início</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-slate-700 font-medium">Governança Clínica</span>
+            <Badge className="ml-2 bg-rose-100 text-rose-700 border border-rose-200 text-xs px-2 py-0.5">Módulo 8</Badge>
           </div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-800">Módulo 8 — Governança Clínica</h1>
-              <Badge className="bg-amber-100 text-amber-800 border border-amber-300 font-medium">
-                <Construction className="w-3 h-3 mr-1" /> Em desenvolvimento
-              </Badge>
-              <Badge variant="outline" className="text-rose-700 border-rose-300">V2</Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <HeartPulse className="w-7 h-7 text-rose-500" />
+                Governança Clínica
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">
+                Painel de indicadores clínicos · Desfechos, segurança e processo por unidade
+              </p>
             </div>
-            <p className="text-slate-500 mt-1 max-w-2xl">
-              Painel executivo de desfechos clínicos, indicadores assistenciais com série histórica e detecção automática de desvios com geração de planos de ação.
-            </p>
-          </div>
-        </div>
-        <Button
-          onClick={() => navigate("/dashboard")}
-          variant="outline"
-          className="border-rose-300 text-rose-700 hover:bg-rose-50 self-start md:self-auto"
-        >
-          Ver Dashboard
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
-
-      {/* Preview Banner */}
-      <div className="rounded-2xl border border-rose-200 bg-white/70 backdrop-blur p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-2">
-          <Construction className="w-5 h-5 text-amber-500" />
-          <span className="font-semibold text-slate-700">Prévia da Interface — Módulo em Construção (V2)</span>
-        </div>
-        <p className="text-slate-500 text-sm">
-          Este módulo estará disponível na versão 2 do QHealth One. A prévia abaixo demonstra os indicadores e funcionalidades que serão entregues.
-        </p>
-      </div>
-
-      {/* Mock Indicators Table */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Preview — Painel de Indicadores Clínicos</h2>
-        <div className="rounded-2xl border border-slate-200 bg-white/80 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-5 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-200">
-            <span className="col-span-2">Indicador</span>
-            <span>Resultado</span>
-            <span>Meta</span>
-            <span>Status</span>
-          </div>
-          {mockIndicators.map((ind, i) => (
-            <div key={i} className={cn(
-              "grid grid-cols-5 px-4 py-3 text-sm items-center border-b border-slate-100 last:border-0",
-              i % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-            )}>
-              <div className="col-span-2">
-                <p className="font-medium text-slate-700">{ind.name}</p>
-                <p className="text-xs text-slate-400">{ind.unit}</p>
-              </div>
-              <span className={cn("font-bold text-base", ind.status === "ok" ? "text-green-600" : "text-amber-600")}>{ind.value}</span>
-              <span className="text-slate-500 text-xs">{ind.meta}</span>
-              <Badge className={cn(
-                "w-fit text-xs",
-                ind.status === "ok"
-                  ? "bg-green-100 text-green-700 border-green-200"
-                  : "bg-amber-100 text-amber-700 border-amber-200"
-              )}>
-                {ind.status === "ok" ? "Dentro da meta" : "Atenção"}
-              </Badge>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+                <Download className="w-4 h-4" />
+                Relatório
+              </Button>
             </div>
-          ))}
+          </div>
         </div>
       </div>
 
-      {/* Feature Cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Funcionalidades Planejadas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <Card key={i} className="border border-slate-200 bg-white/80 hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center border border-rose-100">
-                    {f.icon}
-                  </div>
-                  <Badge variant="outline" className={cn(
-                    "text-xs font-semibold",
-                    f.status === "V2" ? "text-rose-600 border-rose-300" : "text-purple-600 border-purple-300"
-                  )}>
-                    {f.status}
-                  </Badge>
+      <div className="max-w-screen-xl mx-auto px-6 py-6">
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: "Indicadores OK", value: okCount, icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, bg: "bg-emerald-50", text: "text-emerald-700" },
+            { label: "Em Alerta", value: alertCount, icon: <AlertCircle className="w-5 h-5 text-amber-500" />, bg: "bg-amber-50", text: "text-amber-700" },
+            { label: "Alertas Abertos", value: alerts.length, icon: <AlertTriangle className="w-5 h-5 text-rose-500" />, bg: "bg-rose-50", text: "text-rose-700" },
+            { label: "Unidades Avaliadas", value: unitRanking.length, icon: <Building2 className="w-5 h-5 text-sky-500" />, bg: "bg-sky-50", text: "text-sky-700" },
+          ].map((k) => (
+            <Card key={k.label} className="bg-white border border-slate-200 shadow-sm">
+              <CardContent className="py-4 px-5 flex items-center gap-3">
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", k.bg)}>
+                  {k.icon}
                 </div>
-                <CardTitle className="text-sm font-semibold text-slate-800 mt-2">{f.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-slate-500 leading-relaxed">{f.description}</p>
+                <div>
+                  <p className="text-xs text-slate-500">{k.label}</p>
+                  <p className={cn("text-2xl font-bold", k.text)}>{k.value}</p>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
-      </div>
 
-      {/* Roadmap */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Roadmap</h2>
-        <div className="space-y-3">
-          {roadmap.map((r, i) => (
-            <div key={i} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className={cn("w-3 h-3 rounded-full flex-shrink-0", r.done ? "bg-green-500" : "bg-slate-300")} />
-              <Badge variant="outline" className={cn(
-                "text-xs font-semibold flex-shrink-0",
-                r.done ? "text-green-700 border-green-300 bg-green-50" : "text-slate-600 border-slate-300"
-              )}>
-                {r.version}
-              </Badge>
-              <span className={cn("text-sm", r.done ? "text-slate-700 font-medium" : "text-slate-500")}>{r.item}</span>
-              {r.done && <Badge className="ml-auto bg-green-100 text-green-700 text-xs">Disponível</Badge>}
+        {/* ── Alerts Banner ── */}
+        {alerts.length > 0 && (
+          <Card className="bg-amber-50 border border-amber-200 shadow-sm mb-5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-semibold text-amber-800">{alerts.length} alertas ativos de governança clínica</span>
+              </div>
+              <div className="space-y-2">
+                {alerts.map((a) => (
+                  <div key={a.id} className="flex items-start gap-3 bg-white rounded-lg p-3 border border-amber-100">
+                    <Badge className={cn("text-xs border flex-shrink-0 mt-0.5", severityMeta(a.severity))}>
+                      {a.severity === "alta" ? "Alta" : a.severity === "media" ? "Média" : "Baixa"}
+                    </Badge>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">{a.indicator}</p>
+                      <p className="text-xs text-slate-500">{a.message} · {a.unit}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Tabs defaultValue="indicadores">
+          <TabsList className="bg-white border border-slate-200 rounded-lg p-1 gap-1 h-auto mb-5">
+            <TabsTrigger value="indicadores" className="data-[state=active]:bg-rose-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Indicadores Clínicos
+            </TabsTrigger>
+            <TabsTrigger value="tendencias" className="data-[state=active]:bg-rose-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Tendências
+            </TabsTrigger>
+            <TabsTrigger value="unidades" className="data-[state=active]:bg-rose-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Score por Unidade
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 1 — Indicadores Clínicos
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="indicadores" className="space-y-4">
+            {/* Category filter */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Filter className="w-3.5 h-3.5" />Categoria:
+              </div>
+              {["all", "Desfecho", "Segurança", "Processo"].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setFilterCat(c)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full border transition-all",
+                    filterCat === c
+                      ? "bg-rose-600 text-white border-rose-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-rose-300"
+                  )}
+                >
+                  {c === "all" ? "Todos" : c}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((ind) => {
+                const sm = indicatorStatus(ind);
+                const pctOfTarget = Math.min(100, Math.round((ind.value / ind.target) * 100));
+                const isGood = ind.status === "ok";
+                return (
+                  <Card key={ind.id} className={cn(
+                    "bg-white border shadow-sm",
+                    ind.status === "alert" ? "border-amber-200" : "border-slate-200"
+                  )}>
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-mono text-slate-400 mb-0.5">{ind.code}</p>
+                          <h3 className="text-sm font-semibold text-slate-800 leading-snug">{ind.name}</h3>
+                          <p className="text-xs text-slate-400 mt-0.5">{ind.category} · {ind.lastUpdate}</p>
+                        </div>
+                        <Badge className={cn("text-xs border flex-shrink-0 ml-2", sm.cls)}>
+                          <span className={cn("w-1.5 h-1.5 rounded-full mr-1", sm.dot)} />
+                          {ind.status === "ok" ? "OK" : "Alerta"}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-end gap-2 mb-3">
+                        <span className={cn("text-3xl font-extrabold", isGood ? "text-emerald-700" : "text-amber-700")}>
+                          {ind.value}
+                        </span>
+                        <span className="text-sm text-slate-400 mb-1">{ind.unit}</span>
+                      </div>
+
+                      <div className="space-y-1.5 text-xs text-slate-500">
+                        <div className="flex justify-between">
+                          <span>Meta: {ind.target} {ind.unit}</span>
+                          <span>Benchmark: {ind.benchmark} {ind.unit}</span>
+                        </div>
+                      </div>
+
+                      {/* Mini trend */}
+                      <div className="mt-3 h-12">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={ind.history.map((v, i) => ({ v, i }))}>
+                            <Line type="monotone" dataKey="v" stroke={isGood ? "#10b981" : "#f59e0b"} strokeWidth={1.5} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <p className="text-xs text-slate-400 mt-1">{ind.description}</p>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 2 — Tendências
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="tendencias" className="space-y-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
+                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-rose-500" />
+                    Taxa de Mortalidade (%)
+                  </CardTitle>
+                  <p className="text-xs text-slate-400">Meta: ≤ 5,0% · Benchmark: 3,8%</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-5 pt-3">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={mortalityTrend} margin={{ top: 4, right: 16, left: -15, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[3, 6]} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "11px" }} formatter={(v: number) => [`${v}%`, ""]} />
+                      <ReferenceLine y={5.0} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: "Meta", position: "right", fontSize: 10, fill: "#f59e0b" }} />
+                      <Line type="monotone" dataKey="mortalidade" stroke="#f43f5e" strokeWidth={2} dot={{ r: 3, fill: "#f43f5e" }} name="Mortalidade" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
+                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-amber-500" />
+                    Taxa de Reinternação em 30 dias (%)
+                  </CardTitle>
+                  <p className="text-xs text-slate-400">Meta: ≤ 8,0% · Benchmark: 7,5%</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-5 pt-3">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={reinternacaoTrend} margin={{ top: 4, right: 16, left: -15, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[7, 10]} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "11px" }} formatter={(v: number) => [`${v}%`, ""]} />
+                      <ReferenceLine y={8.0} stroke="#f59e0b" strokeDasharray="4 4" label={{ value: "Meta", position: "right", fontSize: 10, fill: "#f59e0b" }} />
+                      <Line type="monotone" dataKey="reinternacao" stroke="#f97316" strokeWidth={2} dot={{ r: 3, fill: "#f97316" }} name="Reinternação" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 3 — Score por Unidade
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="unidades" className="space-y-5">
+            <Card className="bg-white border border-slate-200 shadow-sm">
+              <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-rose-500" />
+                  Score Consolidado de Governança por Unidade
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pt-4 pb-5">
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={unitRanking} margin={{ top: 4, right: 16, left: -15, bottom: 0 }} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <XAxis dataKey="unit" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[60, 100]} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}`} />
+                    <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "11px" }} />
+                    <ReferenceLine y={80} stroke="#10b981" strokeDasharray="4 4" label={{ value: "Meta 80", position: "right", fontSize: 10, fill: "#10b981" }} />
+                    <Bar dataKey="desfecho" name="Desfecho" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                    <Bar dataKey="seguranca" name="Segurança" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                    <Bar dataKey="processo" name="Processo" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {unitRanking.map((u) => (
+                <Card key={u.unit} className="bg-white border border-slate-200 shadow-sm">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-rose-500" />
+                        </div>
+                        <span className="text-sm font-semibold text-slate-700">{u.unit}</span>
+                      </div>
+                      <span className={cn("text-2xl font-extrabold", scoreBg(u.score))}>{u.score}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { label: "Desfecho", value: u.desfecho, color: "bg-rose-500" },
+                        { label: "Segurança", value: u.seguranca, color: "bg-orange-500" },
+                        { label: "Processo", value: u.processo, color: "bg-violet-500" },
+                      ].map((bar) => (
+                        <div key={bar.label}>
+                          <div className="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>{bar.label}</span>
+                            <span className="font-semibold">{bar.value}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                            <div className={cn("h-full rounded-full", bar.color)} style={{ width: `${bar.value}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

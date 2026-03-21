@@ -1,238 +1,463 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
+import {
+  Target, ChevronRight, TrendingUp, Users, DollarSign,
+  Lightbulb, CheckCircle2, AlertCircle, Clock, Download,
+  BarChart3, Building2, Star, Plus, Eye
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import {
-  Target, MapPin, Calendar, Building2,
-  TrendingUp, BarChart3, Construction, ChevronRight, Layers
-} from "lucide-react";
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 
-const features = [
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Perspective = "Financeira" | "Clientes/Pacientes" | "Processos Internos" | "Aprendizado & Crescimento";
+type ObjectiveStatus = "No prazo" | "Em atraso" | "Concluído" | "Em risco";
+
+interface StrategicObjective {
+  id: number;
+  perspective: Perspective;
+  code: string;
+  objective: string;
+  indicator: string;
+  target: string;
+  current: string;
+  progress: number;
+  status: ObjectiveStatus;
+  responsible: string;
+  deadline: string;
+}
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const objectives: StrategicObjective[] = [
+  // Financeira
   {
-    icon: <MapPin className="w-6 h-6 text-amber-500" />,
-    title: "Mapa Estratégico Visual — 4 Perspectivas",
-    description: "Mapa estratégico interativo nas perspectivas Financeira, Cliente, Processos Internos e Aprendizado & Crescimento.",
-    status: "V2",
+    id: 1, perspective: "Financeira", code: "OBJ-F01",
+    objective: "Atingir receita líquida de R$ 45M em 2026",
+    indicator: "Receita líquida anual",
+    target: "R$ 45M", current: "R$ 38,2M (8 meses)",
+    progress: 85, status: "No prazo",
+    responsible: "CFO — Dir. Financeiro", deadline: "2026-12-31",
   },
   {
-    icon: <Target className="w-6 h-6 text-orange-500" />,
-    title: "Objetivos Estratégicos",
-    description: "Cadastro e acompanhamento de objetivos estratégicos com responsáveis, indicadores e metas anuais.",
-    status: "V2",
+    id: 2, perspective: "Financeira", code: "OBJ-F02",
+    objective: "Reduzir glosas para menos de 3% do faturamento",
+    indicator: "Taxa de glosa (%)",
+    target: "≤ 3,0%", current: "4,2%",
+    progress: 58, status: "Em risco",
+    responsible: "Faturamento", deadline: "2026-12-31",
   },
   {
-    icon: <Calendar className="w-6 h-6 text-amber-600" />,
-    title: "Iniciativas com Cronograma",
-    description: "Gestão de iniciativas estratégicas com cronograma Gantt integrado, marcos e status de execução.",
-    status: "V2",
+    id: 3, perspective: "Financeira", code: "OBJ-F03",
+    objective: "Manter EBITDA ≥ 18%",
+    indicator: "Margem EBITDA",
+    target: "≥ 18%", current: "16,8%",
+    progress: 70, status: "Em atraso",
+    responsible: "CFO", deadline: "2026-12-31",
+  },
+  // Clientes/Pacientes
+  {
+    id: 4, perspective: "Clientes/Pacientes", code: "OBJ-C01",
+    objective: "Atingir NPS ≥ 72 pontos",
+    indicator: "Net Promoter Score",
+    target: "≥ 72", current: "68",
+    progress: 80, status: "No prazo",
+    responsible: "Dir. Qualidade", deadline: "2026-12-31",
   },
   {
-    icon: <Building2 className="w-6 h-6 text-orange-600" />,
-    title: "Desdobramento por Unidade",
-    description: "Desdobramento do planejamento estratégico por unidade assistencial com scorecards individuais.",
-    status: "V2",
+    id: 5, perspective: "Clientes/Pacientes", code: "OBJ-C02",
+    objective: "Obter Acreditação ONA N2 até abril/2026",
+    indicator: "Certificado ONA",
+    target: "N2 Acreditado", current: "Em preparação",
+    progress: 78, status: "No prazo",
+    responsible: "Dir. Qualidade", deadline: "2026-04-30",
   },
   {
-    icon: <TrendingUp className="w-6 h-6 text-amber-400" />,
-    title: "Análise de Execução Estratégica",
-    description: "Dashboard de execução com semáforo por objetivo e análise de desvio em relação ao planejado.",
-    status: "V3",
+    id: 6, perspective: "Clientes/Pacientes", code: "OBJ-C03",
+    objective: "Reduzir tempo médio de espera na triagem para < 20 min",
+    indicator: "Tempo médio de triagem (min)",
+    target: "< 20 min", current: "27 min",
+    progress: 45, status: "Em atraso",
+    responsible: "Coord. PS", deadline: "2026-06-30",
+  },
+  // Processos Internos
+  {
+    id: 7, perspective: "Processos Internos", code: "OBJ-P01",
+    objective: "Atingir aderência ≥ 85% aos protocolos clínicos CORE",
+    indicator: "Aderência protocolos CORE (%)",
+    target: "≥ 85%", current: "82%",
+    progress: 88, status: "No prazo",
+    responsible: "Dir. Qualidade", deadline: "2026-12-31",
   },
   {
-    icon: <BarChart3 className="w-6 h-6 text-orange-400" />,
-    title: "Reunião Estratégica Integrada",
-    description: "Pauta automatizada para reuniões de acompanhamento estratégico com registro de decisões e ações.",
-    status: "V3",
+    id: 8, perspective: "Processos Internos", code: "OBJ-P02",
+    objective: "Reduzir taxa de IRAS — UTI para < 2,0/1.000 CVC-dia",
+    indicator: "Densidade de IPCS — UTI",
+    target: "< 2,0", current: "1,8",
+    progress: 90, status: "Concluído",
+    responsible: "CCIH", deadline: "2026-06-30",
+  },
+  {
+    id: 9, perspective: "Processos Internos", code: "OBJ-P03",
+    objective: "Implementar gestão por processos em 100% das áreas críticas",
+    indicator: "Processos mapeados (%)",
+    target: "100%", current: "72%",
+    progress: 72, status: "Em atraso",
+    responsible: "Dir. Qualidade", deadline: "2026-09-30",
+  },
+  // Aprendizado & Crescimento
+  {
+    id: 10, perspective: "Aprendizado & Crescimento", code: "OBJ-A01",
+    objective: "Atingir 100% de cobertura em treinamentos obrigatórios",
+    indicator: "Cobertura de treinamentos ONA (%)",
+    target: "100%", current: "83%",
+    progress: 83, status: "No prazo",
+    responsible: "RH + Qualidade", deadline: "2026-12-31",
+  },
+  {
+    id: 11, perspective: "Aprendizado & Crescimento", code: "OBJ-A02",
+    objective: "Atingir índice de satisfação de colaboradores ≥ 80%",
+    indicator: "Pesquisa de clima (%)",
+    target: "≥ 80%", current: "76%",
+    progress: 76, status: "Em atraso",
+    responsible: "RH", deadline: "2026-12-31",
+  },
+  {
+    id: 12, perspective: "Aprendizado & Crescimento", code: "OBJ-A03",
+    objective: "Implantar sistema de ideias de melhoria com ≥ 50 ideias/ano",
+    indicator: "Ideias de melhoria registradas",
+    target: "≥ 50 ideias", current: "31 ideias",
+    progress: 62, status: "No prazo",
+    responsible: "Dir. Qualidade", deadline: "2026-12-31",
   },
 ];
 
-const perspectives = [
-  {
-    name: "Financeira",
-    color: "from-green-500 to-emerald-600",
-    bg: "bg-green-50 border-green-200",
-    text: "text-green-700",
-    objectives: ["Sustentabilidade financeira", "Crescimento de receita", "Controle de custos assistenciais"],
-  },
-  {
-    name: "Cliente / Paciente",
-    color: "from-blue-500 to-indigo-600",
-    bg: "bg-blue-50 border-blue-200",
-    text: "text-blue-700",
-    objectives: ["Satisfação do paciente ≥ 90%", "Redução de tempo de espera", "Fidelização e vínculo"],
-  },
-  {
-    name: "Processos Internos",
-    color: "from-amber-500 to-orange-600",
-    bg: "bg-amber-50 border-amber-200",
-    text: "text-amber-700",
-    objectives: ["Excelência assistencial", "Segurança do paciente", "Acreditação ONA / JCI"],
-  },
-  {
-    name: "Aprendizado & Crescimento",
-    color: "from-violet-500 to-purple-600",
-    bg: "bg-violet-50 border-violet-200",
-    text: "text-violet-700",
-    objectives: ["Capacitação contínua", "Cultura de qualidade", "Inovação tecnológica"],
-  },
+const perspectiveMeta: Record<Perspective, { color: string; icon: React.ReactNode; bg: string; accent: string }> = {
+  "Financeira":              { color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", accent: "bg-emerald-500", icon: <DollarSign className="w-5 h-5 text-emerald-600" /> },
+  "Clientes/Pacientes":      { color: "text-sky-700",     bg: "bg-sky-50 border-sky-200",         accent: "bg-sky-500",     icon: <Users className="w-5 h-5 text-sky-600" /> },
+  "Processos Internos":      { color: "text-violet-700",  bg: "bg-violet-50 border-violet-200",   accent: "bg-violet-500",  icon: <BarChart3 className="w-5 h-5 text-violet-600" /> },
+  "Aprendizado & Crescimento":{ color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",     accent: "bg-amber-500",   icon: <Lightbulb className="w-5 h-5 text-amber-600" /> },
+};
+
+const statusMeta = (s: ObjectiveStatus) => {
+  switch (s) {
+    case "No prazo":   return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    case "Concluído":  return "bg-sky-100 text-sky-700 border-sky-200";
+    case "Em atraso":  return "bg-amber-100 text-amber-700 border-amber-200";
+    case "Em risco":   return "bg-rose-100 text-rose-700 border-rose-200";
+  }
+};
+
+const radarData = [
+  { perspective: "Financeira",  score: 71 },
+  { perspective: "Clientes",    score: 68 },
+  { perspective: "Processos",   score: 83 },
+  { perspective: "Aprendizado", score: 74 },
 ];
 
-const initiatives = [
-  { name: "Implementação QHealth One", progresso: 60, prazo: "Dez/2025", status: "Em andamento" },
-  { name: "Acreditação ONA Nível 3", progresso: 35, prazo: "Jun/2026", status: "Em andamento" },
-  { name: "Programa Lean Healthcare", progresso: 20, prazo: "Mar/2026", status: "Iniciando" },
-  { name: "Expansão UTI Adulto", progresso: 80, prazo: "Out/2025", status: "Em andamento" },
+const PERSPECTIVES: Perspective[] = [
+  "Financeira", "Clientes/Pacientes", "Processos Internos", "Aprendizado & Crescimento"
 ];
 
-const roadmap = [
-  { version: "V1 (Atual)", item: "Indicadores estratégicos no Dashboard", done: true },
-  { version: "V2", item: "Mapa estratégico BSC visual com 4 perspectivas", done: false },
-  { version: "V2", item: "Objetivos, iniciativas e desdobramento por unidade", done: false },
-  { version: "V3", item: "Análise de execução e reunião estratégica integrada", done: false },
-];
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function PlanejamentoBSCPage() {
+export default function PlanejamentoBSC() {
   const [, navigate] = useLocation();
+  const [filterPerspective, setFilterPerspective] = useState<"all" | Perspective>("all");
+
+  const filtered = objectives.filter(
+    (o) => filterPerspective === "all" || o.perspective === filterPerspective
+  );
+
+  const onPrazo = objectives.filter((o) => o.status === "No prazo").length;
+  const emAtraso = objectives.filter((o) => o.status === "Em atraso").length;
+  const emRisco = objectives.filter((o) => o.status === "Em risco").length;
+  const concluido = objectives.filter((o) => o.status === "Concluído").length;
+  const avgProgress = Math.round(objectives.reduce((s, o) => s + o.progress, 0) / objectives.length);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 p-6 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0">
-            <Layers className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-slate-50">
+      {/* ── Page Header ── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-5">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="flex items-center gap-1.5 text-sm text-slate-500 mb-3">
+            <span className="hover:text-slate-700 cursor-pointer" onClick={() => navigate("/")}>Início</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-slate-700 font-medium">Planejamento BSC</span>
+            <Badge className="ml-2 bg-emerald-100 text-emerald-700 border border-emerald-200 text-xs px-2 py-0.5">Módulo 13</Badge>
           </div>
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-800">Módulo 13 — Planejamento Estratégico (BSC)</h1>
-              <Badge className="bg-amber-100 text-amber-800 border border-amber-300 font-medium">
-                <Construction className="w-3 h-3 mr-1" /> Em desenvolvimento
-              </Badge>
-              <Badge variant="outline" className="text-amber-700 border-amber-300">V2</Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Target className="w-7 h-7 text-emerald-600" />
+                Planejamento Estratégico — BSC
+              </h1>
+              <p className="text-slate-500 text-sm mt-1">
+                Balanced Scorecard · 4 perspectivas · {objectives.length} objetivos estratégicos · Ciclo 2026
+              </p>
             </div>
-            <p className="text-slate-500 mt-1 max-w-2xl">
-              Mapa estratégico visual nas 4 perspectivas do BSC, gestão de objetivos e iniciativas estratégicas com cronograma e desdobramento por unidade assistencial.
-            </p>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+                <Download className="w-4 h-4" />
+                Exportar
+              </Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-sm">
+                <Plus className="w-4 h-4" />
+                Novo Objetivo
+              </Button>
+            </div>
           </div>
         </div>
-        <Button
-          onClick={() => navigate("/dashboard")}
-          variant="outline"
-          className="border-amber-300 text-amber-700 hover:bg-amber-50 self-start md:self-auto"
-        >
-          Ver Dashboard
-          <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
       </div>
 
-      {/* Preview Banner */}
-      <div className="rounded-2xl border border-amber-200 bg-white/70 backdrop-blur p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-2">
-          <Construction className="w-5 h-5 text-amber-500" />
-          <span className="font-semibold text-slate-700">Prévia da Interface — Módulo em Construção (V2)</span>
-        </div>
-        <p className="text-slate-500 text-sm">
-          O Módulo de Planejamento Estratégico estará disponível na versão 2. A seguir, uma prévia do mapa estratégico e das iniciativas que serão gerenciadas.
-        </p>
-      </div>
-
-      {/* BSC Map Preview */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Preview — Mapa Estratégico BSC</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {perspectives.map((p, i) => (
-            <div key={i} className={cn("rounded-2xl border p-4", p.bg)}>
-              <div className={cn("flex items-center gap-2 mb-3")}>
-                <div className={cn("w-1 h-6 rounded-full bg-gradient-to-b", p.color)} />
-                <h3 className={cn("font-bold text-sm", p.text)}>{p.name}</h3>
-              </div>
-              <div className="space-y-2">
-                {p.objectives.map((obj, j) => (
-                  <div key={j} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 bg-white/80 border", p.bg.replace("bg-", "border-").split(" ")[1])}>
-                    <Target className={cn("w-3 h-3 flex-shrink-0", p.text)} />
-                    <span className={cn("text-xs font-medium", p.text)}>{obj}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Initiatives */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Preview — Iniciativas Estratégicas</h2>
-        <div className="space-y-3">
-          {initiatives.map((init, i) => (
-            <div key={i} className="rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
+      <div className="max-w-screen-xl mx-auto px-6 py-6">
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {[
+            { label: "No Prazo", value: onPrazo, text: "text-emerald-700", bg: "bg-emerald-50", icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" /> },
+            { label: "Em Atraso", value: emAtraso, text: "text-amber-700", bg: "bg-amber-50", icon: <Clock className="w-5 h-5 text-amber-500" /> },
+            { label: "Em Risco", value: emRisco, text: "text-rose-700", bg: "bg-rose-50", icon: <AlertCircle className="w-5 h-5 text-rose-500" /> },
+            { label: "Concluídos", value: concluido, text: "text-sky-700", bg: "bg-sky-50", icon: <Star className="w-5 h-5 text-sky-500" /> },
+            { label: "Avanço Médio", value: `${avgProgress}%`, text: "text-emerald-700", bg: "bg-emerald-50", icon: <TrendingUp className="w-5 h-5 text-emerald-500" /> },
+          ].map((k) => (
+            <Card key={k.label} className="bg-white border border-slate-200 shadow-sm">
+              <CardContent className="py-4 px-5 flex items-center gap-3">
+                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", k.bg)}>{k.icon}</div>
                 <div>
-                  <p className="font-semibold text-slate-700 text-sm">{init.name}</p>
-                  <p className="text-xs text-slate-400">Prazo: {init.prazo}</p>
+                  <p className="text-xs text-slate-500">{k.label}</p>
+                  <p className={cn("text-xl font-bold", k.text)}>{k.value}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">{init.status}</Badge>
-                  <span className="text-sm font-bold text-slate-700">{init.progresso}%</span>
-                </div>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
-                  style={{ width: `${init.progresso}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Funcionalidades Planejadas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f, i) => (
-            <Card key={i} className="border border-slate-200 bg-white/80 hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100">
-                    {f.icon}
-                  </div>
-                  <Badge variant="outline" className={cn(
-                    "text-xs font-semibold",
-                    f.status === "V2" ? "text-amber-600 border-amber-300" : "text-purple-600 border-purple-300"
-                  )}>
-                    {f.status}
-                  </Badge>
-                </div>
-                <CardTitle className="text-sm font-semibold text-slate-800 mt-2">{f.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-slate-500 leading-relaxed">{f.description}</p>
               </CardContent>
             </Card>
           ))}
         </div>
-      </div>
 
-      {/* Roadmap */}
-      <div>
-        <h2 className="text-lg font-semibold text-slate-700 mb-4">Roadmap</h2>
-        <div className="space-y-3">
-          {roadmap.map((r, i) => (
-            <div key={i} className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-              <div className={cn("w-3 h-3 rounded-full flex-shrink-0", r.done ? "bg-green-500" : "bg-slate-300")} />
-              <Badge variant="outline" className={cn(
-                "text-xs font-semibold flex-shrink-0",
-                r.done ? "text-green-700 border-green-300 bg-green-50" : "text-slate-600 border-slate-300"
-              )}>
-                {r.version}
-              </Badge>
-              <span className={cn("text-sm", r.done ? "text-slate-700 font-medium" : "text-slate-500")}>{r.item}</span>
-              {r.done && <Badge className="ml-auto bg-green-100 text-green-700 text-xs">Disponível</Badge>}
+        <Tabs defaultValue="mapa">
+          <TabsList className="bg-white border border-slate-200 rounded-lg p-1 gap-1 h-auto mb-5">
+            <TabsTrigger value="mapa" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Mapa Estratégico
+            </TabsTrigger>
+            <TabsTrigger value="objetivos" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Objetivos & Indicadores
+            </TabsTrigger>
+            <TabsTrigger value="radar" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-slate-600 text-sm rounded-md px-4 py-2">
+              Painel de Controle
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 1 — Mapa Estratégico
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="mapa" className="space-y-4">
+            {PERSPECTIVES.map((perspective) => {
+              const meta = perspectiveMeta[perspective];
+              const pObjs = objectives.filter((o) => o.perspective === perspective);
+              const avgPct = Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length);
+              return (
+                <Card key={perspective} className={cn("border shadow-sm", meta.bg)}>
+                  <CardHeader className="pb-2 pt-4 px-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {meta.icon}
+                        <CardTitle className={cn("text-sm font-bold", meta.color)}>{perspective}</CardTitle>
+                        <Badge className={cn("text-xs border", meta.bg, meta.color)}>{pObjs.length} objetivos</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn("text-lg font-extrabold", meta.color)}>{avgPct}%</span>
+                        <span className="text-xs text-slate-400">avanço</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-white/60 overflow-hidden mt-2">
+                      <div className={cn("h-full rounded-full", meta.accent)} style={{ width: `${avgPct}%` }} />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-5 pb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {pObjs.map((obj) => (
+                        <div key={obj.id} className="bg-white rounded-lg border border-white/80 p-3 shadow-sm">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <span className="text-xs font-mono text-slate-400">{obj.code}</span>
+                            <Badge className={cn("text-xs border px-1.5 py-0.5 flex-shrink-0", statusMeta(obj.status))}>
+                              {obj.status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs font-medium text-slate-700 leading-snug mb-2">{obj.objective}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-slate-400">{obj.current} / {obj.target}</span>
+                            <span className={cn("text-xs font-bold", meta.color)}>{obj.progress}%</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+                            <div className={cn("h-full rounded-full", meta.accent)} style={{ width: `${obj.progress}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 2 — Objetivos & Indicadores
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="objetivos" className="space-y-4">
+            {/* Filter */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {["all", ...PERSPECTIVES].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFilterPerspective(p as "all" | Perspective)}
+                  className={cn(
+                    "text-xs px-3 py-1.5 rounded-full border transition-all",
+                    filterPerspective === p
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+                  )}
+                >
+                  {p === "all" ? "Todos" : p}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-0 px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <span className="w-20">Código</span>
+                <span>Objetivo</span>
+                <span className="px-4 text-center">Atual / Meta</span>
+                <span className="px-4 text-center">Status</span>
+                <span className="px-4 text-center">Prazo</span>
+                <span className="px-4 text-center w-20">Avanço</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {filtered.map((obj) => {
+                  const meta = perspectiveMeta[obj.perspective];
+                  return (
+                    <div key={obj.id} className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-0 px-4 py-3.5 hover:bg-slate-50 transition-colors">
+                      <div className="w-20 flex items-center">
+                        <span className="text-xs font-mono text-slate-400">{obj.code}</span>
+                      </div>
+                      <div className="min-w-0 pr-4">
+                        <p className="text-sm font-medium text-slate-700 truncate">{obj.objective}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {meta.icon}
+                          <span className={cn("text-xs", meta.color)}>{obj.perspective}</span>
+                          <span className="text-xs text-slate-400">· {obj.responsible}</span>
+                        </div>
+                      </div>
+                      <div className="px-4 flex items-center justify-center">
+                        <div className="text-center">
+                          <p className="text-xs font-semibold text-slate-700">{obj.current}</p>
+                          <p className="text-xs text-slate-400">/{obj.target}</p>
+                        </div>
+                      </div>
+                      <div className="px-4 flex items-center justify-center">
+                        <Badge className={cn("text-xs border px-2 py-0.5", statusMeta(obj.status))}>
+                          {obj.status}
+                        </Badge>
+                      </div>
+                      <div className="px-4 flex items-center justify-center">
+                        <span className="text-xs text-slate-500">
+                          {new Date(obj.deadline).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="px-4 flex items-center justify-center w-20">
+                        <div className="w-full">
+                          <div className="flex justify-between mb-0.5">
+                            <span className={cn("text-xs font-bold", meta.color)}>{obj.progress}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                            <div className={cn("h-full rounded-full", meta.accent)} style={{ width: `${obj.progress}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 3 — Painel de Controle (Radar)
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="radar">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
+                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-emerald-600" />
+                    Radar das 4 Perspectivas BSC
+                  </CardTitle>
+                  <p className="text-xs text-slate-400">Score médio de avanço por perspectiva</p>
+                </CardHeader>
+                <CardContent className="px-4 pt-4 pb-6">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="#e2e8f0" />
+                      <PolarAngleAxis dataKey="perspective" tick={{ fontSize: 11, fill: "#64748b" }} />
+                      <Radar name="BSC" dataKey="score" stroke="#10b981" fill="#10b981" fillOpacity={0.25} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
+                  <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-emerald-600" />
+                    Score por Perspectiva
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pt-4 pb-6">
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={radarData} margin={{ top: 4, right: 16, left: -15, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                      <XAxis dataKey="perspective" tick={{ fontSize: 10, fill: "#64748b" }} axisLine={false} tickLine={false} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "11px" }} formatter={(v: number) => [`${v}%`, "Avanço"]} />
+                      <Bar dataKey="score" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Summary by perspective */}
+              {PERSPECTIVES.map((perspective) => {
+                const meta = perspectiveMeta[perspective];
+                const pObjs = objectives.filter((o) => o.perspective === perspective);
+                const avgPct = Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length);
+                const ok = pObjs.filter((o) => o.status === "No prazo" || o.status === "Concluído").length;
+                return (
+                  <Card key={perspective} className={cn("border shadow-sm", meta.bg)}>
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        {meta.icon}
+                        <span className={cn("text-sm font-bold", meta.color)}>{perspective}</span>
+                      </div>
+                      <div className="flex items-end gap-2 mb-2">
+                        <span className={cn("text-3xl font-extrabold", meta.color)}>{avgPct}%</span>
+                        <span className="text-xs text-slate-400 mb-1">avanço médio</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/60 overflow-hidden mb-3">
+                        <div className={cn("h-full rounded-full", meta.accent)} style={{ width: `${avgPct}%` }} />
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-500">
+                        <span>{pObjs.length} objetivos</span>
+                        <span>{ok} no prazo/concluídos</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
