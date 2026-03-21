@@ -8,7 +8,7 @@ import {
   Home, Stethoscope, Target, ScrollText, GraduationCap, CheckSquare,
   Radio, Library, Siren, TrendingUp, Map, Pill, Award, Star,
   BarChart2, Triangle, ChevronRight, X, Wifi, WifiOff, Globe,
-  Calendar, Filter, User
+  Calendar, Filter, User, Layers, Store, CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -87,11 +87,21 @@ const navGroups: NavGroup[] = [
     label: "IA & Sistema",
     items: [
       { label: "IA ONA Copilot", path: "/ia-copilot", icon: <Bot className="w-4 h-4" />, highlight: true },
-      { label: "Integrações", path: "/integracoes", icon: <Link2 className="w-4 h-4" /> },
+      { label: "Integrações & API", path: "/integracoes", icon: <Link2 className="w-4 h-4" /> },
       { label: "Administração", path: "/administracao", icon: <Settings className="w-4 h-4" /> },
     ],
   },
 ];
+
+// Grupo exclusivo para admins — Plataforma WhiteLabel
+const platformNavGroup: NavGroup = {
+  label: "Plataforma",
+  items: [
+    { label: "Gestão de Empresas", path: "/plataforma", icon: <Store className="w-4 h-4" />, highlight: true },
+    { label: "Módulos & Licenças", path: "/plataforma/modulos", icon: <Layers className="w-4 h-4" /> },
+    { label: "Faturamento", path: "/plataforma/faturamento", icon: <CreditCard className="w-4 h-4" /> },
+  ],
+};
 
 // Score ONA badge colors
 const onaBadgeColor = (level: number) => {
@@ -172,15 +182,22 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4 pt-2 space-y-0.5 custom-scrollbar">
-        {navGroups.map((group) => {
+        {[...navGroups, ...(currentUser?.role === "admin" ? [platformNavGroup] : [])].map((group) => {
           const isCollapsed = collapsedGroups.has(group.label);
+          const isPlatform = group.label === "Plataforma";
           return (
             <div key={group.label} className="mb-1">
+              {isPlatform && <div className="my-2 border-t border-slate-700/50" />}
               <button
                 onClick={() => toggleGroup(group.label)}
                 className="w-full flex items-center justify-between px-2 py-1.5 rounded-md group"
               >
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest group-hover:text-slate-400 transition-colors">
+                <span className={cn(
+                  "text-[10px] font-semibold uppercase tracking-widest transition-colors",
+                  isPlatform
+                    ? "text-amber-500/80 group-hover:text-amber-400"
+                    : "text-slate-500 group-hover:text-slate-400"
+                )}>
                   {group.label}
                 </span>
                 <ChevronRight className={cn(

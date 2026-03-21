@@ -83,6 +83,12 @@ const IACopilot = lazy(() => import("@/pages/ia-copilot"));
 // Módulo 22 — Administração
 const Administracao = lazy(() => import("@/pages/administracao"));
 
+// Módulo Integrações & API (standalone)
+const Integracoes = lazy(() => import("@/pages/integracoes"));
+
+// Plataforma WhiteLabel — Super Admin
+const Plataforma = lazy(() => import("@/pages/plataforma"));
+
 // Legacy + Admin (backwards compat)
 const AdminUsersPage = lazy(() => import("@/pages/admin/users"));
 const AdminUnitsPage = lazy(() => import("@/pages/admin/units"));
@@ -228,7 +234,14 @@ function Router() {
 
           {/* Módulo 22 — Administração */}
           <Route path="/administracao" component={Administracao} />
-          <Route path="/integracoes"><Redirect to="/administracao" /></Route>
+
+          {/* Integrações & API — módulo standalone */}
+          <Route path="/integracoes" component={Integracoes} />
+
+          {/* Plataforma WhiteLabel — gestão multi-tenant */}
+          <Route path="/plataforma" component={Plataforma} />
+          <Route path="/plataforma/modulos"><Redirect to="/plataforma" /></Route>
+          <Route path="/plataforma/faturamento"><Redirect to="/plataforma" /></Route>
 
           {/* Legacy admin routes */}
           <Route path="/admin/users" component={AdminUsersPage} />
