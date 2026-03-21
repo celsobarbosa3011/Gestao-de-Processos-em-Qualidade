@@ -24,6 +24,7 @@ import { notificationsRouter } from "./routes/notifications";
 import { swimlanesRouter } from "./routes/swimlanes";
 import { analyticsRouter } from "./routes/analytics";
 import { dashboardWidgetsRouter } from "./routes/dashboard_widgets";
+import { qhealthRouter } from "./routes/qhealth";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -57,6 +58,9 @@ export async function registerRoutes(
   app.use("/api/swimlanes", swimlanesRouter);
   app.use("/api/analytics", analyticsRouter);
   app.use("/api/dashboard/widgets", dashboardWidgetsRouter);
+
+  // QHealth One 2026 — módulos específicos
+  app.use("/api/qhealth", qhealthRouter);
 
   return httpServer;
 }
