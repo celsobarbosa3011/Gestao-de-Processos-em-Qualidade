@@ -8,7 +8,9 @@ import {
   Home, Stethoscope, Target, ScrollText, GraduationCap, CheckSquare,
   Radio, Library, Siren, TrendingUp, Map, Pill, Award, Star,
   BarChart2, Triangle, ChevronRight, X, Wifi, WifiOff, Globe,
-  Calendar, Filter, User, Layers, Store, CreditCard
+  Calendar, Filter, User, Layers, Store, CreditCard,
+  Palette, KeyRound, Workflow, SlidersHorizontal, ListTodo,
+  LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -99,7 +101,26 @@ const platformNavGroup: NavGroup = {
   items: [
     { label: "Gestão de Empresas", path: "/plataforma", icon: <Store className="w-4 h-4" />, highlight: true },
     { label: "Módulos & Licenças", path: "/plataforma/modulos", icon: <Layers className="w-4 h-4" /> },
-    { label: "Faturamento", path: "/plataforma/faturamento", icon: <CreditCard className="w-4 h-4" /> },
+    { label: "Faturamento & Planos", path: "/plataforma/faturamento", icon: <CreditCard className="w-4 h-4" /> },
+    { label: "Branding por Empresa", path: "/plataforma/branding", icon: <Palette className="w-4 h-4" /> },
+  ],
+};
+
+// Grupo exclusivo para admins — Configurações Avançadas
+const adminAdvancedNavGroup: NavGroup = {
+  label: "Config. Avançada",
+  items: [
+    { label: "Usuários & Perfis", path: "/admin/users", icon: <Users className="w-4 h-4" /> },
+    { label: "Unidades", path: "/admin/units", icon: <Building2 className="w-4 h-4" /> },
+    { label: "Permissões", path: "/admin/permissions", icon: <KeyRound className="w-4 h-4" /> },
+    { label: "Branding & White-label", path: "/admin/branding", icon: <Palette className="w-4 h-4" /> },
+    { label: "Tipos de Processo", path: "/admin/process-types", icon: <ClipboardCheck className="w-4 h-4" /> },
+    { label: "Prioridades", path: "/admin/priorities", icon: <Tag className="w-4 h-4" /> },
+    { label: "Templates", path: "/admin/templates", icon: <LayoutTemplate className="w-4 h-4" /> },
+    { label: "Campos Customizados", path: "/admin/custom-fields", icon: <SlidersHorizontal className="w-4 h-4" /> },
+    { label: "Automações", path: "/admin/automations", icon: <Workflow className="w-4 h-4" /> },
+    { label: "Configurações", path: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
+    { label: "Logs de Auditoria", path: "/admin/logs", icon: <ListTodo className="w-4 h-4" /> },
   ],
 };
 
@@ -182,9 +203,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 pb-4 pt-2 space-y-0.5 custom-scrollbar">
-        {[...navGroups, ...(currentUser?.role === "admin" ? [platformNavGroup] : [])].map((group) => {
+        {[...navGroups, ...(currentUser?.role === "admin" ? [platformNavGroup, adminAdvancedNavGroup] : [])].map((group) => {
           const isCollapsed = collapsedGroups.has(group.label);
-          const isPlatform = group.label === "Plataforma";
+          const isPlatform = group.label === "Plataforma" || group.label === "Config. Avançada";
           return (
             <div key={group.label} className="mb-1">
               {isPlatform && <div className="my-2 border-t border-slate-700/50" />}

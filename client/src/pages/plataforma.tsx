@@ -12,7 +12,7 @@ import {
   Layers, TrendingUp, DollarSign, Calendar, Globe, Shield,
   Award, BarChart3, Stethoscope, ClipboardList, FileText,
   Bot, Link2, GraduationCap, Target, Radio, Siren, Activity,
-  ChevronRight, Copy, RefreshCw, Crown, Zap, Star
+  ChevronRight, Copy, RefreshCw, Crown, Zap, Star, Palette
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -352,10 +352,17 @@ function ModuleTogglePanel({ tenant }: { tenant: Tenant }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
+function getInitialTab(pathname: string): string {
+  if (pathname.includes("/modulos")) return "modulos";
+  if (pathname.includes("/faturamento")) return "licencas";
+  if (pathname.includes("/branding")) return "branding";
+  return "empresas";
+}
+
 export default function Plataforma() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [activeTab, setActiveTab] = useState("empresas");
+  const [activeTab, setActiveTab] = useState(getInitialTab(location));
   const [showNewTenantForm, setShowNewTenantForm] = useState(false);
 
   const totalMRR = tenants.filter(t => t.status === "ativo").reduce((a, t) => a + t.mrr, 0);
@@ -465,11 +472,12 @@ export default function Plataforma() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="empresas">Empresas & Tenants</TabsTrigger>
           <TabsTrigger value="modulos">Catálogo de Módulos</TabsTrigger>
           <TabsTrigger value="licencas">Licenças & Planos</TabsTrigger>
-          <TabsTrigger value="metricas">Métricas da Plataforma</TabsTrigger>
+          <TabsTrigger value="metricas">Métricas</TabsTrigger>
+          <TabsTrigger value="branding">Branding</TabsTrigger>
         </TabsList>
 
         {/* ── Tab 1: Empresas ───────────────────────────────────────────── */}
@@ -854,6 +862,95 @@ export default function Plataforma() {
                 <p className="text-xs text-gray-400">média de uso</p>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        {/* ── Tab 5: Branding ───────────────────────────────────────────── */}
+        <TabsContent value="branding" className="space-y-6 mt-4">
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <Palette className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Branding WhiteLabel por Empresa</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Personalize logo, cores, nome do sistema e domínio para cada empresa cliente.
+                O painel de branding completo está disponível em{" "}
+                <button onClick={() => navigate("/admin/branding")} className="underline font-medium hover:text-amber-900">
+                  /admin/branding
+                </button>
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {tenants.map(t => {
+              const sm = tenantStatusMeta(t.status);
+              const pm = planConfig[t.plano];
+              const brandColors: Record<string, { primary: string; accent: string }> = {
+                T001: { primary: "#0ea5e9", accent: "#10b981" },
+                T002: { primary: "#8b5cf6", accent: "#ec4899" },
+                T003: { primary: "#f59e0b", accent: "#ef4444" },
+                T004: { primary: "#14b8a6", accent: "#6366f1" },
+                T005: { primary: "#64748b", accent: "#94a3b8" },
+              };
+              const colors = brandColors[t.id] || { primary: "#3b82f6", accent: "#10b981" };
+              return (
+                <Card key={t.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm"
+                        style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.accent})` }}
+                      >
+                        {t.nomeFantasia.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-900 truncate">{t.nomeFantasia}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <Badge className={cn("text-xs", sm.color, sm.bg)}>{sm.label}</Badge>
+                          <Badge className={cn("text-xs", pm.color, pm.bg)}>{pm.label}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-2">
+                        <div
+                          className="w-6 h-6 rounded-full border border-gray-200 shadow-sm"
+                          style={{ backgroundColor: colors.primary }}
+                          title="Cor primária"
+                        />
+                        <div
+                          className="w-6 h-6 rounded-full border border-gray-200 shadow-sm"
+                          style={{ backgroundColor: colors.accent }}
+                          title="Cor de destaque"
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <span className="font-mono">{colors.primary}</span>
+                        <span className="mx-1">·</span>
+                        <span className="font-mono">{colors.accent}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span className="text-gray-400">Domínio: </span>
+                      <span className="font-medium text-gray-700">
+                        {t.nomeFantasia.toLowerCase().replace(/[^a-z0-9]/g, "")}.qhealthone.com.br
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs gap-1"
+                      onClick={() => navigate("/admin/branding")}
+                    >
+                      <Palette className="w-3 h-3" />
+                      Configurar Branding
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </TabsContent>
       </Tabs>

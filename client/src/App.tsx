@@ -89,12 +89,18 @@ const Integracoes = lazy(() => import("@/pages/integracoes"));
 // Plataforma WhiteLabel — Super Admin
 const Plataforma = lazy(() => import("@/pages/plataforma"));
 
-// Legacy + Admin (backwards compat)
+// Admin pages — gerenciamento avançado
 const AdminUsersPage = lazy(() => import("@/pages/admin/users"));
 const AdminUnitsPage = lazy(() => import("@/pages/admin/units"));
 const AdminSettingsPage = lazy(() => import("@/pages/admin/settings"));
 const AdminLogsPage = lazy(() => import("@/pages/admin/logs"));
 const AdminBrandingPage = lazy(() => import("@/pages/admin/branding"));
+const AdminPermissionsPage = lazy(() => import("@/pages/admin/permissions"));
+const AdminAutomationsPage = lazy(() => import("@/pages/admin/automations"));
+const AdminCustomFieldsPage = lazy(() => import("@/pages/admin/custom-fields"));
+const AdminPrioritiesPage = lazy(() => import("@/pages/admin/priorities"));
+const AdminProcessTypesPage = lazy(() => import("@/pages/admin/process-types"));
+const AdminTemplatesPage = lazy(() => import("@/pages/admin/templates"));
 
 // Page loading skeleton
 const PageLoader = () => (
@@ -240,15 +246,22 @@ function Router() {
 
           {/* Plataforma WhiteLabel — gestão multi-tenant */}
           <Route path="/plataforma" component={Plataforma} />
-          <Route path="/plataforma/modulos"><Redirect to="/plataforma" /></Route>
-          <Route path="/plataforma/faturamento"><Redirect to="/plataforma" /></Route>
+          <Route path="/plataforma/modulos" component={Plataforma} />
+          <Route path="/plataforma/faturamento" component={Plataforma} />
+          <Route path="/plataforma/branding" component={Plataforma} />
 
-          {/* Legacy admin routes */}
+          {/* Admin routes — gerenciamento avançado */}
           <Route path="/admin/users" component={AdminUsersPage} />
           <Route path="/admin/units" component={AdminUnitsPage} />
           <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/admin/logs" component={AdminLogsPage} />
           <Route path="/admin/branding" component={AdminBrandingPage} />
+          <Route path="/admin/permissions" component={AdminPermissionsPage} />
+          <Route path="/admin/automations" component={AdminAutomationsPage} />
+          <Route path="/admin/custom-fields" component={AdminCustomFieldsPage} />
+          <Route path="/admin/priorities" component={AdminPrioritiesPage} />
+          <Route path="/admin/process-types" component={AdminProcessTypesPage} />
+          <Route path="/admin/templates" component={AdminTemplatesPage} />
 
           {/* Root redirect */}
           <Route path="/">
