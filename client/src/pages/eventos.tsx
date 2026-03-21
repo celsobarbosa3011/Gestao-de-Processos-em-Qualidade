@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertTriangle,
   AlertOctagon,
@@ -26,6 +29,7 @@ import {
   BarChart3,
   ClipboardList,
   RefreshCw,
+  ChevronRight,
 } from "lucide-react";
 import {
   PieChart,
@@ -257,17 +261,264 @@ function IshikawaDiagram() {
   );
 }
 
-// lazy import workaround — ChevronRight used inside IshikawaDiagram
-import { ChevronRight } from "lucide-react";
+// ChevronRight used inside IshikawaDiagram
+
+// ─── Formulário NSP — Notificação de Evento / NC / Quebra de Contrato ─────────
+
+const TIPOS_INCIDENTE_ESQUERDA = [
+  "Processos",
+  "Contextualização",
+  "Documentação",
+  "Infecção Ass. aos Cuidados à Saúde",
+  "Dados medicamentosos",
+  "Intercorrências (queda, febre, alergia, envenenamento, etc)",
+  "Hemovigilância",
+];
+
+const TIPOS_INCIDENTE_DIREITA = [
+  "Equipamentos",
+  "Dispositivo Equip. Médico",
+  "Medicamentos (dose errada, med. errado, paciente errado, etc)",
+  "Identificação do paciente",
+  "Estrutura predial",
+  "Outros",
+];
+
+interface PlanoAcaoRow { acao: string; responsavel: string; prazo: string; status: string; }
+
+function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [tipoNotificacao, setTipoNotificacao] = useState<"Evento" | "Não conformidade" | "Quebra de Contrato" | "">("");
+  const [registradoPor, setRegistradoPor] = useState("");
+  const [setorNotificante, setSetorNotificante] = useState("");
+  const [dataOcorrencia, setDataOcorrencia] = useState("");
+  const [horaOcorrencia, setHoraOcorrencia] = useState("");
+  const [setorNotificado, setSetorNotificado] = useState("");
+  const [dataNotificacao, setDataNotificacao] = useState("");
+  const [horaNotificacao, setHoraNotificacao] = useState("");
+  const [dadosPaciente, setDadosPaciente] = useState("");
+  const [numeradorNSP, setNumeradorNSP] = useState("");
+  const [prazo, setPrazo] = useState("");
+  const [devolucao, setDevolucao] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [houveDano, setHouveDano] = useState<"Sim" | "Não" | "">("");
+  const [descricaoDano, setDescricaoDano] = useState("");
+  const [acoesImediatas, setAcoesImediatas] = useState("");
+  const [dataAnalise, setDataAnalise] = useState("");
+  const [localAnalise, setLocalAnalise] = useState("");
+  const [horarioAnalise, setHorarioAnalise] = useState("");
+  const [impactado, setImpactado] = useState<"Paciente" | "Acompanhante" | "Colaborador" | "">("");
+  const [tiposIncidente, setTiposIncidente] = useState<string[]>([]);
+  const [porques, setPorques] = useState(["", "", "", "", ""]);
+  const [dano, setDano] = useState("");
+  const [planos, setPlanos] = useState<PlanoAcaoRow[]>([
+    { acao: "", responsavel: "", prazo: "", status: "" },
+    { acao: "", responsavel: "", prazo: "", status: "" },
+    { acao: "", responsavel: "", prazo: "", status: "" },
+  ]);
+
+  const toggleIncidente = (item: string) =>
+    setTiposIncidente(prev => prev.includes(item) ? prev.filter(x => x !== item) : [...prev, item]);
+
+  const updatePorque = (i: number, val: string) => {
+    const next = [...porques]; next[i] = val; setPorques(next);
+  };
+
+  const updatePlano = (i: number, field: keyof PlanoAcaoRow, val: string) => {
+    const next = [...planos]; next[i] = { ...next[i], [field]: val }; setPlanos(next);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b bg-slate-50 sticky top-0 z-10">
+          <DialogTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <AlertOctagon className="w-4 h-4 text-red-600" />
+            NOTIFICAÇÃO DE EVENTO / NÃO CONFORMIDADE / QUEBRA DE CONTRATO
+            <span className="ml-auto text-xs font-normal text-slate-400">FOR SN-003</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="px-6 py-4 space-y-5">
+          {/* Row 1 — NSP / Prazo / Devolução */}
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label className="text-xs">Numerador NSP</Label><Input value={numeradorNSP} onChange={e => setNumeradorNSP(e.target.value)} placeholder="NSP-2026-XXX" className="h-8 text-xs mt-1" /></div>
+            <div><Label className="text-xs">Prazo</Label><Input value={prazo} onChange={e => setPrazo(e.target.value)} type="date" className="h-8 text-xs mt-1" /></div>
+            <div><Label className="text-xs">Devolução</Label><Input value={devolucao} onChange={e => setDevolucao(e.target.value)} type="date" className="h-8 text-xs mt-1" /></div>
+          </div>
+
+          {/* Row 2 — Paciente + Tipo */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="border-2 border-dashed border-slate-300 rounded-lg p-3 min-h-[80px]">
+              <p className="text-xs font-semibold text-slate-500 mb-1">ETIQUETA COM OS DADOS DO PACIENTE</p>
+              <Textarea value={dadosPaciente} onChange={e => setDadosPaciente(e.target.value)} placeholder="Nome, prontuário, data de nascimento..." className="text-xs resize-none min-h-[56px] border-none p-0 shadow-none" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-slate-700">TIPO DE NOTIFICAÇÃO</p>
+              {(["Evento", "Não conformidade", "Quebra de Contrato"] as const).map(t => (
+                <label key={t} className="flex items-center gap-2 text-xs cursor-pointer py-1">
+                  <input type="radio" name="tipoNotificacao" value={t} checked={tipoNotificacao === t} onChange={() => setTipoNotificacao(t)} className="accent-red-600" />
+                  <span className={tipoNotificacao === t ? "font-semibold text-red-700" : "text-slate-600"}>{t}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Motivo da abertura */}
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b pb-1">MOTIVO DA ABERTURA</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div><Label className="text-xs">Registrado por (Opcional)</Label><Input value={registradoPor} onChange={e => setRegistradoPor(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Setor Notificante</Label><Input value={setorNotificante} onChange={e => setSetorNotificante(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Data Ocorrência</Label><Input type="date" value={dataOcorrencia} onChange={e => setDataOcorrencia(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Hora Ocorrência</Label><Input type="time" value={horaOcorrencia} onChange={e => setHoraOcorrencia(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Setor Notificado</Label><Input value={setorNotificado} onChange={e => setSetorNotificado(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Data Notificação</Label><Input type="date" value={dataNotificacao} onChange={e => setDataNotificacao(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Hora Notificação</Label><Input type="time" value={horaNotificacao} onChange={e => setHoraNotificacao(e.target.value)} className="h-8 text-xs mt-1" /></div>
+            </div>
+
+            <div>
+              <Label className="text-xs">Descrição do Evento / Não Conformidade / Quebra de Contrato</Label>
+              <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descreva detalhadamente o ocorrido..." className="mt-1 text-xs min-h-[80px] resize-none" />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-700">Houve consequência(s) / DANO(S) ao paciente ou profissional?</p>
+              <div className="flex gap-4">
+                {(["Sim", "Não"] as const).map(v => (
+                  <label key={v} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="radio" name="houveDano" value={v} checked={houveDano === v} onChange={() => setHouveDano(v)} className="accent-red-600" />
+                    <span>{v}</span>
+                  </label>
+                ))}
+                {houveDano === "Sim" && <span className="text-xs text-red-600 font-semibold">— Descreva Abaixo:</span>}
+              </div>
+              {houveDano === "Sim" && (
+                <Textarea value={descricaoDano} onChange={e => setDescricaoDano(e.target.value)} placeholder="Descreva as consequências/danos..." className="text-xs min-h-[60px] resize-none" />
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs">Quais ações foram tomadas imediatamente após a detecção do evento (ação de disposição)?</Label>
+              <Textarea value={acoesImediatas} onChange={e => setAcoesImediatas(e.target.value)} placeholder="Descreva as ações imediatas tomadas..." className="mt-1 text-xs min-h-[60px] resize-none" />
+            </div>
+          </div>
+
+          {/* Análise de Não Conformidades */}
+          <div className="space-y-3 bg-slate-50 rounded-lg p-4 border">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide text-center">ANÁLISE DE NÃO CONFORMIDADES E EVENTOS</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label className="text-xs">Data</Label><Input type="date" value={dataAnalise} onChange={e => setDataAnalise(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Local</Label><Input value={localAnalise} onChange={e => setLocalAnalise(e.target.value)} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Horário</Label><Input type="time" value={horarioAnalise} onChange={e => setHorarioAnalise(e.target.value)} className="h-8 text-xs mt-1" /></div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-slate-600">Impactado</p>
+              <div className="flex gap-4">
+                {(["Paciente", "Acompanhante", "Colaborador"] as const).map(v => (
+                  <label key={v} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="radio" name="impactado" value={v} checked={impactado === v} onChange={() => setImpactado(v)} className="accent-blue-600" />
+                    <span>{v}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">ANÁLISE DO EVENTO — TIPO DE INCIDENTE</p>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                <div className="space-y-1">
+                  {TIPOS_INCIDENTE_ESQUERDA.map(item => (
+                    <label key={item} className="flex items-start gap-2 text-xs cursor-pointer hover:bg-slate-100 rounded px-1 py-0.5">
+                      <input type="checkbox" checked={tiposIncidente.includes(item)} onChange={() => toggleIncidente(item)} className="accent-blue-600 mt-0.5 shrink-0" />
+                      <span className={tiposIncidente.includes(item) ? "font-semibold text-blue-700" : "text-slate-600"}>{item}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="space-y-1">
+                  {TIPOS_INCIDENTE_DIREITA.map(item => (
+                    <label key={item} className="flex items-start gap-2 text-xs cursor-pointer hover:bg-slate-100 rounded px-1 py-0.5">
+                      <input type="checkbox" checked={tiposIncidente.includes(item)} onChange={() => toggleIncidente(item)} className="accent-blue-600 mt-0.5 shrink-0" />
+                      <span className={tiposIncidente.includes(item) ? "font-semibold text-blue-700" : "text-slate-600"}>{item}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Análise de Causa Raiz — 5 Porquês */}
+          <div className="space-y-3 border rounded-lg p-4">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide text-center">ANÁLISE DE CAUSA RAIZ — FERRAMENTA 5 PORQUÊS</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                {[0, 2, 4].map(i => (
+                  <div key={i}>
+                    <Label className="text-xs font-semibold text-slate-500">Por quê? {i + 1}</Label>
+                    <Textarea value={porques[i]} onChange={e => updatePorque(i, e.target.value)} placeholder={`Causa ${i + 1}...`} className="mt-1 text-xs min-h-[48px] resize-none" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                {[1, 3].map(i => (
+                  <div key={i}>
+                    <Label className="text-xs font-semibold text-slate-500">Por quê? {i + 1}</Label>
+                    <Textarea value={porques[i]} onChange={e => updatePorque(i, e.target.value)} placeholder={`Causa ${i + 1}...`} className="mt-1 text-xs min-h-[48px] resize-none" />
+                  </div>
+                ))}
+                <div>
+                  <Label className="text-xs font-semibold text-red-600">Dano (causa raiz identificada)</Label>
+                  <Textarea value={dano} onChange={e => setDano(e.target.value)} placeholder="Descreva a causa raiz..." className="mt-1 text-xs min-h-[48px] resize-none border-red-200 focus:border-red-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Plano de Ação */}
+          <div className="space-y-2 border rounded-lg p-4">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide text-center mb-2">AÇÕES PARA MELHORIAS — PLANO DE AÇÃO</p>
+            <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide border-b pb-1">
+              <span>Plano de Ação</span><span>Responsável</span><span>Prazo</span><span>Status</span>
+            </div>
+            {planos.map((row, i) => (
+              <div key={i} className="grid grid-cols-4 gap-2">
+                <Input value={row.acao} onChange={e => updatePlano(i, "acao", e.target.value)} placeholder="Descreva a ação..." className="h-8 text-xs" />
+                <Input value={row.responsavel} onChange={e => updatePlano(i, "responsavel", e.target.value)} placeholder="Responsável" className="h-8 text-xs" />
+                <Input type="date" value={row.prazo} onChange={e => updatePlano(i, "prazo", e.target.value)} className="h-8 text-xs" />
+                <select value={row.status} onChange={e => updatePlano(i, "status", e.target.value)} className="h-8 text-xs border rounded-md px-2 bg-white">
+                  <option value="">Status</option>
+                  <option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Atrasado</option>
+                </select>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="text-xs h-7 gap-1 mt-1" onClick={() => setPlanos(p => [...p, { acao: "", responsavel: "", prazo: "", status: "" }])}>
+              <Plus className="w-3 h-3" /> Adicionar linha
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-3 border-t bg-slate-50 sticky bottom-0 gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" size="sm" className="text-xs h-8 gap-1">
+            <Download className="w-3.5 h-3.5" /> Imprimir / PDF
+          </Button>
+          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Registrar Notificação
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ─── TAB 1: Fila de Notificações ──────────────────────────────────────────────
 
 function FilaNotificacoes() {
+  const [showDialog, setShowDialog] = useState(false);
   return (
     <div className="space-y-4">
+      <NovaNotificacaoDialog open={showDialog} onClose={() => setShowDialog(false)} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">Fila de notificações do período — RDC 63 / Notivisa</p>
-        <Button size="sm" className="h-8 gap-1 bg-red-600 hover:bg-red-700 text-white text-xs">
+        <Button size="sm" className="h-8 gap-1 bg-red-600 hover:bg-red-700 text-white text-xs" onClick={() => setShowDialog(true)}>
           <Plus className="w-3.5 h-3.5" /> Notificar Evento
         </Button>
       </div>

@@ -1196,6 +1196,497 @@ function TabCopilot() {
   );
 }
 
+// ─── Auditoria ONA 2026 — Questionário Seção 1 ────────────────────────────────
+
+type Conformidade = "Conforme Total" | "Conforme Parcial" | "Não Conforme" | "Não Aplicável" | "";
+
+interface RequisitONA {
+  codigo: string;
+  descricao: string;
+  nivel: ONALevel;
+  isCore: boolean;
+  orientacao: string;
+}
+
+interface GrupoONA {
+  id: string;
+  titulo: string;
+  subsecao: string;
+  requisitos: RequisitONA[];
+}
+
+const GRUPOS_ONA_2026: GrupoONA[] = [
+  {
+    id: "1.1.1", titulo: "Planejamento Estratégico", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.1.1-N1", descricao: "Estabelecer a Estratégia Organizacional com missão, visão e valores formalizados", nivel: "N1", isCore: true, orientacao: "A organização deve definir e implantar um planejamento estratégico estruturado, alinhado às necessidades institucionais, cenários interno e externo e partes interessadas." },
+      { codigo: "1.1.1.2-N2", descricao: "Plano estratégico com indicadores, metas e responsáveis definidos e monitorados", nivel: "N2", isCore: false, orientacao: "O planejamento deve conter indicadores estratégicos com metas e ser monitorado periodicamente pela liderança." },
+      { codigo: "1.1.1.3-N3", descricao: "Ciclo de revisão do PE com aprendizado organizacional e envolvimento das partes interessadas", nivel: "N3", isCore: false, orientacao: "A organização demonstra aprendizado com os resultados do PE e integra feedbacks de pacientes, colaboradores e sociedade." },
+    ],
+  },
+  {
+    id: "1.1.2", titulo: "Diretrizes Estratégicas", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.2.1-N1", descricao: "Diretrizes estratégicas definidas, documentadas e amplamente comunicadas", nivel: "N1", isCore: false, orientacao: "As diretrizes devem ser formalizadas e divulgadas a todos os colaboradores da organização." },
+      { codigo: "1.1.2.2-N2", descricao: "Desdobramento das diretrizes em objetivos operacionais por área", nivel: "N2", isCore: false, orientacao: "As diretrizes estratégicas devem ser traduzidas em metas e objetivos para cada setor." },
+      { codigo: "1.1.2.3-N3", descricao: "Avaliação do alinhamento entre desempenho e diretrizes com melhoria contínua", nivel: "N3", isCore: false, orientacao: "A organização avalia periodicamente se os resultados refletem as diretrizes estratégicas estabelecidas." },
+    ],
+  },
+  {
+    id: "1.1.3", titulo: "Gestão de Riscos Organizacionais e Assistenciais", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.3.1-N1", descricao: "Processo de identificação, avaliação e tratamento de riscos implantado", nivel: "N1", isCore: true, orientacao: "A organização deve ter uma metodologia formal de gestão de riscos organizacionais e assistenciais, com matriz atualizada." },
+      { codigo: "1.1.3.2-N2", descricao: "Monitoramento periódico da matriz de riscos com ações de mitigação documentadas", nivel: "N2", isCore: false, orientacao: "Os riscos identificados devem ser monitorados e as ações de mitigação acompanhadas com indicadores." },
+      { codigo: "1.1.3.3-N3", descricao: "Maturidade em gestão de riscos com integração ao planejamento estratégico", nivel: "N3", isCore: false, orientacao: "A gestão de riscos é componente estruturado do planejamento estratégico e retroalimenta a tomada de decisão." },
+    ],
+  },
+  {
+    id: "1.1.4", titulo: "Gestão de Recursos Organizacionais e Assistenciais", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.4.1-N1", descricao: "Recursos humanos, financeiros, tecnológicos e de infraestrutura adequados ao perfil assistencial", nivel: "N1", isCore: false, orientacao: "A organização garante que os recursos são suficientes e adequados para a prestação segura do cuidado." },
+      { codigo: "1.1.4.2-N2", descricao: "Gestão e monitoramento sistematizado dos recursos com indicadores de eficiência", nivel: "N2", isCore: false, orientacao: "O uso dos recursos é monitorado com indicadores e ajustes são realizados conforme necessidade." },
+      { codigo: "1.1.4.3-N3", descricao: "Otimização de recursos com foco em resultados assistenciais e sustentabilidade", nivel: "N3", isCore: false, orientacao: "A organização demonstra uso eficiente dos recursos com impacto positivo em qualidade e segurança." },
+    ],
+  },
+  {
+    id: "1.1.5", titulo: "Perfil Institucional", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.5.1-N1", descricao: "Perfil institucional definido, atualizado e alinhado à capacidade instalada", nivel: "N1", isCore: false, orientacao: "A organização deve manter documentado seu perfil assistencial, porte e especialidades ofertadas." },
+      { codigo: "1.1.5.2-N2", descricao: "Alinhamento entre perfil, demanda e capacidade instalada monitorado", nivel: "N2", isCore: false, orientacao: "O perfil é revisado periodicamente comparando com a demanda real atendida e a capacidade disponível." },
+    ],
+  },
+  {
+    id: "1.1.6", titulo: "Comissões", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.6.1-N1", descricao: "Comissões obrigatórias constituídas e atuantes (CCIH, CFT, CP, CME, etc.)", nivel: "N1", isCore: true, orientacao: "As comissões obrigatórias por legislação e boas práticas devem estar formalizadas e com atas de reuniões regulares." },
+      { codigo: "1.1.6.2-N2", descricao: "Funcionamento regular das comissões com deliberações implementadas", nivel: "N2", isCore: false, orientacao: "As comissões se reúnem com periodicidade definida e suas recomendações são implementadas e monitoradas." },
+      { codigo: "1.1.6.3-N3", descricao: "Impacto mensurável das comissões na melhoria dos resultados assistenciais", nivel: "N3", isCore: false, orientacao: "A organização demonstra com dados que as comissões contribuem para melhoria de indicadores clínicos e operacionais." },
+    ],
+  },
+  {
+    id: "1.1.7", titulo: "Relacionamento com o Paciente/Cliente", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.7.1-N1", descricao: "Canal formal de manifestações de pacientes/clientes implantado e divulgado", nivel: "N1", isCore: false, orientacao: "A organização disponibiliza meios acessíveis para registro de reclamações, sugestões e elogios." },
+      { codigo: "1.1.7.2-N2", descricao: "Análise sistemática das manifestações com resposta ao paciente e ações de melhoria", nivel: "N2", isCore: false, orientacao: "As manifestações são analisadas, respondidas ao paciente/cliente e utilizadas para melhorias de processos." },
+      { codigo: "1.1.7.3-N3", descricao: "Experiência do paciente monitorada com indicadores e benchmarking", nivel: "N3", isCore: false, orientacao: "A organização mede e monitora indicadores de experiência do paciente comparando com referenciais nacionais." },
+    ],
+  },
+  {
+    id: "1.1.8", titulo: "Protocolos Clínicos e Assistenciais", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.8.1-N1", descricao: "Protocolos clínicos obrigatórios de segurança implantados (identificação, medicamentos, quedas, LPP, cirurgia segura)", nivel: "N1", isCore: true, orientacao: "Os protocolos previstos em normativas de segurança do paciente e ONA devem estar implantados e de conhecimento da equipe." },
+      { codigo: "1.1.8.2-N2", descricao: "Monitoramento da adesão aos protocolos com indicadores e feedback às equipes", nivel: "N2", isCore: false, orientacao: "A organização mede a adesão aos protocolos implantados e realiza intervenções quando há desvios." },
+      { codigo: "1.1.8.3-N3", descricao: "Revisão dos protocolos baseada em evidências e resultados com ciclos de melhoria", nivel: "N3", isCore: false, orientacao: "Os protocolos são revisados periodicamente com base em evidências científicas e resultados assistenciais." },
+    ],
+  },
+  {
+    id: "1.1.9", titulo: "Gestão por Processos", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.9.1-N1", descricao: "Processos críticos assistenciais e de gestão mapeados e documentados", nivel: "N1", isCore: false, orientacao: "A organização identifica e documenta seus processos críticos, com fluxos e responsabilidades definidos." },
+      { codigo: "1.1.9.2-N2", descricao: "Monitoramento e controle dos processos com indicadores de desempenho", nivel: "N2", isCore: false, orientacao: "Os processos são monitorados com indicadores que permitem identificar desvios e oportunidades de melhoria." },
+      { codigo: "1.1.9.3-N3", descricao: "Gestão por processos integrada à estratégia com melhoria contínua sistematizada", nivel: "N3", isCore: false, orientacao: "A organização demonstra cultura de melhoria contínua baseada na análise dos resultados dos processos." },
+    ],
+  },
+  {
+    id: "1.1.10", titulo: "Gestão de Documentos e Mudanças", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.10.1-N1", descricao: "Sistema de gestão documental implantado com controle de versões e distribuição", nivel: "N1", isCore: false, orientacao: "A organização controla os documentos (POPs, protocolos, normas) com versionamento e rastreabilidade." },
+      { codigo: "1.1.10.2-N2", descricao: "Gestão de mudanças com avaliação de impacto e comunicação estruturada", nivel: "N2", isCore: false, orientacao: "Mudanças em processos e documentos são gerenciadas com avaliação de impacto e comunicação às partes afetadas." },
+    ],
+  },
+  {
+    id: "1.1.11", titulo: "Governança Corporativa e Clínica", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.11.1-N1", descricao: "Estrutura de governança definida com papéis, responsabilidades e mecanismos de controle", nivel: "N1", isCore: false, orientacao: "A organização formaliza sua estrutura de governança com organograma, regimento e mecanismos de accountability." },
+      { codigo: "1.1.11.2-N2", descricao: "Mecanismos de governança clínica implementados com participação médica e multidisciplinar", nivel: "N2", isCore: false, orientacao: "A governança clínica inclui comitês, indicadores clínicos e mecanismos de credenciamento e avaliação de médicos." },
+      { codigo: "1.1.11.3-N3", descricao: "Maturidade da governança com avaliação de efetividade e transparência com stakeholders", nivel: "N3", isCore: false, orientacao: "A organização publica resultados de governança e demonstra maturidade com accountability para partes interessadas." },
+    ],
+  },
+  {
+    id: "1.1.12", titulo: "Cultura Organizacional e de Segurança", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.12.1-N1", descricao: "Cultura de segurança estabelecida com compromisso da liderança", nivel: "N1", isCore: false, orientacao: "A liderança demonstra compromisso visível com a segurança do paciente e dos colaboradores." },
+      { codigo: "1.1.12.2-N2", descricao: "Monitoramento do clima organizacional e da cultura de segurança com indicadores", nivel: "N2", isCore: false, orientacao: "A organização aplica pesquisas de clima e cultura de segurança com análise e plano de ação." },
+      { codigo: "1.1.12.3-N3", descricao: "Cultura de aprendizado e melhoria contínua demonstrada com resultados e inovação", nivel: "N3", isCore: false, orientacao: "A organização demonstra aprendizado sistemático com erros e compartilha boas práticas interna e externamente." },
+    ],
+  },
+  {
+    id: "1.1.13", titulo: "Notificação de Eventos", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.13.1-N1", descricao: "Sistema de notificação de incidentes e eventos adversos implantado e operacional", nivel: "N1", isCore: true, orientacao: "A organização mantém sistema de notificação acessível a todos os colaboradores, com anonimato garantido e sem punição." },
+      { codigo: "1.1.13.2-N2", descricao: "Análise de causa raiz dos eventos com feedback às equipes e planos de ação", nivel: "N2", isCore: false, orientacao: "Os eventos são analisados com metodologias de causa raiz e geram planos de ação acompanhados." },
+      { codigo: "1.1.13.3-N3", descricao: "Aprendizado organizacional decorrente das notificações com melhoria sistêmica demonstrada", nivel: "N3", isCore: false, orientacao: "A organização demonstra que as notificações levaram a melhorias reais nos processos e resultados." },
+    ],
+  },
+  {
+    id: "1.1.14", titulo: "Auditoria Interna", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.14.1-N1", descricao: "Processo de auditoria interna implantado com periodicidade e metodologia definidas", nivel: "N1", isCore: false, orientacao: "A organização realiza auditorias internas de forma sistemática com registro e acompanhamento de não conformidades." },
+      { codigo: "1.1.14.2-N2", descricao: "Acompanhamento das não conformidades identificadas com indicadores de resolução", nivel: "N2", isCore: false, orientacao: "As não conformidades identificadas nas auditorias geram planos de ação com responsáveis e prazos definidos." },
+    ],
+  },
+  {
+    id: "1.1.15", titulo: "Fornecedores e Contratos", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.15.1-N1", descricao: "Gestão de fornecedores críticos com critérios de seleção e avaliação formalizados", nivel: "N1", isCore: false, orientacao: "A organização define critérios para seleção de fornecedores críticos e realiza avaliação periódica de desempenho." },
+      { codigo: "1.1.15.2-N2", descricao: "Monitoramento de contratos com indicadores de conformidade e gestão de não conformidades", nivel: "N2", isCore: false, orientacao: "Os contratos com fornecedores críticos são monitorados com indicadores e desvios são gerenciados formalmente." },
+    ],
+  },
+  {
+    id: "1.1.16", titulo: "Gestão Financeira", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.16.1-N1", descricao: "Orçamento institucional elaborado e planejamento financeiro de curto/médio prazo", nivel: "N1", isCore: false, orientacao: "A organização elabora orçamento anual com projeções e acompanhamento das realizações." },
+      { codigo: "1.1.16.2-N2", descricao: "Monitoramento financeiro com indicadores, análise de desvios e ações corretivas", nivel: "N2", isCore: false, orientacao: "Os resultados financeiros são monitorados mensalmente com análise de variações e ações de correção." },
+      { codigo: "1.1.16.3-N3", descricao: "Sustentabilidade financeira demonstrada com investimentos em qualidade e inovação", nivel: "N3", isCore: false, orientacao: "A organização demonstra equilíbrio financeiro sustentável com investimentos em melhoria da qualidade assistencial." },
+    ],
+  },
+  {
+    id: "1.1.17", titulo: "Prevenção e Controle de Infecção e Biossegurança", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.17.1-N1", descricao: "CCIH constituída e atuante com programa de PCI formalizado", nivel: "N1", isCore: true, orientacao: "A Comissão de Controle de Infecção Hospitalar deve estar formalmente constituída e com programa de PCI implantado." },
+      { codigo: "1.1.17.2-N2", descricao: "Programas de bundles, higiene das mãos e vigilância de IRAS implementados e monitorados", nivel: "N2", isCore: false, orientacao: "Os programas de PCI incluem vigilância epidemiológica de IRAS com indicadores monitorados e ações." },
+      { codigo: "1.1.17.3-N3", descricao: "Resultados de PCI com benchmarking nacional e melhoria contínua demonstrada", nivel: "N3", isCore: false, orientacao: "As taxas de IRAS são comparadas com referenciais nacionais e demonstram tendência de melhoria." },
+    ],
+  },
+  {
+    id: "1.1.18", titulo: "Comunicação Organizacional", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.18.1-N1", descricao: "Comunicação interna estruturada com canais formais para colaboradores, pacientes e famílias", nivel: "N1", isCore: false, orientacao: "A organização estabelece canais de comunicação interna efetivos e canais para pacientes e familiares." },
+      { codigo: "1.1.18.2-N2", descricao: "Efetividade da comunicação monitorada com avaliação dos canais e melhoria contínua", nivel: "N2", isCore: false, orientacao: "A organização avalia periodicamente a efetividade dos canais de comunicação e implementa melhorias." },
+    ],
+  },
+  {
+    id: "1.1.19", titulo: "Cuidado Centrado no Paciente", subsecao: "1.1 – Liderança Organizacional",
+    requisitos: [
+      { codigo: "1.1.19.1-N1", descricao: "Direitos e deveres do paciente formalizados, divulgados e assegurados", nivel: "N1", isCore: true, orientacao: "A organização garante os direitos do paciente (privacidade, informação, consentimento, autonomia) com evidências objetivas." },
+      { codigo: "1.1.19.2-N2", descricao: "Envolvimento ativo do paciente e família nas decisões do cuidado", nivel: "N2", isCore: false, orientacao: "O paciente e família participam ativamente do planejamento e execução do cuidado com protocolos formalizados." },
+      { codigo: "1.1.19.3-N3", descricao: "Experiência do paciente monitorada com indicadores validados e estratégias de melhoria", nivel: "N3", isCore: false, orientacao: "A organização mede sistematicamente a experiência do paciente e usa os resultados para melhoria." },
+    ],
+  },
+  {
+    id: "1.2.1", titulo: "Impacto Social (ESG Social)", subsecao: "1.2 – Impacto Social",
+    requisitos: [
+      { codigo: "1.2.1.1-N1", descricao: "Ações de responsabilidade social formalizadas e integradas à estratégia organizacional", nivel: "N1", isCore: false, orientacao: "A organização define e implementa ações de responsabilidade social alinhadas à sua missão e contexto." },
+      { codigo: "1.2.1.2-N2", descricao: "Gestão do impacto social com indicadores e monitoramento de resultados", nivel: "N2", isCore: false, orientacao: "As ações sociais são gerenciadas com metas e indicadores que demonstram resultados à comunidade." },
+      { codigo: "1.2.1.3-N3", descricao: "Estratégia ESG social integrada ao planejamento com resultados mensuráveis e publicados", nivel: "N3", isCore: false, orientacao: "A organização publica relatórios ESG com resultados sociais e demonstra compromisso com a equidade em saúde." },
+    ],
+  },
+  {
+    id: "1.3.1", titulo: "Impacto Ambiental (ESG Ambiental)", subsecao: "1.3 – Impacto Ambiental",
+    requisitos: [
+      { codigo: "1.3.1.1-N1", descricao: "Gestão de resíduos de serviços de saúde (PGRSS) implantada e atualizada", nivel: "N1", isCore: true, orientacao: "O Plano de Gerenciamento de Resíduos de Serviços de Saúde deve estar vigente, implantado e com registros de execução." },
+      { codigo: "1.3.1.2-N2", descricao: "Programas de gestão ambiental implementados (consumo de água, energia, emissões)", nivel: "N2", isCore: false, orientacao: "A organização monitora e gerencia seu impacto ambiental com programas e indicadores de desempenho ambiental." },
+      { codigo: "1.3.1.3-N3", descricao: "Estratégia de sustentabilidade ambiental integrada ao planejamento com metas e resultados", nivel: "N3", isCore: false, orientacao: "A organização demonstra compromisso com sustentabilidade ambiental com metas de longo prazo e resultados publicados." },
+    ],
+  },
+  {
+    id: "1.4.1", titulo: "Gestão de Pessoas", subsecao: "1.4 – Gestão de Pessoas",
+    requisitos: [
+      { codigo: "1.4.1.1-N1", descricao: "Dimensionamento de pessoal baseado em critérios técnicos e regulatórios com quadro adequado", nivel: "N1", isCore: true, orientacao: "A organização dimensiona o quadro de pessoal com base em critérios técnicos, regulatórios e de segurança do paciente." },
+      { codigo: "1.4.1.2-N2", descricao: "Programas de desenvolvimento, treinamento e avaliação de competências implantados", nivel: "N2", isCore: false, orientacao: "A organização mantém programa estruturado de educação continuada com avaliação de competências e desempenho." },
+      { codigo: "1.4.1.3-N3", descricao: "Gestão estratégica de pessoas com indicadores de engajamento e clima organizacional", nivel: "N3", isCore: false, orientacao: "A gestão de pessoas é componente estratégico com indicadores de satisfação, engajamento e desenvolvimento." },
+    ],
+  },
+];
+
+interface RespostaAuditoria { conformidade: Conformidade; observacao: string; }
+
+function TabAuditoria2026() {
+  const [respostas, setRespostas] = useState<Record<string, RespostaAuditoria>>({});
+  const [grupoAberto, setGrupoAberto] = useState<string | null>("1.1.1");
+  const [relatorioGerado, setRelatorioGerado] = useState(false);
+  const [filtroNivel, setFiltroNivel] = useState<"" | "N1" | "N2" | "N3">("");
+  const [filtroSubsecao, setFiltroSubsecao] = useState("");
+
+  const setResposta = (codigo: string, campo: keyof RespostaAuditoria, valor: string) => {
+    setRespostas(prev => ({
+      ...prev,
+      [codigo]: { ...prev[codigo], conformidade: prev[codigo]?.conformidade ?? "", observacao: prev[codigo]?.observacao ?? "", [campo]: valor },
+    }));
+  };
+
+  const calcularScore = (nivel?: ONALevel) => {
+    const requisitos = GRUPOS_ONA_2026.flatMap(g => g.requisitos).filter(r => !nivel || r.nivel === nivel);
+    const respondidos = requisitos.filter(r => respostas[r.codigo]?.conformidade && respostas[r.codigo]?.conformidade !== "Não Aplicável");
+    if (respondidos.length === 0) return 0;
+    const pontos = respondidos.reduce((acc, r) => {
+      const c = respostas[r.codigo]?.conformidade;
+      return acc + (c === "Conforme Total" ? 1 : c === "Conforme Parcial" ? 0.5 : 0);
+    }, 0);
+    return Math.round((pontos / respondidos.length) * 100);
+  };
+
+  const totalRequisitos = GRUPOS_ONA_2026.flatMap(g => g.requisitos).length;
+  const respondidos = Object.values(respostas).filter(r => r.conformidade !== "").length;
+  const progresso = Math.round((respondidos / totalRequisitos) * 100);
+  const scoreN1 = calcularScore("N1");
+  const scoreN2 = calcularScore("N2");
+  const scoreN3 = calcularScore("N3");
+
+  const coreNaoConformes = GRUPOS_ONA_2026.flatMap(g => g.requisitos)
+    .filter(r => r.isCore && respostas[r.codigo]?.conformidade === "Não Conforme");
+
+  const prontoN1 = scoreN1 >= 70 && coreNaoConformes.filter(r => r.nivel === "N1").length === 0;
+  const prontoN2 = prontoN1 && scoreN2 >= 70 && coreNaoConformes.filter(r => r.nivel === "N2").length === 0;
+  const prontoN3 = prontoN2 && scoreN3 >= 70;
+
+  const subsecoes = Array.from(new Set(GRUPOS_ONA_2026.map(g => g.subsecao)));
+  const gruposFiltrados = GRUPOS_ONA_2026.filter(g => {
+    const matchSubsecao = !filtroSubsecao || g.subsecao === filtroSubsecao;
+    const matchNivel = !filtroNivel || g.requisitos.some(r => r.nivel === filtroNivel);
+    return matchSubsecao && matchNivel;
+  });
+
+  const conformidadeColor: Record<Conformidade | "", string> = {
+    "Conforme Total":    "bg-emerald-100 text-emerald-800 border-emerald-300",
+    "Conforme Parcial":  "bg-amber-100 text-amber-800 border-amber-300",
+    "Não Conforme":      "bg-red-100 text-red-800 border-red-300",
+    "Não Aplicável":     "bg-slate-100 text-slate-500 border-slate-200",
+    "":                  "bg-slate-50 text-slate-400 border-slate-200",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="py-3 px-4">
+            <p className="text-xs text-slate-500">Progresso</p>
+            <p className="text-2xl font-bold">{progresso}%</p>
+            <p className="text-xs text-slate-400">{respondidos}/{totalRequisitos} respondidos</p>
+          </CardContent>
+        </Card>
+        {[
+          { label: "Score N1 – Segurança", value: scoreN1, color: "border-l-violet-500", ok: prontoN1 },
+          { label: "Score N2 – Gestão Integrada", value: scoreN2, color: "border-l-blue-500", ok: prontoN2 },
+          { label: "Score N3 – Excelência", value: scoreN3, color: "border-l-emerald-500", ok: prontoN3 },
+        ].map(({ label, value, color, ok }) => (
+          <Card key={label} className={cn("border-l-4", color)}>
+            <CardContent className="py-3 px-4">
+              <p className="text-xs text-slate-500">{label}</p>
+              <p className={cn("text-2xl font-bold", value >= 70 ? "text-emerald-600" : "text-red-600")}>{value}%</p>
+              <p className={cn("text-xs font-semibold", ok ? "text-emerald-600" : "text-slate-400")}>{ok ? "✓ Elegível" : value === 0 ? "Não avaliado" : "Abaixo do mínimo"}</p>
+            </CardContent>
+          </Card>
+        ))}
+        <Card className={cn("border-l-4", coreNaoConformes.length === 0 ? "border-l-emerald-500" : "border-l-red-500")}>
+          <CardContent className="py-3 px-4">
+            <p className="text-xs text-slate-500">Requisitos CORE NC</p>
+            <p className={cn("text-2xl font-bold", coreNaoConformes.length > 0 ? "text-red-600 animate-pulse" : "text-emerald-600")}>{coreNaoConformes.length}</p>
+            <p className="text-xs text-slate-400">Bloqueiam acreditação</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Progress bar */}
+      <div>
+        <div className="flex justify-between text-xs text-slate-500 mb-1">
+          <span>Progresso do questionário</span><span>{progresso}%</span>
+        </div>
+        <Progress value={progresso} className="h-2 [&>div]:bg-blue-600" />
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-slate-500 font-medium">Nível:</span>
+          {(["", "N1", "N2", "N3"] as const).map(n => (
+            <button key={n} onClick={() => setFiltroNivel(n)} className={cn("px-2.5 py-1 rounded-full border text-xs font-semibold transition-colors", filtroNivel === n ? "bg-blue-600 text-white border-blue-600" : "border-slate-200 text-slate-500 hover:bg-slate-50")}>
+              {n || "Todos"}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-slate-500 font-medium">Subseção:</span>
+          <button onClick={() => setFiltroSubsecao("")} className={cn("px-2.5 py-1 rounded-full border text-xs transition-colors", !filtroSubsecao ? "bg-slate-700 text-white border-slate-700" : "border-slate-200 text-slate-500 hover:bg-slate-50")}>Todas</button>
+          {subsecoes.map(s => (
+            <button key={s} onClick={() => setFiltroSubsecao(s)} className={cn("px-2.5 py-1 rounded-full border text-xs transition-colors", filtroSubsecao === s ? "bg-slate-700 text-white border-slate-700" : "border-slate-200 text-slate-500 hover:bg-slate-50")}>{s.split("–")[0].trim()}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Questionnaire */}
+      <div className="space-y-3">
+        {gruposFiltrados.map(grupo => {
+          const reqFiltrados = filtroNivel ? grupo.requisitos.filter(r => r.nivel === filtroNivel) : grupo.requisitos;
+          const grupoScore = (() => {
+            const resp = reqFiltrados.filter(r => respostas[r.codigo]?.conformidade && respostas[r.codigo]?.conformidade !== "Não Aplicável");
+            if (resp.length === 0) return null;
+            const pts = resp.reduce((a, r) => a + (respostas[r.codigo]?.conformidade === "Conforme Total" ? 1 : respostas[r.codigo]?.conformidade === "Conforme Parcial" ? 0.5 : 0), 0);
+            return Math.round((pts / resp.length) * 100);
+          })();
+          const respondidosGrupo = reqFiltrados.filter(r => respostas[r.codigo]?.conformidade).length;
+          const aberto = grupoAberto === grupo.id;
+
+          return (
+            <Card key={grupo.id} className={cn("border", coreNaoConformes.some(r => reqFiltrados.find(rr => rr.codigo === r.codigo)) ? "border-red-300" : "border-slate-200")}>
+              <button className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors" onClick={() => setGrupoAberto(aberto ? null : grupo.id)}>
+                <div className="shrink-0">
+                  {aberto ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono font-bold text-blue-600">{grupo.id}</span>
+                    <span className="text-sm font-semibold text-slate-800">{grupo.titulo}</span>
+                    <span className="text-xs text-slate-400">{grupo.subsecao}</span>
+                    {reqFiltrados.some(r => r.isCore) && (
+                      <span className="text-xs font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded">CORE</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-slate-400">{respondidosGrupo}/{reqFiltrados.length} respondidos</span>
+                    {grupoScore !== null && (
+                      <span className={cn("text-xs font-bold", grupoScore >= 70 ? "text-emerald-600" : "text-red-600")}>{grupoScore}%</span>
+                    )}
+                  </div>
+                </div>
+                <div className="shrink-0 w-24">
+                  <Progress value={reqFiltrados.length > 0 ? (respondidosGrupo / reqFiltrados.length) * 100 : 0} className="h-1.5 [&>div]:bg-blue-500" />
+                </div>
+              </button>
+
+              {aberto && (
+                <div className="border-t divide-y">
+                  {reqFiltrados.map(req => {
+                    const resp = respostas[req.codigo];
+                    return (
+                      <div key={req.codigo} className={cn("px-4 py-4 space-y-3", req.isCore && "bg-red-50/30")}>
+                        <div className="flex items-start gap-3">
+                          <div className="shrink-0 flex items-center gap-1 mt-0.5">
+                            <ONALevelBadge level={req.nivel} />
+                            {req.isCore && <span className="text-xs font-bold bg-red-100 text-red-700 px-1 py-0.5 rounded">CORE</span>}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <p className="text-sm font-medium text-slate-800">{req.descricao}</p>
+                            <p className="text-xs text-slate-500 italic">{req.orientacao}</p>
+                            <span className="text-xs font-mono text-slate-400">{req.codigo}</span>
+                          </div>
+                        </div>
+
+                        {/* Conformidade radio */}
+                        <div className="flex flex-wrap gap-2 pl-0">
+                          {(["Conforme Total", "Conforme Parcial", "Não Conforme", "Não Aplicável"] as const).map(opt => (
+                            <label key={opt} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs cursor-pointer font-semibold transition-all", resp?.conformidade === opt ? conformidadeColor[opt] : "border-slate-200 text-slate-400 hover:border-slate-300")}>
+                              <input type="radio" name={req.codigo} value={opt} checked={resp?.conformidade === opt} onChange={() => setResposta(req.codigo, "conformidade", opt)} className="sr-only" />
+                              {opt === "Conforme Total" && "✓"} {opt === "Não Conforme" && "✗"} {opt}
+                            </label>
+                          ))}
+                        </div>
+
+                        {/* Observation */}
+                        {resp?.conformidade && resp.conformidade !== "Não Aplicável" && (
+                          <div className="pl-0">
+                            <input
+                              type="text"
+                              placeholder="Observação / evidência / justificativa..."
+                              value={resp?.observacao ?? ""}
+                              onChange={e => setResposta(req.codigo, "observacao", e.target.value)}
+                              className="w-full text-xs border border-slate-200 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Generate Report Button */}
+      <div className="flex gap-3 justify-center pt-4">
+        <Button
+          size="sm"
+          className="h-9 gap-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 text-white px-6"
+          onClick={() => setRelatorioGerado(true)}
+        >
+          <Star className="w-4 h-4" /> Analisar Prontidão ONA 2026
+        </Button>
+      </div>
+
+      {/* Readiness Report */}
+      {relatorioGerado && (
+        <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-violet-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Award className="w-5 h-5 text-blue-600" /> Relatório de Prontidão ONA 2026 — Análise Automática
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Resultado geral */}
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { nivel: "N1", label: "Segurança",           score: scoreN1, pronto: prontoN1, border: "border-violet-300", bg: "bg-violet-50",  text: "text-violet-600",  badge: "bg-violet-100 text-violet-700"  },
+                { nivel: "N2", label: "Gestão Integrada",    score: scoreN2, pronto: prontoN2, border: "border-blue-300",   bg: "bg-blue-50",    text: "text-blue-600",    badge: "bg-blue-100 text-blue-700"      },
+                { nivel: "N3", label: "Excelência em Gestão",score: scoreN3, pronto: prontoN3, border: "border-emerald-300",bg: "bg-emerald-50", text: "text-emerald-600", badge: "bg-emerald-100 text-emerald-700" },
+              ] as const).map(({ nivel, label, score, pronto, border, bg, text, badge }) => (
+                <div key={nivel} className={cn("rounded-xl p-4 border-2 text-center", pronto ? `${border} ${bg}` : "border-slate-200 bg-white")}>
+                  <div className={cn("text-3xl font-black mb-1", pronto ? text : "text-slate-400")}>{score}%</div>
+                  <div className="text-xs font-bold text-slate-700">{nivel} — {label}</div>
+                  <div className={cn("text-xs font-semibold mt-1 px-2 py-0.5 rounded-full inline-block", pronto ? badge : "bg-slate-100 text-slate-500")}>
+                    {pronto ? "✓ ELEGÍVEL" : score === 0 ? "Não avaliado" : "Abaixo do mínimo (70%)"}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CORE não conformes */}
+            {coreNaoConformes.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm font-bold text-red-700 flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4" /> ⚠️ Requisitos CORE Não Conformes — BLOQUEIAM a Acreditação
+                </p>
+                <ul className="space-y-1">
+                  {coreNaoConformes.map(r => (
+                    <li key={r.codigo} className="text-xs text-red-700 flex items-start gap-2">
+                      <XCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <span><strong>{r.codigo}</strong>: {r.descricao}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Recomendações */}
+            <div className="space-y-2">
+              <p className="text-sm font-bold text-slate-700">Recomendações Prioritárias</p>
+              <div className="space-y-2">
+                {GRUPOS_ONA_2026.flatMap(g => g.requisitos)
+                  .filter(r => respostas[r.codigo]?.conformidade === "Não Conforme" || respostas[r.codigo]?.conformidade === "Conforme Parcial")
+                  .slice(0, 8)
+                  .map(r => (
+                    <div key={r.codigo} className={cn("flex items-start gap-2 rounded-lg p-2.5 text-xs", respostas[r.codigo]?.conformidade === "Não Conforme" ? "bg-red-50 border border-red-100" : "bg-amber-50 border border-amber-100")}>
+                      {respostas[r.codigo]?.conformidade === "Não Conforme" ? <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" /> : <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />}
+                      <div>
+                        <span className="font-mono font-bold">{r.codigo}</span> — <span className="font-medium">{r.descricao}</span>
+                        {r.isCore && <span className="ml-1 text-red-600 font-bold">[CORE]</span>}
+                        <ONALevelBadge level={r.nivel} />
+                      </div>
+                    </div>
+                  ))}
+                {GRUPOS_ONA_2026.flatMap(g => g.requisitos).filter(r => ["Não Conforme", "Conforme Parcial"].includes(respostas[r.codigo]?.conformidade ?? "")).length === 0 && (
+                  <p className="text-xs text-slate-400 italic">Nenhuma não conformidade identificada até o momento.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+                <Download className="w-3.5 h-3.5" /> Exportar PDF
+              </Button>
+              <Button size="sm" className="h-8 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="w-3.5 h-3.5" /> Gerar Plano de Ação
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AcreditacaoONA() {
@@ -1239,9 +1730,10 @@ export default function AcreditacaoONA() {
 
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <Tabs defaultValue="dashboard" className="space-y-6">
+        <Tabs defaultValue="auditoria" className="space-y-6">
           <TabsList className="bg-white border border-gray-200 shadow-sm rounded-xl p-1 flex-wrap h-auto gap-0.5">
             {[
+              { value: "auditoria", label: "Auditoria ONA 2026", icon: Star },
               { value: "dashboard", label: "Dashboard ONA", icon: TrendingUp },
               { value: "requisitos", label: "Árvore de Requisitos", icon: ShieldCheck },
               { value: "evidencias", label: "Evidências", icon: FileText },
@@ -1258,6 +1750,10 @@ export default function AcreditacaoONA() {
               </TabsTrigger>
             ))}
           </TabsList>
+
+          <TabsContent value="auditoria">
+            <TabAuditoria2026 />
+          </TabsContent>
 
           <TabsContent value="dashboard">
             <TabDashboard />
