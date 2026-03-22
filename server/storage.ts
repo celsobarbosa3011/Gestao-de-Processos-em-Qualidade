@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/node-postgres";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import pkg from "pg";
 const { Pool } = pkg;
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -62,19 +62,35 @@ import type {
 } from "@shared/schema";
 
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import path from "path";
 
-// Initialize PGlite database (persisted in ./data directory)
-const client = new PGlite("./data");
-export const db = drizzle(client, { schema });
+// Initialize database: use real PostgreSQL when DATABASE_URL is set (production),
+// otherwise fall back to PGlite for local dev
+function createDb(): any {
+  if (process.env.DATABASE_URL) {
+    console.log('[db] Using PostgreSQL (DATABASE_URL is set)');
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    return drizzlePg(pool, { schema });
+  } else {
+    console.log('[db] Using PGlite (no DATABASE_URL — local dev mode)');
+    const client = new PGlite("./data");
+    return drizzlePglite(client, { schema });
+  }
+}
 
-// Helper to run migrations on startup
+export const db = createDb();
+
+// Helper to run migrations on startup (only for PGlite / local dev)
 export async function runMigrations() {
-  console.log('[db] Running migrations...');
-  await migrate(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
-  console.log('[db] Migrations completed');
+  if (!process.env.DATABASE_URL) {
+    console.log('[db] Running PGlite migrations...');
+    await migratePglite(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
+    console.log('[db] Migrations completed');
+  } else {
+    console.log('[db] PostgreSQL mode — skipping PGlite migrations');
+  }
 }
 
 
