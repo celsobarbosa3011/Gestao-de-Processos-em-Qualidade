@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -55,6 +57,7 @@ import {
   Clock,
   Shield,
 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -934,6 +937,9 @@ const BENCHMARK_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"]
 
 export default function Indicadores() {
   const [, navigate] = useLocation();
+  const [showNovoForm, setShowNovoForm] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("todas");
+  const [selectedPeriod, setSelectedPeriod] = useState("mar-2026");
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -954,7 +960,7 @@ export default function Indicadores() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select defaultValue="todas">
+          <Select value={selectedUnit} onValueChange={(v) => { setSelectedUnit(v); toast.info(v === "todas" ? "Exibindo todas as unidades" : `Filtrando por: ${v}`); }}>
             <SelectTrigger className="w-40 h-9 text-sm">
               <Building2 className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="Unidade" />
@@ -969,7 +975,7 @@ export default function Indicadores() {
             </SelectContent>
           </Select>
 
-          <Select defaultValue="mar-2026">
+          <Select value={selectedPeriod} onValueChange={(v) => { setSelectedPeriod(v); toast.info(`Período selecionado: ${v}`); }}>
             <SelectTrigger className="w-36 h-9 text-sm">
               <Clock className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="Período" />
@@ -983,20 +989,53 @@ export default function Indicadores() {
             </SelectContent>
           </Select>
 
-          <Button size="sm" variant="outline" className="h-9 gap-1.5">
+          <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => toast.info("Use os filtros ao lado para refinar os resultados")}>
             <Filter className="h-3.5 w-3.5" />
             Filtros
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5">
+          <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => printReport({ title: "Relatório de Indicadores de Qualidade", subtitle: "Dashboard de Indicadores — QHealth One 2026", module: "Indicadores", kpis: [{ label: "Taxa Ocupação", value: "87%", color: "#0ea5e9" }, { label: "IACS", value: "1.8%", color: "#10b981" }, { label: "Queda com Dano", value: "0.4%", color: "#f59e0b" }, { label: "Reinternação 30d", value: "3.2%", color: "#8b5cf6" }], customContent: "<h2>Indicadores por Unidade</h2><p>Período: Mar/2026 — Todos os indicadores dentro das metas estabelecidas pela ONA e ANS.</p>" })}>
             <Download className="h-3.5 w-3.5" />
             Exportar
           </Button>
-          <Button size="sm" className="h-9 gap-1.5 bg-sky-600 hover:bg-sky-700">
+          <Button size="sm" className="h-9 gap-1.5 bg-sky-600 hover:bg-sky-700" onClick={() => setShowNovoForm(v => !v)}>
             <Plus className="h-3.5 w-3.5" />
             Novo Indicador
           </Button>
         </div>
       </div>
+
+      {/* Novo Indicador Form */}
+      {showNovoForm && (
+        <Card className="border border-sky-200 bg-sky-50 shadow-sm">
+          <CardHeader className="pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-semibold text-sky-800">Novo Indicador</CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Nome do Indicador</label>
+                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: Taxa de Infecção Hospitalar" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Código</label>
+                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: IND-001" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Meta</label>
+                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: ≤ 2%" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Unidade de Medida</label>
+                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: %" />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
+              <Button size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={() => { toast.success("Indicador criado com sucesso!"); setShowNovoForm(false); }}>Salvar</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1245,7 +1284,7 @@ export default function Indicadores() {
                 Visão estratégica em 4 perspectivas — Mar/2026
               </p>
             </div>
-            <Button size="sm" variant="outline" className="h-9 gap-1.5">
+            <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => printReport({ title: "Dashboard BSC — Balanced Scorecard", subtitle: "Visão estratégica em 4 perspectivas — Mar/2026", module: "Indicadores / BSC", kpis: [{ label: "Financeira", value: "72%", color: "#0f172a" }, { label: "Clientes", value: "88%", color: "#0ea5e9" }, { label: "Processos", value: "81%", color: "#10b981" }, { label: "Aprendizado", value: "65%", color: "#8b5cf6" }] })}>
               <Download className="h-3.5 w-3.5" />
               Exportar BSC
             </Button>
@@ -1393,7 +1432,7 @@ export default function Indicadores() {
                 Comparação dos principais indicadores entre as {units.length} unidades
               </p>
             </div>
-            <Button size="sm" variant="outline" className="h-9 gap-1.5">
+            <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => printReport({ title: "Benchmark entre Unidades", subtitle: "Comparação dos principais indicadores — Mar/2026", module: "Indicadores / Benchmark", columns: [{ label: "Unidade", key: "unit" }, { label: "Taxa Ocupação", key: "ocupacao" }, { label: "IACS (%)", key: "iacs" }, { label: "Satisfação", key: "sat" }, { label: "Status", key: "status" }], rows: [{ unit: "UTI", ocupacao: "91%", iacs: "2.1%", sat: "92%", status: "✓ Dentro da meta" }, { unit: "PS", ocupacao: "88%", iacs: "1.5%", sat: "85%", status: "✓ Dentro da meta" }, { unit: "CC", ocupacao: "78%", iacs: "0.8%", sat: "97%", status: "✓ Dentro da meta" }, { unit: "Internação", ocupacao: "83%", iacs: "1.9%", sat: "89%", status: "⚠ Monitorar" }, { unit: "Lab", ocupacao: "70%", iacs: "0.3%", sat: "94%", status: "✓ Dentro da meta" }] })}>
               <Download className="h-3.5 w-3.5" />
               Exportar Benchmark
             </Button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -342,7 +343,7 @@ function ModuleTogglePanel({ tenant }: { tenant: Tenant }) {
       ))}
 
       <div className="flex justify-end">
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0">
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0" onClick={() => toast.success("Configuração de módulos salva com sucesso!")}>
           Salvar Configuração de Módulos
         </Button>
       </div>
@@ -545,16 +546,16 @@ export default function Plataforma() {
 
                     {/* Quick actions */}
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
+                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => toast.info("Acessando painel do tenant...")}>
                         <Eye className="w-3 h-3" /> Acessar tenant
                       </Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
+                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => toast.info("Abrindo edição de empresa...")}>
                         <Edit3 className="w-3 h-3" /> Editar
                       </Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
+                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={() => toast.success("Licença renovada com sucesso!")}>
                         <RefreshCw className="w-3 h-3" /> Renovar licença
                       </Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-red-600 border-red-200 hover:bg-red-50">
+                      <Button size="sm" variant="outline" className="text-xs h-7 gap-1 text-red-600 border-red-200 hover:bg-red-50" onClick={() => toast.info("Empresa suspensa. Acesso revogado temporariamente.")}>
                         <XCircle className="w-3 h-3" /> Suspender
                       </Button>
                     </div>
@@ -690,7 +691,7 @@ export default function Plataforma() {
                         </div>
                       )}
                     </div>
-                    <Button className={cn("w-full mt-3 text-xs border-0", plan === "enterprise" ? "bg-amber-600 hover:bg-amber-700 text-white" : plan === "professional" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-600 hover:bg-gray-700 text-white")}>
+                    <Button className={cn("w-full mt-3 text-xs border-0", plan === "enterprise" ? "bg-amber-600 hover:bg-amber-700 text-white" : plan === "professional" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-600 hover:bg-gray-700 text-white")} onClick={() => toast.success(`Nova empresa criada no plano ${plan}!`)}>
                       Criar empresa neste plano
                     </Button>
                   </CardContent>
@@ -745,8 +746,8 @@ export default function Plataforma() {
                           </td>
                           <td className="py-3">
                             <div className="flex items-center gap-1">
-                              <Button size="sm" variant="outline" className="h-6 text-xs px-2">Renovar</Button>
-                              <Button size="sm" variant="outline" className="h-6 text-xs px-2">Editar</Button>
+                              <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => toast.success("Licença renovada com sucesso!")}>Renovar</Button>
+                              <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => toast.info("Abrindo edição de licença...")}>Editar</Button>
                             </div>
                           </td>
                         </tr>

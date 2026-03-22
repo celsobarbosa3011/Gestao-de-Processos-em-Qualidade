@@ -86,6 +86,15 @@ const Administracao = lazy(() => import("@/pages/administracao"));
 // Módulo Integrações & API (standalone)
 const Integracoes = lazy(() => import("@/pages/integracoes"));
 
+// LGPD — Lei Geral de Proteção de Dados
+const Lgpd = lazy(() => import("@/pages/lgpd"));
+
+// Manual do Sistema
+const Manual = lazy(() => import("@/pages/manual"));
+
+// Análise SWOT
+const Swot = lazy(() => import("@/pages/swot"));
+
 // Plataforma WhiteLabel — Super Admin
 const Plataforma = lazy(() => import("@/pages/plataforma"));
 
@@ -231,9 +240,18 @@ function Router() {
           {/* Módulo 19 — Referências Normativas */}
           <Route path="/referencias" component={Referencias} />
 
+          {/* LGPD — Lei Geral de Proteção de Dados */}
+          <Route path="/lgpd" component={Lgpd} />
+
           {/* Módulo 20 — Notificação de Eventos */}
           <Route path="/eventos" component={Eventos} />
           <Route path="/eventos/:id" component={Eventos} />
+
+          {/* Manual do Sistema */}
+          <Route path="/manual" component={Manual} />
+
+          {/* Análise SWOT */}
+          <Route path="/swot" component={Swot} />
 
           {/* Módulo 21 — IA ONA Copilot */}
           <Route path="/ia-copilot" component={IACopilot} />

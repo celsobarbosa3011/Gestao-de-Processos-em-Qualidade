@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { printReport } from "@/lib/print-pdf";
 import {
   Users, Calendar, FileText, Plus, ArrowRight, CheckCircle2,
   AlertCircle, Clock, ChevronRight, MoreHorizontal, Building2,
@@ -11,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ============================================================
@@ -73,6 +75,48 @@ const commissions = [
     lastMeeting: "2026-01-30", nextMeeting: "2026-03-30", status: "active",
     pendingDeliberations: 2, completedDeliberations: 5,
     description: "Promoção da humanização no atendimento e na gestão do trabalho.",
+  },
+  {
+    id: 9, code: "CIPA", name: "Comissão Interna de Prevenção de Acidentes", icon: <Shield className="w-5 h-5" />,
+    color: "amber", regulation: "NR-5 / CLT", members: 14, frequency: "Mensal",
+    lastMeeting: "2026-03-05", nextMeeting: "2026-04-05", status: "active",
+    pendingDeliberations: 1, completedDeliberations: 7,
+    description: "Prevenção de acidentes e doenças decorrentes do trabalho, preservação da integridade física dos trabalhadores.",
+  },
+  {
+    id: 10, code: "CGRH", name: "Comissão de Gerenciamento de Resíduos de Saúde", icon: <Trash2 className="w-5 h-5" />,
+    color: "emerald", regulation: "RDC 222/2018", members: 6, frequency: "Bimestral",
+    lastMeeting: "2026-02-20", nextMeeting: "2026-04-20", status: "active",
+    pendingDeliberations: 2, completedDeliberations: 4,
+    description: "Elaboração e implantação do PGRSS — Plano de Gerenciamento de Resíduos dos Serviços de Saúde.",
+  },
+  {
+    id: 11, code: "CTSI", name: "Comissão Técnica de Segurança das Instalações", icon: <Activity className="w-5 h-5" />,
+    color: "sky", regulation: "NBR 13.534 / ABNT", members: 5, frequency: "Trimestral",
+    lastMeeting: "2026-01-15", nextMeeting: "2026-04-15", status: "active",
+    pendingDeliberations: 0, completedDeliberations: 3,
+    description: "Garantia das condições de segurança das instalações elétricas, hidráulicas e de gases medicinais.",
+  },
+  {
+    id: 12, code: "COPAL", name: "Comissão de Cuidados Paliativos", icon: <Heart className="w-5 h-5" />,
+    color: "violet", regulation: "CFM 1.805/2006", members: 8, frequency: "Mensal",
+    lastMeeting: "2026-02-28", nextMeeting: "2026-03-28", status: "active",
+    pendingDeliberations: 1, completedDeliberations: 5,
+    description: "Organização da atenção paliativa multidisciplinar ao paciente com doença ameaçadora da vida.",
+  },
+  {
+    id: 13, code: "CEP", name: "Comissão de Ética em Pesquisa", icon: <Star className="w-5 h-5" />,
+    color: "slate", regulation: "Res. CNS 466/2012", members: 11, frequency: "Mensal",
+    lastMeeting: "2026-03-08", nextMeeting: "2026-04-08", status: "active",
+    pendingDeliberations: 3, completedDeliberations: 15,
+    description: "Avaliação e acompanhamento ético dos projetos de pesquisa envolvendo seres humanos.",
+  },
+  {
+    id: 14, code: "CTEN", name: "Comissão Técnica de Enfermagem", icon: <Stethoscope className="w-5 h-5" />,
+    color: "teal", regulation: "COFEN 543/2017", members: 9, frequency: "Mensal",
+    lastMeeting: "2026-03-12", nextMeeting: "2026-04-12", status: "active",
+    pendingDeliberations: 2, completedDeliberations: 8,
+    description: "Padronização das práticas assistenciais de enfermagem e gestão de dimensionamento de pessoal.",
   },
 ];
 
@@ -150,11 +194,11 @@ export default function Comissoes() {
           <p className="text-slate-500 text-sm">Governança institucional com rastreabilidade total por deliberação</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => toast.info("Calendário anual de reuniões — em breve disponível para exportação")}>
             <Calendar className="w-3.5 h-3.5" />
             Agenda Anual
           </Button>
-          <Button size="sm" className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0">
+          <Button size="sm" className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => toast.info("Criação de nova comissão será habilitada em breve")}>
             <Plus className="w-3.5 h-3.5" />
             Nova Comissão
           </Button>
@@ -249,11 +293,11 @@ export default function Comissoes() {
                     </div>
 
                     <div className="flex gap-2 pt-1">
-                      <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1" onClick={(e) => { e.stopPropagation(); toast.info("Atas da comissão em breve disponíveis para consulta"); }}>
                         <Eye className="w-3 h-3" />
                         Atas
                       </Button>
-                      <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1">
+                      <Button size="sm" variant="outline" className="flex-1 h-7 text-xs gap-1" onClick={(e) => { e.stopPropagation(); toast.success("Nova reunião registrada com sucesso!"); }}>
                         <Plus className="w-3 h-3" />
                         Nova Reunião
                       </Button>
@@ -327,7 +371,7 @@ export default function Comissoes() {
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{m.date}</p>
                         <div className="flex items-center gap-1 justify-end">
-                          <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]">
+                          <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => toast.info("Abrindo ata da reunião...")}>
                             <FileText className="w-3 h-3 mr-1" />
                             Ata
                           </Button>
@@ -350,7 +394,7 @@ export default function Comissoes() {
                   <ClipboardList className="w-4 h-4 text-amber-500" />
                   Deliberações em Aberto
                 </CardTitle>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => printReport({ title: "Deliberações da Comissão", subtitle: "Atas e deliberações registradas — QHealth One 2026", module: "Comissões", columns: [{ label: "Data", key: "data" }, { label: "Comissão", key: "comissao" }, { label: "Deliberação", key: "delib" }, { label: "Responsável", key: "resp" }, { label: "Status", key: "status" }], rows: [{ data: "15/03/2026", comissao: "NSP", delib: "Implantação de checklist cirúrgico OMS em todos os CCs", resp: "Dir. Médico", status: "Em andamento" }, { data: "10/03/2026", comissao: "CCIH", delib: "Reforço do protocolo de higienização de mãos — Meta 85%", resp: "Coord. CCIH", status: "Concluído" }, { data: "05/03/2026", comissao: "CFT", delib: "Padronização de 12 novos medicamentos no formulário", resp: "Farm. Chefe", status: "Em andamento" }, { data: "01/03/2026", comissao: "CIPA", delib: "Instalação de sinalização de segurança em todas as alas", resp: "RH / SESMT", status: "Concluído" }] })}>
                   <Download className="w-3 h-3" />
                   Exportar
                 </Button>
@@ -428,7 +472,7 @@ export default function Comissoes() {
                     <span className="text-sm font-bold text-amber-600">{m.deliberations}</span>
                   </div>
                   <div className="px-4 flex items-center justify-center">
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-sky-600">
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1 text-sky-600" onClick={() => toast.info("Gerando PDF da ata...")}>
                       <Download className="w-3 h-3" />
                       PDF
                     </Button>

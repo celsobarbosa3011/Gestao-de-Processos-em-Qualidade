@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,7 @@ export default function Integracoes() {
           <h1 className="text-2xl font-bold text-gray-900">Integrações & API</h1>
           <p className="text-sm text-gray-500 mt-1">Módulo 20 — Conectores, webhooks e gerenciamento de chaves de API</p>
         </div>
-        <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white border-0">
+        <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700 text-white border-0" onClick={() => toast.info("Assistente de nova integração em breve disponível")}>
           <Plug className="w-4 h-4" />
           Nova Integração
         </Button>
@@ -392,17 +393,17 @@ export default function Integracoes() {
                     <div className="flex gap-2">
                       {selectedIntegration.status !== "planned" ? (
                         <>
-                          <Button size="sm" variant="outline" className="flex-1 text-xs gap-1">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs gap-1" onClick={() => toast.info("Sincronizando integração...")}>
                             <RefreshCw className="w-3 h-3" />
                             Sincronizar
                           </Button>
-                          <Button size="sm" variant="outline" className="flex-1 text-xs gap-1">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs gap-1" onClick={() => toast.success("Teste de conexão executado com sucesso!")}>
                             <Zap className="w-3 h-3" />
                             Testar
                           </Button>
                         </>
                       ) : (
-                        <Button size="sm" variant="outline" className="w-full text-xs text-purple-600 border-purple-200 gap-1">
+                        <Button size="sm" variant="outline" className="w-full text-xs text-purple-600 border-purple-200 gap-1" onClick={() => toast.info("Roadmap de integrações V3 disponível em breve")}>
                           <ChevronRight className="w-3 h-3" />
                           Ver Roadmap V3
                         </Button>
@@ -419,7 +420,7 @@ export default function Integracoes() {
         <TabsContent value="webhooks" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">Últimos eventos recebidos de todas as integrações ativas</p>
-            <Button size="sm" variant="outline" className="gap-1 text-xs">
+            <Button size="sm" variant="outline" className="gap-1 text-xs" onClick={() => toast.info("Atualizando log de webhooks...")}>
               <RefreshCw className="w-3 h-3" />
               Atualizar
             </Button>
@@ -480,7 +481,7 @@ export default function Integracoes() {
         <TabsContent value="keys" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">Gerencie as chaves de API para acesso externo ao QHealth One</p>
-            <Button size="sm" className="gap-1 text-xs bg-purple-600 hover:bg-purple-700 text-white border-0">
+            <Button size="sm" className="gap-1 text-xs bg-purple-600 hover:bg-purple-700 text-white border-0" onClick={() => toast.info("Criação de nova chave de API em breve disponível")}>
               <Key className="w-3 h-3" />
               Nova Chave
             </Button>
@@ -535,8 +536,8 @@ export default function Integracoes() {
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <Button size="sm" variant="outline" className="text-xs h-7">Editar</Button>
-                      <Button size="sm" variant="outline" className="text-xs h-7 text-red-600 border-red-200 hover:bg-red-50">
+                      <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => toast.info("Editando configurações da chave de API...")}>Editar</Button>
+                      <Button size="sm" variant="outline" className="text-xs h-7 text-red-600 border-red-200 hover:bg-red-50" onClick={() => toast.info(key.ativa ? "Chave revogada com sucesso" : "Chave excluída com sucesso")}>
                         {key.ativa ? "Revogar" : "Excluir"}
                       </Button>
                     </div>

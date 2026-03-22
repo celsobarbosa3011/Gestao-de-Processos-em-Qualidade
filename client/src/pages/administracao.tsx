@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -159,11 +160,11 @@ export default function Administracao() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => toast.info("Exportando log de auditoria...")}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Auditoria
             </Button>
-            <Button size="sm" className="bg-sky-600 hover:bg-sky-500 text-white">
+            <Button size="sm" className="bg-sky-600 hover:bg-sky-500 text-white" onClick={() => toast.info("Cadastro de novo usuário disponível em Admin → Usuários & Perfis")}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Usuário
             </Button>
@@ -294,10 +295,10 @@ export default function Administracao() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-sky-400">
+                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-sky-400" onClick={() => toast.info("Editar usuário — disponível em Admin → Usuários & Perfis")}>
                                 <Edit className="w-3.5 h-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-red-400">
+                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-red-400" onClick={() => toast.info("Remover usuário — disponível em Admin → Usuários & Perfis")}>
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </div>
@@ -324,7 +325,7 @@ export default function Administracao() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm text-slate-200">{profile.role}</CardTitle>
-                      <Button variant="ghost" size="sm" className="text-slate-400 hover:text-sky-400 text-xs">
+                      <Button variant="ghost" size="sm" className="text-slate-400 hover:text-sky-400 text-xs" onClick={() => toast.info("Editar permissões — disponível em Admin → Permissões")}>
                         <Edit className="w-3 h-3 mr-1" />
                         Editar
                       </Button>
@@ -377,12 +378,12 @@ export default function Administracao() {
                             {integ.lastSync}
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-sky-400 text-xs">
+                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-sky-400 text-xs" onClick={() => toast.info("Configurações de integração disponíveis em Integrações & API")}>
                               <Settings className="w-3.5 h-3.5 mr-1" />
                               Config
                             </Button>
                             {integ.status !== "conectado" && (
-                              <Button size="sm" className="text-xs bg-sky-600 hover:bg-sky-500 text-white">
+                              <Button size="sm" className="text-xs bg-sky-600 hover:bg-sky-500 text-white" onClick={() => toast.info("Reconectando integração...")}>
                                 <RefreshCw className="w-3 h-3 mr-1" />
                                 Reconectar
                               </Button>
@@ -396,7 +397,7 @@ export default function Administracao() {
               })}
             </div>
 
-            <Button variant="outline" className="w-full border-dashed border-slate-700 text-slate-500 hover:text-slate-300 hover:bg-slate-800">
+            <Button variant="outline" className="w-full border-dashed border-slate-700 text-slate-500 hover:text-slate-300 hover:bg-slate-800" onClick={() => toast.info("Adicionar integrações — acesse o módulo Integrações & API")}>
               <Plus className="w-4 h-4 mr-2" />
               Adicionar nova integração
             </Button>
@@ -411,7 +412,7 @@ export default function Administracao() {
                     <Activity className="w-4 h-4 text-sky-400" />
                     Log de Auditoria — Últimas 24 horas
                   </CardTitle>
-                  <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 text-xs hover:bg-slate-800">
+                  <Button variant="outline" size="sm" className="border-slate-700 text-slate-400 text-xs hover:bg-slate-800" onClick={() => toast.info("Exportando log de auditoria...")}>
                     <Download className="w-3.5 h-3.5 mr-1.5" />
                     Exportar
                   </Button>

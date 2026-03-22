@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +200,7 @@ function ListaMestra() {
   const [typeFilter, setTypeFilter] = useState<string>("Todos");
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [unitFilter, setUnitFilter] = useState<string>("all");
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const types: string[] = ["Todos", "POP", "Protocolo", "Política", "Manual", "Formulário", "Regimento", "Norma"];
   const statuses: string[] = ["Todos", "Vigente", "Em Revisão", "Vencido", "Rascunho"];
@@ -255,10 +257,10 @@ function ListaMestra() {
                 {units.filter(u => u !== "all").map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="sm" className="h-8 gap-1">
+            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => toast.info("Exportando...")}>
               <Download className="w-3.5 h-3.5" /> Exportar
             </Button>
-            <Button size="sm" className="h-8 gap-1 ml-auto bg-blue-600 hover:bg-blue-700 text-white">
+            <Button size="sm" className="h-8 gap-1 ml-auto bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowNovoForm(v => !v)}>
               <Plus className="w-3.5 h-3.5" /> Novo Documento
             </Button>
           </div>
@@ -301,6 +303,47 @@ function ListaMestra() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Novo Documento Form */}
+      {showNovoForm && (
+        <Card className="border border-blue-200">
+          <CardHeader className="pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-bold text-slate-800">Novo Documento</CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
+                <Input className="h-8 text-sm" placeholder="Título do documento" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
+                <select className="w-full h-8 px-3 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300">
+                  <option>POP</option>
+                  <option>Protocolo</option>
+                  <option>Política</option>
+                  <option>Manual</option>
+                  <option>Formulário</option>
+                  <option>Regimento</option>
+                  <option>Norma</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-600 block mb-1">Responsável</label>
+                <Input className="h-8 text-sm" placeholder="Nome do responsável" />
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
+                Cancelar
+              </Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
+                Salvar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table */}
       <Card>
@@ -362,11 +405,11 @@ function ListaMestra() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-blue-600">
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-blue-600" onClick={() => toast.info("Abrindo...")}>
                             <Eye className="w-3.5 h-3.5" /> Ver
                           </Button>
                           {doc.status !== "Rascunho" && (
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-amber-600">
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-amber-600" onClick={() => toast.info("Abrindo editor...")}>
                               <RefreshCw className="w-3.5 h-3.5" /> Revisar
                             </Button>
                           )}
@@ -461,7 +504,7 @@ function WorkflowAprovacao() {
                   </div>
 
                   <div>
-                    <Button size="sm" className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs">
+                    <Button size="sm" className="h-8 gap-1 bg-blue-600 hover:bg-blue-700 text-white text-xs" onClick={() => toast.success("Operação realizada com sucesso!")}>
                       <Send className="w-3.5 h-3.5" /> Avançar etapa
                     </Button>
                   </div>
@@ -658,11 +701,11 @@ function EvidenciasONA() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {row.status !== "Atendido" ? (
-                        <Button variant="outline" size="sm" className="h-7 px-3 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50">
+                        <Button variant="outline" size="sm" className="h-7 px-3 text-xs gap-1 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => toast.info("Funcionalidade disponível em breve")}>
                           <Plus className="w-3 h-3" /> Vincular doc.
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="sm" className="h-7 px-3 text-xs gap-1 text-slate-400">
+                        <Button variant="ghost" size="sm" className="h-7 px-3 text-xs gap-1 text-slate-400" onClick={() => toast.info("Abrindo...")}>
                           <Eye className="w-3 h-3" /> Ver
                         </Button>
                       )}

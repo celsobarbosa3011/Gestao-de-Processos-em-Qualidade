@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { printReport } from "@/lib/print-pdf";
 import {
   Triangle, AlertTriangle, Filter, Plus, ArrowRight, TrendingUp,
   Download, MoreHorizontal, CheckSquare, Building2, Target,
@@ -68,8 +70,38 @@ export default function MatrizGUT() {
   const [sortBy, setSortBy] = useState<"score" | "gravity" | "urgency" | "tendency">("score");
   const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoItems, setNovoItems] = useState<typeof gutItems[0][]>([]);
+  const [novoForm, setNovoForm] = useState({ title: "", unit: "", responsible: "", gravity: "3", urgency: "3", tendency: "3" });
 
-  const sortedItems = [...gutItems]
+  function handleNovoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!novoForm.title.trim() || !novoForm.unit.trim()) {
+      toast.error("Preencha título e unidade.");
+      return;
+    }
+    const allItems = [...gutItems, ...novoItems];
+    const newItem: typeof gutItems[0] = {
+      id: allItems.length + 1,
+      title: novoForm.title,
+      origin: "Risco",
+      originCode: "Manual",
+      unit: novoForm.unit,
+      chapter: "Cap. 1 — Liderança",
+      gravity: Number(novoForm.gravity),
+      urgency: Number(novoForm.urgency),
+      tendency: Number(novoForm.tendency),
+      status: "open",
+      responsible: novoForm.responsible || "—",
+      aiJustification: "Item cadastrado manualmente.",
+    };
+    setNovoItems(prev => [...prev, newItem]);
+    setNovoForm({ title: "", unit: "", responsible: "", gravity: "3", urgency: "3", tendency: "3" });
+    setShowNovoForm(false);
+    toast.success("Item GUT cadastrado com sucesso!");
+  }
+
+  const sortedItems = [...gutItems, ...novoItems]
     .filter(i => filterOrigin === "all" || i.origin === filterOrigin)
     .filter(i => filterStatus === "all" || i.status === filterStatus)
     .map(i => ({ ...i, score: gutScore(i.gravity, i.urgency, i.tendency) }))
@@ -100,16 +132,88 @@ export default function MatrizGUT() {
           <p className="text-slate-500 text-sm">Priorização estratégica por Gravidade × Urgência × Tendência</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => printReport({ title: "Matriz de Priorização GUT", subtitle: "Gravidade × Urgência × Tendência — QHealth One 2026", module: "Matriz GUT", columns: [{ label: "Problema / Risco", key: "prob" }, { label: "G", key: "g", align: "center" }, { label: "U", key: "u", align: "center" }, { label: "T", key: "t", align: "center" }, { label: "GUT", key: "gut", align: "center" }, { label: "Prioridade", key: "prio" }], rows: [{ prob: "Falha na identificação do paciente", g: "5", u: "5", t: "4", gut: "100", prio: "🔴 Crítica" }, { prob: "Medicamento alta vigilância sem dupla checagem", g: "5", u: "4", t: "4", gut: "80", prio: "🔴 Crítica" }, { prob: "Taxa IACS UTI acima da meta", g: "4", u: "4", t: "4", gut: "64", prio: "🟠 Alta" }, { prob: "Falta de leitos UTI", g: "4", u: "3", t: "3", gut: "36", prio: "🟡 Média" }, { prob: "Treinamentos ONA pendentes", g: "3", u: "4", t: "3", gut: "36", prio: "🟡 Média" }, { prob: "Manutenção preventiva atrasada", g: "3", u: "3", t: "3", gut: "27", prio: "🟢 Baixa" }] })}>
             <Download className="w-3.5 h-3.5" />
             Exportar
           </Button>
-          <Button size="sm" className="h-8 gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0">
+          <Button size="sm" className="h-8 gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={() => setShowNovoForm(true)}>
             <Plus className="w-3.5 h-3.5" />
             Novo Item GUT
           </Button>
         </div>
       </div>
+
+      {/* Novo Item GUT inline form */}
+      {showNovoForm && (
+        <form onSubmit={handleNovoSubmit} className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-800">Cadastrar Novo Item GUT</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Título *</label>
+              <input
+                type="text"
+                className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="Descrição do problema ou risco"
+                value={novoForm.title}
+                onChange={e => setNovoForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Unidade *</label>
+              <input
+                type="text"
+                className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="Ex: UTI, PS, CME"
+                value={novoForm.unit}
+                onChange={e => setNovoForm(f => ({ ...f, unit: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Responsável</label>
+              <input
+                type="text"
+                className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                placeholder="Nome do responsável"
+                value={novoForm.responsible}
+                onChange={e => setNovoForm(f => ({ ...f, responsible: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Gravidade (1-5)</label>
+                <input
+                  type="number" min={1} max={5}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  value={novoForm.gravity}
+                  onChange={e => setNovoForm(f => ({ ...f, gravity: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Urgência (1-5)</label>
+                <input
+                  type="number" min={1} max={5}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  value={novoForm.urgency}
+                  onChange={e => setNovoForm(f => ({ ...f, urgency: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Tendência (1-5)</label>
+                <input
+                  type="number" min={1} max={5}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  value={novoForm.tendency}
+                  onChange={e => setNovoForm(f => ({ ...f, tendency: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
+            <Button type="submit" size="sm" className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0">Salvar Item GUT</Button>
+          </div>
+        </form>
+      )}
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -304,7 +408,7 @@ export default function MatrizGUT() {
                 </div>
 
                 <Button
-                  onClick={() => navigate("/gestao-operacional")}
+                  onClick={() => { toast.info("Abrindo Gestão Operacional..."); navigate("/gestao-operacional"); }}
                   className="w-full h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0 gap-1.5"
                 >
                   <CheckSquare className="w-3.5 h-3.5" />

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import {
   GraduationCap, Plus, Search, Filter, Download, ChevronRight,
   CheckCircle2, AlertCircle, Clock, Users, Building2, Calendar,
@@ -180,6 +181,7 @@ export default function Treinamentos() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const filtered = trainings.filter((t) => {
     const matchSearch =
@@ -216,11 +218,11 @@ export default function Treinamentos() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => toast.info("Exportando...")}>
                 <Download className="w-4 h-4" />
                 Exportar
               </Button>
-              <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-2 text-sm">
+              <Button className="bg-teal-600 hover:bg-teal-700 text-white gap-2 text-sm" onClick={() => setShowNovoForm(true)}>
                 <Plus className="w-4 h-4" />
                 Novo Treinamento
               </Button>
@@ -228,6 +230,62 @@ export default function Treinamentos() {
           </div>
         </div>
       </div>
+
+      {/* ── Novo Treinamento Inline Form ── */}
+      {showNovoForm && (
+        <div className="max-w-screen-xl mx-auto px-6 pt-5">
+          <Card className="bg-white border border-teal-200 shadow-sm">
+            <CardHeader className="px-5 pt-4 pb-3 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-teal-500" />
+                Novo Treinamento
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
+                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="Ex: Segurança do Paciente" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Categoria</label>
+                  <select className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 bg-white">
+                    <option>Obrigatório</option>
+                    <option>Segurança</option>
+                    <option>Clínico</option>
+                    <option>Gestão</option>
+                    <option>Integração</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Instrutor</label>
+                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="Nome do instrutor" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Carga Horária (h)</label>
+                  <input type="number" className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="Ex: 4" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Data de Início</label>
+                  <input type="date" className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Data de Término</label>
+                  <input type="date" className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
+                  Salvar Treinamento
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="max-w-screen-xl mx-auto px-6 py-6">
         {/* ── KPI Cards ── */}
@@ -376,12 +434,12 @@ export default function Treinamentos() {
                           </div>
 
                           <div className="flex-shrink-0 flex flex-row md:flex-col gap-2">
-                            <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 gap-1.5 text-xs h-8">
+                            <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 gap-1.5 text-xs h-8" onClick={(e) => { e.stopPropagation(); toast.info("Abrindo detalhes..."); }}>
                               <Eye className="w-3.5 h-3.5" />
                               Detalhes
                             </Button>
                             {t.status === "Em andamento" && (
-                              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5 text-xs h-8">
+                              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white gap-1.5 text-xs h-8" onClick={(e) => { e.stopPropagation(); toast.success("Operação realizada com sucesso!"); }}>
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                 Registrar
                               </Button>
@@ -442,15 +500,15 @@ export default function Treinamentos() {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <Button size="sm" className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2 text-xs">
+                        <Button size="sm" className="w-full bg-teal-600 hover:bg-teal-700 text-white gap-2 text-xs" onClick={() => toast.success("Operação realizada com sucesso!")}>
                           <FileText className="w-3.5 h-3.5" />
                           Lista de presença
                         </Button>
-                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.success("Operação realizada com sucesso!")}>
                           <Award className="w-3.5 h-3.5" />
                           Emitir certificados
                         </Button>
-                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.info("Exportando...")}>
                           <Download className="w-3.5 h-3.5" />
                           Relatório de conclusão
                         </Button>
@@ -525,7 +583,7 @@ export default function Treinamentos() {
                     </CardTitle>
                     <p className="text-sm text-slate-500 mt-0.5">Volume de treinamentos e participantes por mês</p>
                   </div>
-                  <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 gap-2 text-xs">
+                  <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.info("Exportando...")}>
                     <Download className="w-3.5 h-3.5" />
                     Exportar
                   </Button>

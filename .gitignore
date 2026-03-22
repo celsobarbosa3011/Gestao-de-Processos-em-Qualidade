@@ -4,3 +4,16 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Variáveis de ambiente — NUNCA subir para o Git
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Dados do banco PostgreSQL local
+data/
+
+# Logs
+*.log
+npm-debug.log*

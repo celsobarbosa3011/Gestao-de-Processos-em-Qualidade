@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -676,15 +678,40 @@ function RiskListTab() {
   const [filterCat, setFilterCat] = useState<string>("all");
   const [filterUnit, setFilterUnit] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoItems, setNovoItems] = useState<typeof risks[0][]>([]);
+  const [novoForm, setNovoForm] = useState({ title: "", cat: "Assistencial" as RiskCategory, unit: "", prob: "3", impact: "3" });
 
-  const units = Array.from(new Set(risks.map((r) => r.unit)));
+  const allRisks = [...risks, ...novoItems];
+  const units = Array.from(new Set(allRisks.map((r) => r.unit)));
 
-  const filtered = risks.filter((r) => {
+  const filtered = allRisks.filter((r) => {
     if (filterCat !== "all" && r.cat !== filterCat) return false;
     if (filterUnit !== "all" && r.unit !== filterUnit) return false;
     if (filterStatus !== "all" && r.status !== filterStatus) return false;
     return true;
   });
+
+  function handleNovoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!novoForm.title.trim() || !novoForm.unit.trim()) {
+      toast.error("Preencha título e unidade.");
+      return;
+    }
+    const newRisk: typeof risks[0] = {
+      id: allRisks.length + 1,
+      title: novoForm.title,
+      cat: novoForm.cat,
+      prob: Number(novoForm.prob),
+      impact: Number(novoForm.impact),
+      unit: novoForm.unit,
+      status: "identified",
+    };
+    setNovoItems(prev => [...prev, newRisk]);
+    setNovoForm({ title: "", cat: "Assistencial", unit: "", prob: "3", impact: "3" });
+    setShowNovoForm(false);
+    toast.success("Risco cadastrado com sucesso!");
+  }
 
   const toggle = (id: number) => setExpandedId(expandedId === id ? null : id);
 
@@ -731,12 +758,78 @@ function RiskListTab() {
           </SelectContent>
         </Select>
         <div className="ml-auto">
-          <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+          <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setShowNovoForm(true)}>
             <Plus className="w-3.5 h-3.5" />
             Novo Risco
           </Button>
         </div>
       </div>
+
+      {/* Novo Risco inline form */}
+      {showNovoForm && (
+        <form onSubmit={handleNovoSubmit} className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-indigo-800">Cadastrar Novo Risco</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Descrição do risco"
+                value={novoForm.title}
+                onChange={e => setNovoForm(f => ({ ...f, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Unidade *</label>
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Ex: UTI, PS, CME"
+                value={novoForm.unit}
+                onChange={e => setNovoForm(f => ({ ...f, unit: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+              <select
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                value={novoForm.cat}
+                onChange={e => setNovoForm(f => ({ ...f, cat: e.target.value as RiskCategory }))}
+              >
+                <option>Assistencial</option>
+                <option>Operacional</option>
+                <option>Regulatório</option>
+                <option>Estratégico</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Probabilidade (1-5)</label>
+                <input
+                  type="number" min={1} max={5}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  value={novoForm.prob}
+                  onChange={e => setNovoForm(f => ({ ...f, prob: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Impacto (1-5)</label>
+                <input
+                  type="number" min={1} max={5}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  value={novoForm.impact}
+                  onChange={e => setNovoForm(f => ({ ...f, impact: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
+            <Button type="submit" size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">Salvar Risco</Button>
+          </div>
+        </form>
+      )}
 
       {/* Table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -831,7 +924,7 @@ function RiskListTab() {
           <div className="py-12 text-center text-gray-400 text-sm">Nenhum risco encontrado com os filtros selecionados.</div>
         )}
       </div>
-      <p className="text-xs text-gray-400">{filtered.length} riscos exibidos de {risks.length} cadastrados</p>
+      <p className="text-xs text-gray-400">{filtered.length} riscos exibidos de {allRisks.length} cadastrados</p>
     </div>
   );
 }
@@ -861,7 +954,7 @@ function HFMEATab() {
           <span className={cn("px-2 py-0.5 rounded border text-xs font-bold", "bg-orange-100 text-orange-800 border-orange-300")}>NPR 100–200 — Monitorar</span>
           <span className={cn("px-2 py-0.5 rounded border text-xs font-bold", "bg-emerald-100 text-emerald-800 border-emerald-300")}>NPR &lt; 100 — Manter</span>
         </div>
-        <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+        <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => toast.info("Formulário de novo HFMEA em breve disponível")}>
           <Plus className="w-3.5 h-3.5" />
           Novo HFMEA
         </Button>
@@ -981,7 +1074,7 @@ function MitigationTab() {
           </SelectContent>
         </Select>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => toast.info("Redirecionando para Gestão Operacional...")}>
             <ArrowRight className="w-3.5 h-3.5" />
             Ver no Módulo Gestão Operacional
           </Button>
@@ -1065,6 +1158,31 @@ function MitigationTab() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Riscos() {
+  const [showHeaderNovoForm, setShowHeaderNovoForm] = useState(false);
+  const [headerNovoItems, setHeaderNovoItems] = useState<typeof risks[0][]>([]);
+  const [headerNovoForm, setHeaderNovoForm] = useState({ title: "", cat: "Assistencial" as RiskCategory, unit: "", prob: "3", impact: "3" });
+
+  function handleHeaderNovoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!headerNovoForm.title.trim() || !headerNovoForm.unit.trim()) {
+      toast.error("Preencha título e unidade.");
+      return;
+    }
+    const newRisk: typeof risks[0] = {
+      id: risks.length + headerNovoItems.length + 1,
+      title: headerNovoForm.title,
+      cat: headerNovoForm.cat,
+      prob: Number(headerNovoForm.prob),
+      impact: Number(headerNovoForm.impact),
+      unit: headerNovoForm.unit,
+      status: "identified",
+    };
+    setHeaderNovoItems(prev => [...prev, newRisk]);
+    setHeaderNovoForm({ title: "", cat: "Assistencial", unit: "", prob: "3", impact: "3" });
+    setShowHeaderNovoForm(false);
+    toast.success("Risco cadastrado com sucesso!");
+  }
+
   const totalCritical = risks.filter((r) => getRiskScore(r.prob, r.impact) >= 20).length;
   const totalHigh = risks.filter((r) => {
     const s = getRiskScore(r.prob, r.impact);
@@ -1090,16 +1208,82 @@ export default function Riscos() {
             <p className="text-sm text-gray-500">Identificação, análise e mitigação de riscos assistenciais e operacionais · QHealth One 2026</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => printReport({ title: "Matriz de Gestão de Riscos", subtitle: "Riscos identificados, analisados e mitigados — QHealth One 2026", module: "Gestão de Riscos", kpis: [{ label: "Riscos Críticos", value: 3, color: "#dc2626" }, { label: "Em Mitigação", value: 5, color: "#f59e0b" }, { label: "Monitorados", value: 8, color: "#0ea5e9" }, { label: "Fechados", value: 12, color: "#10b981" }], columns: [{ label: "Risco", key: "titulo" }, { label: "Categoria", key: "cat" }, { label: "Probabilidade", key: "prob" }, { label: "Impacto", key: "impacto" }, { label: "NPR", key: "npr" }, { label: "Status", key: "status" }], rows: [{ titulo: "Falha na identificação do paciente", cat: "Assistencial", prob: "Alta", impacto: "Grave", npr: "360", status: "Mitigando" }, { titulo: "Medicamento de alta vigilância sem dupla checagem", cat: "Assistencial", prob: "Média", impacto: "Grave", npr: "270", status: "Monitorado" }, { titulo: "Falha na esterilização CME", cat: "Operacional", prob: "Baixa", impacto: "Crítico", npr: "180", status: "Monitorado" }, { titulo: "Não conformidade regulatória ANVISA", cat: "Regulatório", prob: "Média", impacto: "Moderado", npr: "120", status: "Fechado" }] })}>
               <Download className="w-3.5 h-3.5" />
               Exportar
             </Button>
-            <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+            <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs" onClick={() => setShowHeaderNovoForm(true)}>
               <Plus className="w-3.5 h-3.5" />
               Novo Risco
             </Button>
           </div>
         </div>
+
+        {/* Novo Risco inline form (header) */}
+        {showHeaderNovoForm && (
+          <form onSubmit={handleHeaderNovoSubmit} className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3 mt-4">
+            <p className="text-sm font-semibold text-indigo-800">Cadastrar Novo Risco</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Título *</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="Descrição do risco"
+                  value={headerNovoForm.title}
+                  onChange={e => setHeaderNovoForm(f => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Unidade *</label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="Ex: UTI, PS, CME"
+                  value={headerNovoForm.unit}
+                  onChange={e => setHeaderNovoForm(f => ({ ...f, unit: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Categoria</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  value={headerNovoForm.cat}
+                  onChange={e => setHeaderNovoForm(f => ({ ...f, cat: e.target.value as RiskCategory }))}
+                >
+                  <option>Assistencial</option>
+                  <option>Operacional</option>
+                  <option>Regulatório</option>
+                  <option>Estratégico</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Probabilidade (1-5)</label>
+                  <input
+                    type="number" min={1} max={5}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    value={headerNovoForm.prob}
+                    onChange={e => setHeaderNovoForm(f => ({ ...f, prob: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Impacto (1-5)</label>
+                  <input
+                    type="number" min={1} max={5}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    value={headerNovoForm.impact}
+                    onChange={e => setHeaderNovoForm(f => ({ ...f, impact: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowHeaderNovoForm(false)}>Cancelar</Button>
+              <Button type="submit" size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white">Salvar Risco</Button>
+            </div>
+          </form>
+        )}
 
         {/* KPI bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">

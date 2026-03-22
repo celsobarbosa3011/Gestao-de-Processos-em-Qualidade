@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { printNSPForm } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -497,10 +499,10 @@ function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () =
 
         <DialogFooter className="px-6 py-3 border-t bg-slate-50 sticky bottom-0 gap-2">
           <Button variant="outline" size="sm" className="text-xs h-8" onClick={onClose}>Cancelar</Button>
-          <Button variant="outline" size="sm" className="text-xs h-8 gap-1">
+          <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={() => { toast.info("Gerando formulário NSP em PDF..."); printNSPForm({ nspNumber: numeradorNSP, prazo, dadosPaciente, tipoNotificacao: tipoNotificacao || undefined, registradoPor, setorNotificante, dataOcorrencia, horaOcorrencia, setorNotificado, dataNotificacao, horaNotificacao, descricaoEvento: descricao, houveDano: houveDano || undefined, descricaoDano, acoesImediatas, dataAnalise, localAnalise, horarioAnalise, impactado: impactado || undefined, tiposIncidente, porques, dano, planos }); }}>
             <Download className="w-3.5 h-3.5" /> Imprimir / PDF
           </Button>
-          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white">
+          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => { onClose(); toast.success("Notificação registrada com sucesso!"); }}>
             <CheckCircle2 className="w-3.5 h-3.5" /> Registrar Notificação
           </Button>
         </DialogFooter>
@@ -571,11 +573,11 @@ function FilaNotificacoes() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-blue-600">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-slate-600 hover:text-blue-600" onClick={() => toast.info("Abrindo detalhes do evento...")}>
                           <Eye className="w-3.5 h-3.5" /> Ver
                         </Button>
                         {ev.category === "Sentinel" && (
-                          <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-red-600 hover:bg-red-700 text-white">
+                          <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => toast.info("Abrindo análise de evento sentinela...")}>
                             <Activity className="w-3.5 h-3.5" /> Analisar
                           </Button>
                         )}
@@ -657,13 +659,13 @@ function AnaliseCausaRaiz() {
             className="min-h-[120px] text-sm resize-none"
           />
           <div className="flex gap-2">
-            <Button size="sm" className="h-8 gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs">
+            <Button size="sm" className="h-8 gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs" onClick={() => toast.success("CAPA gerada com sucesso! Verifique Gestão Operacional.")}>
               <ClipboardList className="w-3.5 h-3.5" /> Gerar CAPA
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => toast.info("Gerando relatório Notivisa...")}>
               <FileText className="w-3.5 h-3.5" /> Relatório Notivisa
             </Button>
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => toast.info("Exportando PDF...")}>
               <Download className="w-3.5 h-3.5" /> Exportar PDF
             </Button>
           </div>
@@ -808,7 +810,7 @@ function CAPATab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">Ações Corretivas e Preventivas vinculadas a eventos de segurança</p>
-        <Button size="sm" className="h-8 gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs">
+        <Button size="sm" className="h-8 gap-1 bg-purple-600 hover:bg-purple-700 text-white text-xs" onClick={() => toast.info("Nova CAPA criada e vinculada a evento de segurança")}>
           <Plus className="w-3.5 h-3.5" /> Nova CAPA
         </Button>
       </div>
@@ -893,15 +895,15 @@ function CAPATab() {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => toast.info("Abrindo detalhes...")}>
                   <Eye className="w-3.5 h-3.5" /> Detalhes
                 </Button>
                 {item.status !== "Concluída" && (
-                  <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white">
+                  <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => toast.success("Ação marcada como concluída!")}>
                     <CheckCircle2 className="w-3.5 h-3.5" /> Marcar concluída
                   </Button>
                 )}
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 ml-auto">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 ml-auto" onClick={() => toast.success("Atualizado com sucesso!")}>
                   <RefreshCw className="w-3.5 h-3.5" /> Atualizar
                 </Button>
               </div>

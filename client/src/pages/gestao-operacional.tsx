@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -592,6 +593,8 @@ export default function GestaoOperacional() {
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [selectedPlan, setSelectedPlan] = useState<ActionPlan | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [showNovoPlanoForm, setShowNovoPlanoForm] = useState(false);
+  const [novoPlano, setNovoPlano] = useState({ title: "", origin: "ONA", unit: "", responsible: "", dueDate: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
@@ -662,10 +665,48 @@ export default function GestaoOperacional() {
                 Backlog de Planos de Ação + Semáforo Institucional
               </p>
             </div>
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 self-start sm:self-auto">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 self-start sm:self-auto" onClick={() => setShowNovoPlanoForm(v => !v)}>
               <Plus className="w-4 h-4" /> Novo Plano de Ação
             </Button>
           </div>
+
+          {/* Novo Plano de Ação inline form */}
+          {showNovoPlanoForm && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 mb-2">
+              <p className="text-sm font-semibold text-indigo-800 mb-3">Novo Plano de Ação</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-medium text-slate-600">Título *</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Descreva o plano de ação..." value={novoPlano.title} onChange={e => setNovoPlano(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Origem</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300" value={novoPlano.origin} onChange={e => setNovoPlano(p => ({ ...p, origin: e.target.value }))}>
+                    {["ONA", "Risco", "GUT", "Indicador", "Diagnóstico", "Evento", "Comissão", "Protocolo"].map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Unidade</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300" value={novoPlano.unit} onChange={e => setNovoPlano(p => ({ ...p, unit: e.target.value }))}>
+                    <option value="">Selecione...</option>
+                    {["UTI", "PS", "CC", "Lab", "Farm", "CME", "Amb", "IMG", "HD", "Geral", "NSP"].map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Responsável</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nome do responsável" value={novoPlano.responsible} onChange={e => setNovoPlano(p => ({ ...p, responsible: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Data Limite</label>
+                  <input type="date" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300" value={novoPlano.dueDate} onChange={e => setNovoPlano(p => ({ ...p, dueDate: e.target.value }))} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-3">
+                <button className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50" onClick={() => setShowNovoPlanoForm(false)}>Cancelar</button>
+                <button className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg" onClick={() => { if (!novoPlano.title) { toast.error("Informe o título do plano"); return; } toast.success(`Plano de ação "${novoPlano.title}" criado com sucesso!`); setNovoPlano({ title: "", origin: "ONA", unit: "", responsible: "", dueDate: "" }); setShowNovoPlanoForm(false); }}>Salvar Plano</button>
+              </div>
+            </div>
+          )}
 
           {/* KPI Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

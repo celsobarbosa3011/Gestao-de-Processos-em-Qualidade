@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import {
   BookMarked, BarChart2, Plus, Search, Filter, Download,
   ChevronRight, CheckCircle2, AlertCircle, Clock, Eye,
@@ -204,6 +206,7 @@ export default function Protocolos() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const filtered = protocols.filter((p) => {
     const matchSearch =
@@ -243,11 +246,11 @@ export default function Protocolos() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Relatório de Protocolos Gerenciados", subtitle: "Aderência e status dos protocolos clínicos e de segurança", module: "Protocolos Gerenciados", columns: [{ label: "Protocolo", key: "nome" }, { label: "Categoria", key: "cat" }, { label: "Versão", key: "versao" }, { label: "Aderência", key: "ader" }, { label: "Status", key: "status" }], rows: [{ nome: "Cirurgia Segura — Checklist OMS", cat: "Segurança do Paciente", versao: "v3.1", ader: "94%", status: "✓ Vigente" }, { nome: "Sepse — Identificação e Tratamento Precoce", cat: "Protocolo Clínico", versao: "v2.4", ader: "87%", status: "✓ Vigente" }, { nome: "Higienização das Mãos — OMS 5 Momentos", cat: "CCIH / Prevenção", versao: "v5.0", ader: "81%", status: "✓ Vigente" }, { nome: "Prevenção de Quedas — Estratificação de Risco", cat: "Segurança do Paciente", versao: "v2.2", ader: "78%", status: "⚠ Revisão" }, { nome: "Identificação do Paciente — Pulseira", cat: "Segurança do Paciente", versao: "v4.0", ader: "98%", status: "✓ Vigente" }, { nome: "Medicamentos de Alta Vigilância — Dupla Checagem", cat: "Farmácia", versao: "v2.1", ader: "91%", status: "✓ Vigente" }] })}>
                 <Download className="w-4 h-4" />
                 Exportar
               </Button>
-              <Button className="bg-violet-600 hover:bg-violet-700 text-white gap-2 text-sm">
+              <Button className="bg-violet-600 hover:bg-violet-700 text-white gap-2 text-sm" onClick={() => setShowNovoForm(v => !v)}>
                 <Plus className="w-4 h-4" />
                 Novo Protocolo
               </Button>
@@ -257,6 +260,44 @@ export default function Protocolos() {
       </div>
 
       <div className="max-w-screen-xl mx-auto px-6 py-6">
+        {/* ── Novo Protocolo Form ── */}
+        {showNovoForm && (
+          <Card className="bg-white border border-violet-200 shadow-sm mb-5">
+            <CardHeader className="pb-2 pt-4 px-5">
+              <CardTitle className="text-sm font-bold text-slate-800">Novo Protocolo</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Nome do protocolo" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300">
+                    <option>Segurança</option>
+                    <option>Clínico</option>
+                    <option>Administrativo</option>
+                    <option>Diagnóstico</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Responsável</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Nome do responsável" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
+                  Salvar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
@@ -515,15 +556,15 @@ export default function Protocolos() {
                       )}
 
                       <div className="flex flex-col gap-2">
-                        <Button size="sm" className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2 text-xs">
+                        <Button size="sm" className="w-full bg-violet-600 hover:bg-violet-700 text-white gap-2 text-xs" onClick={() => toast.info("Abrindo...")}>
                           <Eye className="w-3.5 h-3.5" />
                           Ver protocolo completo
                         </Button>
-                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.success("Operação realizada com sucesso!")}>
                           <ClipboardCheck className="w-3.5 h-3.5" />
                           Registrar aplicação
                         </Button>
-                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                        <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.info("Abrindo editor...")}>
                           <Edit className="w-3.5 h-3.5" />
                           Editar / Revisar
                         </Button>
@@ -658,7 +699,7 @@ export default function Protocolos() {
                     </CardTitle>
                     <p className="text-sm text-slate-500 mt-0.5">Últimos 6 meses</p>
                   </div>
-                  <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 gap-2 text-xs">
+                  <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.info("Exportando...")}>
                     <Download className="w-3.5 h-3.5" />
                     Exportar
                   </Button>

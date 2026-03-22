@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
 import {
   MessageSquare, Plus, Search, ChevronRight, Bell,
   CheckCircle2, Clock, Users, Building2, Pin, Download,
@@ -152,6 +153,7 @@ export default function Comunicacao() {
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const filtered = messages.filter((m) => {
     const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
@@ -186,7 +188,7 @@ export default function Comunicacao() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2 text-sm">
+              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2 text-sm" onClick={() => setShowNovoForm(true)}>
                 <Plus className="w-4 h-4" />
                 Novo Comunicado
               </Button>
@@ -194,6 +196,53 @@ export default function Comunicacao() {
           </div>
         </div>
       </div>
+
+      {/* ── Novo Comunicado Inline Form ── */}
+      {showNovoForm && (
+        <div className="max-w-screen-xl mx-auto px-6 pt-5">
+          <Card className="bg-white border border-sky-200 shadow-sm">
+            <CardHeader className="px-5 pt-4 pb-3 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-sky-500" />
+                Novo Comunicado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
+                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex: Comunicado sobre segurança do paciente" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
+                  <select className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300 bg-white">
+                    <option>Comunicado</option>
+                    <option>Alerta</option>
+                    <option>Informativo</option>
+                    <option>Urgente</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Público-alvo</label>
+                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex: Todas as unidades" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Mensagem</label>
+                  <textarea rows={3} className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-300 resize-none" placeholder="Conteúdo do comunicado..." />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
+                  Publicar Comunicado
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="max-w-screen-xl mx-auto px-6 py-6">
         {/* ── KPI Cards ── */}
@@ -322,7 +371,7 @@ export default function Comunicacao() {
                             <span className="text-xs text-slate-400">{m.author} · {m.authorRole}</span>
                             <div className="flex items-center gap-3">
                               <span className="text-xs text-slate-400">{m.readCount}/{m.totalTarget} leram ({pct}%)</span>
-                              <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-sky-600 gap-1">
+                              <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-sky-600 gap-1" onClick={() => toast.info("Funcionalidade disponível em breve")}>
                                 <Eye className="w-3 h-3" />
                                 Ver
                               </Button>
@@ -343,7 +392,7 @@ export default function Comunicacao() {
           <TabsContent value="agenda" className="space-y-4">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-semibold text-slate-700">Próximas reuniões</h2>
-              <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5 text-xs">
+              <Button size="sm" className="bg-sky-600 hover:bg-sky-700 text-white gap-1.5 text-xs" onClick={() => toast.info("Funcionalidade disponível em breve")}>
                 <Plus className="w-3.5 h-3.5" />
                 Agendar reunião
               </Button>
@@ -383,13 +432,13 @@ export default function Comunicacao() {
                           </div>
                         </div>
                         {m.status === "Agendada" && (
-                          <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 gap-1.5 text-xs flex-shrink-0">
+                          <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 gap-1.5 text-xs flex-shrink-0" onClick={() => toast.success("Operação realizada com sucesso!")}>
                             <Calendar className="w-3.5 h-3.5" />
                             Salvar
                           </Button>
                         )}
                         {m.status === "Realizada" && (
-                          <Button size="sm" variant="ghost" className="text-sky-600 gap-1.5 text-xs flex-shrink-0">
+                          <Button size="sm" variant="ghost" className="text-sky-600 gap-1.5 text-xs flex-shrink-0" onClick={() => toast.info("Funcionalidade disponível em breve")}>
                             <FileText className="w-3.5 h-3.5" />
                             Ata
                           </Button>

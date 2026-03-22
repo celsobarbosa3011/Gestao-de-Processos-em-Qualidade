@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const units = [
@@ -47,7 +48,7 @@ export default function UnidadesNegocio() {
           </div>
           <p className="text-slate-500 text-sm">Visão individual e consolidação corporativa por unidade assistencial</p>
         </div>
-        <Button size="sm" className="h-8 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white border-0">
+        <Button size="sm" className="h-8 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white border-0" onClick={() => toast.info("Cadastro de nova unidade em breve disponível")}>
           <Plus className="w-3.5 h-3.5" />
           Nova Unidade
         </Button>

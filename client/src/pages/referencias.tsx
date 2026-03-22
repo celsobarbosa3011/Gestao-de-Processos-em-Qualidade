@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -360,11 +361,11 @@ export default function Referencias() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800">
+            <Button variant="outline" size="sm" className="border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => toast.info("Sincronizando referências normativas...")}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Sincronizar
             </Button>
-            <Button size="sm" className="bg-orange-600 hover:bg-orange-500 text-white">
+            <Button size="sm" className="bg-orange-600 hover:bg-orange-500 text-white" onClick={() => toast.info("Exportando lista de referências normativas...")}>
               <Download className="w-4 h-4 mr-2" />
               Exportar Lista
             </Button>
@@ -655,7 +656,7 @@ export default function Referencias() {
                       Esta norma requer atenção ativa da equipe de qualidade. Verifique o plano de adequação
                       e os prazos de conformidade associados.
                     </p>
-                    <Button size="sm" className="mt-3 bg-amber-600 hover:bg-amber-500 text-white">
+                    <Button size="sm" className="mt-3 bg-amber-600 hover:bg-amber-500 text-white" onClick={() => toast.info("Abrindo plano de adequação no módulo Gestão Operacional...")}>
                       Ver Plano de Adequação
                     </Button>
                   </div>

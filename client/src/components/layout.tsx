@@ -10,13 +10,14 @@ import {
   BarChart2, Triangle, ChevronRight, X, Wifi, WifiOff, Globe,
   Calendar, Filter, User, Layers, Store, CreditCard,
   Palette, KeyRound, Workflow, SlidersHorizontal, ListTodo,
-  LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck
+  LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck, Grid2X2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NotificationsCenter } from "@/components/notifications-center";
+import { useBrandingConfig } from "@/hooks/use-branding";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Estratégico",
     items: [
+      { label: "Análise SWOT", path: "/swot", icon: <Grid2X2 className="w-4 h-4" /> },
       { label: "Planejamento BSC", path: "/planejamento-bsc", icon: <Target className="w-4 h-4" /> },
       { label: "Políticas & Regimentos", path: "/politicas", icon: <ScrollText className="w-4 h-4" /> },
       { label: "Documentos & Evidências", path: "/documentos", icon: <FileText className="w-4 h-4" /> },
@@ -83,6 +85,7 @@ const navGroups: NavGroup[] = [
       { label: "Comunicação Interna", path: "/comunicacao", icon: <Radio className="w-4 h-4" /> },
       { label: "Referências Normativas", path: "/referencias", icon: <Library className="w-4 h-4" /> },
       { label: "Notificação de Eventos", path: "/eventos", icon: <Siren className="w-4 h-4" /> },
+      { label: "LGPD — Proteção de Dados", path: "/lgpd", icon: <ShieldCheck className="w-4 h-4" /> },
     ],
   },
   {
@@ -90,6 +93,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "IA ONA Copilot", path: "/ia-copilot", icon: <Bot className="w-4 h-4" />, highlight: true },
       { label: "Integrações & API", path: "/integracoes", icon: <Link2 className="w-4 h-4" /> },
+      { label: "Manual do Sistema", path: "/manual", icon: <BookOpen className="w-4 h-4" /> },
       { label: "Administração", path: "/administracao", icon: <Settings className="w-4 h-4" /> },
     ],
   },
@@ -135,6 +139,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { currentUser, logout } = useStore();
   const { isConnected } = useWebSocket();
+  const { data: branding } = useBrandingConfig();
+  const companyName = branding?.appName || "Hospital Geral";
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [globalSearch, setGlobalSearch] = useState("");
@@ -185,7 +191,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="mx-4 mt-4 mb-2 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-800/40 border border-slate-700/40 p-3">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Score ONA</span>
-          <span className="text-[10px] text-slate-500">Hospital Geral</span>
+          <span className="text-[10px] text-slate-500">{companyName}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
@@ -346,7 +352,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Unit selector */}
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-slate-600 dark:text-slate-400 hidden md:flex">
               <Building2 className="w-3.5 h-3.5" />
-              <span className="max-w-[120px] truncate">Hospital Geral</span>
+              <span className="max-w-[120px] truncate">{companyName}</span>
               <ChevronDown className="w-3 h-3" />
             </Button>
 

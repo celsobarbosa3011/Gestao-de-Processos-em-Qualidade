@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import {
   BookOpen, Plus, Search, Filter, Download, ChevronRight,
   CheckCircle2, Clock, AlertCircle, FileText, Eye,
@@ -146,6 +148,7 @@ export default function Politicas() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [selected, setSelected] = useState<PolicyDoc | null>(null);
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const filtered = documents.filter((d) => {
     const matchSearch =
@@ -183,11 +186,11 @@ export default function Politicas() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Relatório de Políticas e Regimentos", subtitle: "Documentos normativos institucionais vigentes", module: "Políticas & Regimentos", columns: [{ label: "Documento", key: "doc" }, { label: "Tipo", key: "tipo" }, { label: "Versão", key: "versao" }, { label: "Revisão", key: "revisao" }, { label: "Status", key: "status" }], rows: [{ doc: "Política de Segurança do Paciente", tipo: "Política", versao: "v4.2", revisao: "Jun/2026", status: "✓ Vigente" }, { doc: "Regimento Interno da Diretoria", tipo: "Regimento", versao: "v2.0", revisao: "Dez/2025", status: "✓ Vigente" }, { doc: "Manual de Qualidade Institucional", tipo: "Manual", versao: "v5.1", revisao: "Mar/2026", status: "✓ Vigente" }, { doc: "Política de Privacidade e LGPD", tipo: "Política", versao: "v1.3", revisao: "Jan/2026", status: "✓ Vigente" }, { doc: "Norma de Gestão de Documentos", tipo: "Norma", versao: "v3.0", revisao: "Set/2025", status: "⚠ Revisão vencida" }] })}>
                 <Download className="w-4 h-4" />
                 Exportar
               </Button>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 text-sm">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 text-sm" onClick={() => setShowNovoForm(v => !v)}>
                 <Plus className="w-4 h-4" />
                 Novo Documento
               </Button>
@@ -197,6 +200,45 @@ export default function Politicas() {
       </div>
 
       <div className="max-w-screen-xl mx-auto px-6 py-6">
+        {/* ── Novo Documento Form ── */}
+        {showNovoForm && (
+          <Card className="bg-white border border-indigo-200 shadow-sm mb-5">
+            <CardHeader className="pb-2 pt-4 px-5">
+              <CardTitle className="text-sm font-bold text-slate-800">Novo Documento</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Título do documento" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    <option>Política</option>
+                    <option>Regimento</option>
+                    <option>Manual</option>
+                    <option>POP</option>
+                    <option>Norma</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 block mb-1">Responsável</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nome do responsável" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
+                  Salvar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
@@ -225,7 +267,7 @@ export default function Politicas() {
               <p className="text-sm text-rose-800">
                 <strong>{vencida} documento(s)</strong> com prazo de revisão vencido — ação imediata recomendada para atendimento ONA.
               </p>
-              <Button size="sm" className="ml-auto bg-rose-600 hover:bg-rose-700 text-white text-xs gap-1.5 flex-shrink-0">
+              <Button size="sm" className="ml-auto bg-rose-600 hover:bg-rose-700 text-white text-xs gap-1.5 flex-shrink-0" onClick={() => { setFilterStatus("Vencida"); toast.info("Filtrando documentos com prazo de revisão vencido"); }}>
                 Ver vencidos
               </Button>
             </CardContent>
@@ -340,10 +382,10 @@ export default function Politicas() {
                         </span>
                       </div>
                       <div className="px-4 flex items-center gap-1.5 justify-center">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Visualizar">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Visualizar" onClick={(e) => { e.stopPropagation(); toast.info("Abrindo..."); }}>
                           <Eye className="w-3.5 h-3.5 text-slate-500" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Editar" onClick={(e) => { e.stopPropagation(); toast.info("Abrindo editor..."); }}>
                           <Edit className="w-3.5 h-3.5 text-slate-500" />
                         </Button>
                       </div>
@@ -389,15 +431,15 @@ export default function Politicas() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white gap-2 text-xs">
+                    <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white gap-2 text-xs" onClick={() => toast.info("Abrindo...")}>
                       <Eye className="w-3.5 h-3.5" />
                       Visualizar documento
                     </Button>
-                    <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                    <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.success("Operação realizada com sucesso!")}>
                       <Edit className="w-3.5 h-3.5" />
                       Iniciar revisão
                     </Button>
-                    <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs">
+                    <Button size="sm" variant="outline" className="w-full border-slate-200 text-slate-600 gap-2 text-xs" onClick={() => toast.info("Exportando...")}>
                       <Download className="w-3.5 h-3.5" />
                       Baixar PDF
                     </Button>

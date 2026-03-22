@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -363,6 +365,7 @@ export default function Diagnostico() {
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [answers, setAnswers] = useState<RequirementAnswer>({});
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const visibleRequirements = mockRequirements.filter(
     (r) => r.chapter === selectedChapter
@@ -423,11 +426,12 @@ export default function Diagnostico() {
               <Button
                 variant="outline"
                 className="border-slate-200 text-slate-700 hover:bg-slate-50 gap-2"
+                onClick={() => toast.info("Selecione o item na lista para ver os detalhes")}
               >
                 <FileText className="w-4 h-4" />
                 Ver Relatório
               </Button>
-              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2">
+              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2" onClick={() => setShowNovoForm(v => !v)}>
                 <Plus className="w-4 h-4" />
                 Novo Ciclo
               </Button>
@@ -498,6 +502,7 @@ export default function Diagnostico() {
               <Button
                 variant="outline"
                 className="border-slate-200 text-slate-600 gap-2 text-sm"
+                onClick={() => toast.info("Filtros de ciclo em breve disponíveis")}
               >
                 <Filter className="w-4 h-4" />
                 Filtrar
@@ -585,6 +590,7 @@ export default function Diagnostico() {
                         <Button
                           variant="outline"
                           className="border-slate-200 text-slate-600 gap-2 text-sm"
+                          onClick={() => toast.info("Abrindo relatório do ciclo de diagnóstico...")}
                         >
                           <Eye className="w-4 h-4" />
                           Ver Relatório
@@ -796,6 +802,7 @@ export default function Diagnostico() {
                           variant="outline"
                           size="sm"
                           className="border-slate-200 text-slate-500 gap-2 text-xs"
+                          onClick={() => toast.info("Selecione um arquivo para anexar como evidência")}
                         >
                           <Download className="w-3.5 h-3.5" />
                           Anexar evidência
@@ -810,11 +817,12 @@ export default function Diagnostico() {
                   <Button
                     variant="outline"
                     className="border-slate-200 text-slate-600 gap-2"
+                    onClick={() => toast.success("Progresso salvo com sucesso!")}
                   >
                     <FileText className="w-4 h-4" />
                     Salvar progresso
                   </Button>
-                  <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2">
+                  <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2" onClick={() => { toast.success("Relatório de diagnóstico gerado!"); printReport({ title: "Relatório de Diagnóstico Institucional", subtitle: "Avaliação de maturidade organizacional — ONA 2026", module: "Diagnóstico Institucional", kpis: [{ label: "Score ONA", value: "76%", color: "#0ea5e9" }, { label: "Requisitos OK", value: "183", color: "#10b981" }, { label: "Em ajuste", value: "42", color: "#f59e0b" }, { label: "Críticos", value: "8", color: "#dc2626" }], columns: [{ label: "Setor", key: "setor" }, { label: "Score", key: "score" }, { label: "Conformes", key: "conf" }, { label: "Não Conformes", key: "nc" }, { label: "Status", key: "status" }], rows: [{ setor: "Gestão Organizacional", score: "82%", conf: "37", nc: "8", status: "✓ Acima da meta" }, { setor: "Atenção ao Paciente", score: "74%", conf: "50", nc: "18", status: "⚠ Abaixo da meta" }, { setor: "Diagnóstico e Terapêutica", score: "68%", conf: "35", nc: "17", status: "⚠ Abaixo da meta" }, { setor: "Apoio Técnico e Logístico", score: "79%", conf: "61", nc: "16", status: "✓ Dentro da meta" }] }); }}>
                     <Award className="w-4 h-4" />
                     Gerar relatório
                   </Button>
@@ -955,6 +963,7 @@ export default function Diagnostico() {
                         <Button
                           size="sm"
                           className="mt-4 w-full bg-sky-600 hover:bg-sky-700 text-white gap-2 text-xs"
+                          onClick={() => toast.info("Abrindo detalhamento completo da unidade...")}
                         >
                           <Eye className="w-3.5 h-3.5" />
                           Ver detalhamento completo
@@ -987,6 +996,7 @@ export default function Diagnostico() {
                     variant="outline"
                     size="sm"
                     className="border-slate-200 text-slate-600 gap-2 text-xs"
+                    onClick={() => printReport({ title: "Comparação de Ciclos Diagnósticos", subtitle: "Evolução histórica 2023–2026", module: "Diagnóstico / Comparação", columns: [{ label: "Ciclo", key: "ciclo" }, { label: "Score ONA", key: "score" }, { label: "Conformes", key: "conf" }, { label: "Não Conformes", key: "nc" }, { label: "Variação", key: "var" }], rows: [{ ciclo: "2023", score: "61%", conf: "142", nc: "91", var: "—" }, { ciclo: "2024", score: "68%", conf: "163", nc: "70", var: "+7 p.p." }, { ciclo: "2025", score: "72%", conf: "175", nc: "58", var: "+4 p.p." }, { ciclo: "2026", score: "76%", conf: "183", nc: "50", var: "+4 p.p." }] })}
                   >
                     <Download className="w-3.5 h-3.5" />
                     Exportar

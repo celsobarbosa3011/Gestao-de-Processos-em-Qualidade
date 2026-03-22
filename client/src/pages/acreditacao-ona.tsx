@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1715,11 +1717,11 @@ export default function AcreditacaoONA() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-1.5 text-gray-600 border-gray-300 h-9">
+              <Button variant="outline" size="sm" className="gap-1.5 text-gray-600 border-gray-300 h-9" onClick={() => printReport({ title: "Relatório de Acreditação ONA 2026", subtitle: "Avaliação dos requisitos ONA — Organização Nacional de Acreditação", module: "Acreditação ONA 2026", kpis: [{ label: "Score Geral", value: "76%", color: "#1d4ed8" }, { label: "Seção 1", value: "82%", color: "#10b981" }, { label: "Seção 2", value: "74%", color: "#f59e0b" }, { label: "Seção 3", value: "68%", color: "#8b5cf6" }], columns: [{ label: "Seção ONA", key: "secao" }, { label: "Requisitos", key: "total" }, { label: "Conformes", key: "conf" }, { label: "Não Conformes", key: "nc" }, { label: "Score", key: "score" }], rows: [{ secao: "Seção 1 — Liderança Organizacional", total: "45", conf: "37", nc: "8", score: "82%" }, { secao: "Seção 2 — Atenção ao Paciente/Cliente", total: "68", conf: "50", nc: "18", score: "74%" }, { secao: "Seção 3 — Diagnóstico e Terapêutica", total: "52", conf: "35", nc: "17", score: "67%" }] })}>
                 <Download className="h-4 w-4" />
                 Exportar Relatório
               </Button>
-              <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-9">
+              <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white h-9" onClick={() => toast.success("Visita de acreditação agendada! Equipe ONA será notificada.")}>
                 <Clock className="h-4 w-4" />
                 Agendar Visita
               </Button>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import {
   HeartPulse, TrendingUp, AlertTriangle, ChevronRight,
   Activity, BarChart3, Building2, Users, AlertCircle,
@@ -158,7 +160,7 @@ export default function GovernancaClinical() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Relatório de Governança Clínica", subtitle: "Indicadores clínicos · Desfechos, segurança e processo por unidade", module: "Governança Clínica", kpis: [{ label: "Taxa Mortalidade", value: "1.8%", color: "#dc2626" }, { label: "Reinternação 30d", value: "3.2%", color: "#f59e0b" }, { label: "Infecção IACS", value: "1.2%", color: "#0ea5e9" }, { label: "Satisfação", value: "92%", color: "#10b981" }], columns: [{ label: "Indicador Clínico", key: "ind" }, { label: "Unidade", key: "unidade" }, { label: "Resultado", key: "result" }, { label: "Meta", key: "meta" }, { label: "Status", key: "status" }], rows: [{ ind: "Taxa de mortalidade hospitalar", unidade: "Geral", result: "1.8%", meta: "≤ 2.5%", status: "✓ Meta atingida" }, { ind: "Taxa de infecção associada à assistência", unidade: "UTI", result: "2.1%", meta: "≤ 2.0%", status: "⚠ Acima da meta" }, { ind: "Cirurgias seguras com checklist", unidade: "CC", result: "94%", meta: "100%", status: "⚠ Monitorar" }, { ind: "Reinternação em 30 dias", unidade: "Clínica Médica", result: "3.2%", meta: "≤ 4%", status: "✓ Meta atingida" }, { ind: "Satisfação do paciente", unidade: "Geral", result: "92%", meta: "≥ 90%", status: "✓ Meta atingida" }] })}>
                 <Download className="w-4 h-4" />
                 Relatório
               </Button>

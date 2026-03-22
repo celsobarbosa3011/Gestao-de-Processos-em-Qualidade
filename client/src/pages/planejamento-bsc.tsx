@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { printReport } from "@/lib/print-pdf";
 import {
   Target, ChevronRight, TrendingUp, Users, DollarSign,
   Lightbulb, CheckCircle2, AlertCircle, Clock, Download,
@@ -169,6 +171,7 @@ const PERSPECTIVES: Perspective[] = [
 export default function PlanejamentoBSC() {
   const [, navigate] = useLocation();
   const [filterPerspective, setFilterPerspective] = useState<"all" | Perspective>("all");
+  const [showNovoForm, setShowNovoForm] = useState(false);
 
   const filtered = objectives.filter(
     (o) => filterPerspective === "all" || o.perspective === filterPerspective
@@ -202,11 +205,11 @@ export default function PlanejamentoBSC() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm">
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Planejamento Estratégico — BSC 2026", subtitle: "Balanced Scorecard · 4 perspectivas · Ciclo 2026", module: "Planejamento BSC", kpis: [{ label: "Objetivos", value: "12", color: "#0f172a" }, { label: "No Prazo", value: "8", color: "#10b981" }, { label: "Em Risco", value: "3", color: "#f59e0b" }, { label: "Atrasados", value: "1", color: "#dc2626" }], columns: [{ label: "Perspectiva", key: "persp" }, { label: "Objetivo Estratégico", key: "objetivo" }, { label: "Meta", key: "meta" }, { label: "Resultado", key: "result" }, { label: "Status", key: "status" }], rows: [{ persp: "Financeira", objetivo: "Reduzir custo médio por AIH", meta: "-8%", result: "-5.2%", status: "⚠ Em risco" }, { persp: "Clientes", objetivo: "Aumentar satisfação do paciente", meta: "≥ 90%", result: "92%", status: "✓ Meta atingida" }, { persp: "Processos", objetivo: "Reduzir tempo de espera PS", meta: "≤ 30 min", result: "38 min", status: "⚠ Em risco" }, { persp: "Aprendizado", objetivo: "Atingir 100% treinamentos ONA", meta: "100%", result: "87%", status: "⚠ Em risco" }, { persp: "Financeira", objetivo: "Ampliar faturamento SUS convênios", meta: "+12%", result: "+14%", status: "✓ Meta atingida" }] })}>
                 <Download className="w-4 h-4" />
                 Exportar
               </Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-sm">
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 text-sm" onClick={() => setShowNovoForm(v => !v)}>
                 <Plus className="w-4 h-4" />
                 Novo Objetivo
               </Button>
@@ -216,6 +219,44 @@ export default function PlanejamentoBSC() {
       </div>
 
       <div className="max-w-screen-xl mx-auto px-6 py-6">
+        {/* Novo Objetivo Form */}
+        {showNovoForm && (
+          <Card className="border border-emerald-200 bg-emerald-50 shadow-sm mb-6">
+            <CardHeader className="pb-2 pt-4 px-5">
+              <CardTitle className="text-sm font-semibold text-emerald-800">Novo Objetivo Estratégico</CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Objetivo</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Descreva o objetivo estratégico" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Perspectiva</label>
+                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                    <option>Financeira</option>
+                    <option>Clientes/Pacientes</option>
+                    <option>Processos Internos</option>
+                    <option>Aprendizado &amp; Crescimento</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Meta</label>
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Ex.: ≥ 80%" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Prazo</label>
+                  <input type="date" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-1">
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
+                <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { toast.success("Objetivo criado com sucesso!"); setShowNovoForm(false); }}>Salvar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           {[
