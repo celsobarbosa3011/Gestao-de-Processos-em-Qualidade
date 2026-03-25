@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { printNSPForm } from "@/lib/print-pdf";
+import { getSafetyEvents, createSafetyEvent } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -288,7 +290,7 @@ const TIPOS_INCIDENTE_DIREITA = [
 
 interface PlanoAcaoRow { acao: string; responsavel: string; prazo: string; status: string; }
 
-function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function NovaNotificacaoDialog({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess?: () => void }) {
   const [tipoNotificacao, setTipoNotificacao] = useState<"Evento" | "Não conformidade" | "Quebra de Contrato" | "">("");
   const [registradoPor, setRegistradoPor] = useState("");
   const [setorNotificante, setSetorNotificante] = useState("");
@@ -327,6 +329,37 @@ function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () =
 
   const updatePlano = (i: number, field: keyof PlanoAcaoRow, val: string) => {
     const next = [...planos]; next[i] = { ...next[i], [field]: val }; setPlanos(next);
+  };
+
+  const mutation = useMutation({
+    mutationFn: createSafetyEvent,
+    onSuccess: () => {
+      toast.success("Notificação registrada com sucesso!");
+      onSuccess?.();
+      onClose();
+    },
+    onError: () => toast.error("Erro ao registrar notificação. Tente novamente."),
+  });
+
+  const handleSubmit = () => {
+    if (!descricao) { toast.error("Preencha a descrição do evento."); return; }
+    if (!dataOcorrencia) { toast.error("Informe a data de ocorrência."); return; }
+    const categoryMap: Record<string, string> = {
+      "Evento": "adverse_event", "Não conformidade": "near_miss", "Quebra de Contrato": "near_miss",
+    };
+    const severityMap = houveDano === "Sim" ? "moderate" : "low";
+    mutation.mutate({
+      title: `${tipoNotificacao || "Evento"} — ${setorNotificante || "Setor não informado"}`,
+      description: descricao,
+      category: categoryMap[tipoNotificacao] || "adverse_event",
+      severity: severityMap,
+      occurrenceDate: new Date(dataOcorrencia + (horaOcorrencia ? "T" + horaOcorrencia : "T00:00")),
+      notivisaRequired: (tipoNotificacao === "Evento") && houveDano === "Sim",
+      rdc63Category: tipoNotificacao || undefined,
+      rootCause: [...porques.filter(Boolean), dano].filter(Boolean).join(" → ") || undefined,
+      causeAnalysis: acoesImediatas || undefined,
+      anonymousPatient: !dadosPaciente,
+    } as any);
   };
 
   return (
@@ -502,8 +535,8 @@ function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () =
           <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={() => { toast.info("Gerando formulário NSP em PDF..."); printNSPForm({ nspNumber: numeradorNSP, prazo, dadosPaciente, tipoNotificacao: tipoNotificacao || undefined, registradoPor, setorNotificante, dataOcorrencia, horaOcorrencia, setorNotificado, dataNotificacao, horaNotificacao, descricaoEvento: descricao, houveDano: houveDano || undefined, descricaoDano, acoesImediatas, dataAnalise, localAnalise, horarioAnalise, impactado: impactado || undefined, tiposIncidente, porques, dano, planos }); }}>
             <Download className="w-3.5 h-3.5" /> Imprimir / PDF
           </Button>
-          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => { onClose(); toast.success("Notificação registrada com sucesso!"); }}>
-            <CheckCircle2 className="w-3.5 h-3.5" /> Registrar Notificação
+          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white" disabled={mutation.isPending} onClick={handleSubmit}>
+            <CheckCircle2 className="w-3.5 h-3.5" /> {mutation.isPending ? "Registrando..." : "Registrar Notificação"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -515,9 +548,41 @@ function NovaNotificacaoDialog({ open, onClose }: { open: boolean; onClose: () =
 
 function FilaNotificacoes() {
   const [showDialog, setShowDialog] = useState(false);
+  const qc = useQueryClient();
+  const { data: dbEvents } = useQuery({
+    queryKey: ["safety-events"],
+    queryFn: () => getSafetyEvents(),
+    staleTime: 30_000,
+  });
+
+  const mapDbToDisplay = (ev: any): SafetyEvent => {
+    const catMap: Record<string, EventCategory> = { sentinel: "Sentinel", adverse_event: "Adverso", near_miss: "Quasi-erro" };
+    const sevMap: Record<string, EventSeverity> = { death: "Morte evitável", severe: "Infecção grave", moderate: "Moderado", low: "Baixo" };
+    const stMap: Record<string, EventStatus> = { reported: "Em análise", analyzing: "Análise de causa", action_plan: "CAPA gerada", closed: "Concluído" };
+    const d = new Date(ev.occurrenceDate);
+    return {
+      code: ev.code || `EVT-${ev.id}`,
+      date: d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+      category: catMap[ev.category] ?? "Adverso",
+      severity: sevMap[ev.severity] ?? "Baixo",
+      unit: ev.unitId ? String(ev.unitId) : "—",
+      status: stMap[ev.status] ?? "Em análise",
+      notivisaDeadline: ev.notivisaRequired && ev.regulatoryDeadline
+        ? new Date(ev.regulatoryDeadline).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+        : null,
+      deadlineExpired: ev.notivisaRequired && ev.regulatoryDeadline
+        ? new Date(ev.regulatoryDeadline) < new Date()
+        : false,
+    };
+  };
+
+  const events: SafetyEvent[] = (dbEvents && dbEvents.length > 0)
+    ? dbEvents.map(mapDbToDisplay)
+    : EVENTS;
+
   return (
     <div className="space-y-4">
-      <NovaNotificacaoDialog open={showDialog} onClose={() => setShowDialog(false)} />
+      <NovaNotificacaoDialog open={showDialog} onClose={() => setShowDialog(false)} onSuccess={() => qc.invalidateQueries({ queryKey: ["safety-events"] })} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">Fila de notificações do período — RDC 63 / Notivisa</p>
         <Button size="sm" className="h-8 gap-1 bg-red-600 hover:bg-red-700 text-white text-xs" onClick={() => setShowDialog(true)}>
@@ -542,7 +607,7 @@ function FilaNotificacoes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {EVENTS.map(ev => (
+                {events.map(ev => (
                   <tr
                     key={ev.code}
                     className={cn(

@@ -64,6 +64,7 @@ import type {
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
+import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import path from "path";
 
 // Initialize database: use real PostgreSQL when DATABASE_URL is set (production),
@@ -82,14 +83,17 @@ function createDb(): any {
 
 export const db = createDb();
 
-// Helper to run migrations on startup (only for PGlite / local dev)
+// Helper to run migrations on startup
 export async function runMigrations() {
+  const migrationsFolder = path.join(process.cwd(), "migrations");
   if (!process.env.DATABASE_URL) {
     console.log('[db] Running PGlite migrations...');
-    await migratePglite(db, { migrationsFolder: path.join(process.cwd(), "migrations") });
-    console.log('[db] Migrations completed');
+    await migratePglite(db, { migrationsFolder });
+    console.log('[db] PGlite migrations completed');
   } else {
-    console.log('[db] PostgreSQL mode — skipping PGlite migrations');
+    console.log('[db] Running PostgreSQL migrations...');
+    await migratePg(db, { migrationsFolder });
+    console.log('[db] PostgreSQL migrations completed');
   }
 }
 

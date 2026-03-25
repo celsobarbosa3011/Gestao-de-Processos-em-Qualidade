@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: qhealth-one
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: qhealth-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+    healthCheckPath: /api/health
+
+databases:
+  - name: qhealth-db
+    plan: free
+    databaseName: qhealth
+    user: qhealth

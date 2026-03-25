@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getActionPlans, createActionPlan } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -599,13 +601,46 @@ export default function GestaoOperacional() {
   const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const qc = useQueryClient();
 
-  const totalPlans = plans.length;
-  const onTime = plans.filter((p) => p.status !== "overdue" && p.status !== "near").length;
-  const near = plans.filter((p) => p.status === "near").length;
-  const overdue = plans.filter((p) => p.status === "overdue").length;
+  const { data: dbPlans } = useQuery({
+    queryKey: ["action-plans"],
+    queryFn: () => getActionPlans(),
+    staleTime: 30_000,
+  });
 
-  const filteredPlans = plans.filter((p) => {
+  const createMutation = useMutation({
+    mutationFn: createActionPlan,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["action-plans"] });
+      setNovoPlano({ title: "", origin: "ONA", unit: "", responsible: "", dueDate: "" });
+      setShowNovoPlanoForm(false);
+    },
+    onError: () => toast.error("Erro ao salvar plano de ação."),
+  });
+
+  const displayPlans: ActionPlan[] = (dbPlans && dbPlans.length > 0)
+    ? dbPlans.map(p => ({
+        id: p.id,
+        title: p.title,
+        origin: p.origin || "Manual",
+        unit: p.unitId ? `Unidade ${p.unitId}` : "Geral",
+        responsible: p.responsibleId || "—",
+        dueDate: p.dueDate ? new Date(p.dueDate).toISOString().split("T")[0] : "",
+        status: (p.status as PlanStatus) || "pending",
+        priority: (p.priority as Priority) || "medium",
+        progress: p.status === "completed" ? 100 : p.status === "in_progress" ? 50 : 0,
+        total: 0,
+        description: p.description || undefined,
+      }))
+    : plans;
+
+  const totalPlans = displayPlans.length;
+  const onTime = displayPlans.filter((p) => p.status !== "overdue" && p.status !== "near").length;
+  const near = displayPlans.filter((p) => p.status === "near").length;
+  const overdue = displayPlans.filter((p) => p.status === "overdue").length;
+
+  const filteredPlans = displayPlans.filter((p) => {
     const matchSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.responsible.toLowerCase().includes(searchTerm.toLowerCase());
     const matchOrigin = filterOrigin === "all" || p.origin === filterOrigin;
@@ -703,7 +738,7 @@ export default function GestaoOperacional() {
               </div>
               <div className="flex justify-end gap-2 mt-3">
                 <button className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-600 hover:bg-slate-50" onClick={() => setShowNovoPlanoForm(false)}>Cancelar</button>
-                <button className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg" onClick={() => { if (!novoPlano.title) { toast.error("Informe o título do plano"); return; } toast.success(`Plano de ação "${novoPlano.title}" criado com sucesso!`); setNovoPlano({ title: "", origin: "ONA", unit: "", responsible: "", dueDate: "" }); setShowNovoPlanoForm(false); }}>Salvar Plano</button>
+                <button disabled={createMutation.isPending} className="px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-60" onClick={() => { if (!novoPlano.title) { toast.error("Informe o título do plano"); return; } createMutation.mutate({ title: novoPlano.title, origin: novoPlano.origin, description: `Unidade: ${novoPlano.unit} | Responsável: ${novoPlano.responsible}`, status: "pending", priority: "medium", dueDate: novoPlano.dueDate ? new Date(novoPlano.dueDate) : undefined } as any, { onSuccess: () => toast.success(`Plano "${novoPlano.title}" criado com sucesso!`) }); }}>{createMutation.isPending ? "Salvando..." : "Salvar Plano"}</button>
               </div>
             </div>
           )}

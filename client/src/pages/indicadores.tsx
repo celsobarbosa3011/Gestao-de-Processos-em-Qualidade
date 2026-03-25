@@ -58,7 +58,9 @@ import {
   Shield,
 } from "lucide-react";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { createIndicator } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -940,6 +942,30 @@ export default function Indicadores() {
   const [showNovoForm, setShowNovoForm] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState("todas");
   const [selectedPeriod, setSelectedPeriod] = useState("mar-2026");
+  const [novoNome, setNovoNome] = useState("");
+  const [novoCodigo, setNovoCodigo] = useState("");
+  const [novoMeta, setNovoMeta] = useState("");
+  const [novoUnidade, setNovoUnidade] = useState("");
+  const qc = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: createIndicator,
+    onSuccess: () => {
+      toast.success("Indicador criado com sucesso!");
+      setShowNovoForm(false);
+      setNovoNome(""); setNovoCodigo(""); setNovoMeta(""); setNovoUnidade("");
+      qc.invalidateQueries({ queryKey: ["indicators"] });
+    },
+    onError: () => toast.error("Erro ao criar indicador."),
+  });
+
+  function handleSalvarIndicador() {
+    if (!novoNome.trim()) { toast.error("Informe o nome do indicador."); return; }
+    createMutation.mutate({
+      name: novoNome, code: novoCodigo || undefined, unit: novoUnidade || "%",
+      target: parseFloat(novoMeta) || 0, active: true, layer: "ONA",
+    } as any);
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
@@ -1014,24 +1040,24 @@ export default function Indicadores() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Nome do Indicador</label>
-                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: Taxa de Infecção Hospitalar" />
+                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: Taxa de Infecção Hospitalar" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Código</label>
-                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: IND-001" />
+                <input value={novoCodigo} onChange={e => setNovoCodigo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: IND-001" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Meta</label>
-                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: ≤ 2%" />
+                <label className="text-xs font-medium text-slate-600">Meta (número)</label>
+                <input value={novoMeta} onChange={e => setNovoMeta(e.target.value)} type="number" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: 2" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Unidade de Medida</label>
-                <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: %" />
+                <input value={novoUnidade} onChange={e => setNovoUnidade(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: %" />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
-              <Button size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" onClick={() => { toast.success("Indicador criado com sucesso!"); setShowNovoForm(false); }}>Salvar</Button>
+              <Button size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" disabled={createMutation.isPending} onClick={handleSalvarIndicador}>{createMutation.isPending ? "Salvando..." : "Salvar"}</Button>
             </div>
           </CardContent>
         </Card>

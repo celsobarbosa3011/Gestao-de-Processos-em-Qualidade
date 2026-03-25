@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
+import { getDiagnosticCycles } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -367,6 +369,29 @@ export default function Diagnostico() {
   const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
   const [showNovoForm, setShowNovoForm] = useState(false);
 
+  const { data: dbCycles } = useQuery({
+    queryKey: ["diagnostic-cycles"],
+    queryFn: getDiagnosticCycles,
+    staleTime: 30_000,
+  });
+
+  const statusMap: Record<string, CycleStatus> = {
+    draft: "Rascunho", in_progress: "Em Andamento", completed: "Concluído",
+  };
+
+  const displayCycles: DiagnosticCycle[] = (dbCycles && dbCycles.length > 0)
+    ? dbCycles.map(c => ({
+        id: c.id,
+        name: c.name,
+        dateRange: c.startDate
+          ? `${new Date(c.startDate).toLocaleDateString("pt-BR")} — ${c.endDate ? new Date(c.endDate).toLocaleDateString("pt-BR") : "Em aberto"}`
+          : "Data não definida",
+        unit: c.unitId ? `Unidade ${c.unitId}` : "Todas as unidades",
+        status: statusMap[c.status] ?? "Rascunho",
+        progress: 0, total: 0, adherent: 0, partial: 0, nonAdherent: 0,
+      }))
+    : mockCycles;
+
   const visibleRequirements = mockRequirements.filter(
     (r) => r.chapter === selectedChapter
   );
@@ -509,7 +534,7 @@ export default function Diagnostico() {
               </Button>
             </div>
 
-            {mockCycles.map((cycle) => {
+            {displayCycles.map((cycle) => {
               const meta = cycleStatusMeta(cycle.status);
               return (
                 <Card

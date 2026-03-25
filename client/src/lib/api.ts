@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit, ProcessType, Priority } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit, ProcessType, Priority, DiagnosticCycle, InsertDiagnosticCycle, DiagnosticItem, InsertDiagnosticItem, GutItem, InsertGutItem, OnaRequirement, OnaEvidence, InsertOnaEvidence, OnaAdherence, Risk, InsertRisk, RiskMitigation, Commission, InsertCommission, CommissionMeeting, CommissionDeliberation, Indicator, InsertIndicator, IndicatorValue, Document, InsertDocument, DocumentReading, ActionPlan, InsertActionPlan, ActionPlanTask, SafetyEvent, InsertSafetyEvent } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -959,4 +959,310 @@ export async function deletePriority(id: number): Promise<void> {
     headers: getAuthHeaders(false),
   });
   if (!response.ok) throw new Error("Failed to delete priority");
+}
+
+// ============================================================
+// QHEALTH ONE 2026 — Módulos Específicos
+// ============================================================
+
+// Módulo 2 — Diagnóstico Institucional
+export async function getDiagnosticCycles(): Promise<DiagnosticCycle[]> {
+  const response = await fetch(`${API_BASE}/qhealth/diagnostic-cycles`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch diagnostic cycles");
+  return response.json();
+}
+
+export async function createDiagnosticCycle(data: InsertDiagnosticCycle): Promise<DiagnosticCycle> {
+  const response = await fetch(`${API_BASE}/qhealth/diagnostic-cycles`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create diagnostic cycle");
+  return response.json();
+}
+
+export async function getDiagnosticItems(cycleId: number): Promise<DiagnosticItem[]> {
+  const response = await fetch(`${API_BASE}/qhealth/diagnostic-cycles/${cycleId}/items`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch diagnostic items");
+  return response.json();
+}
+
+export async function updateDiagnosticItem(id: number, updates: Partial<DiagnosticItem>): Promise<DiagnosticItem> {
+  const response = await fetch(`${API_BASE}/qhealth/diagnostic-items/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update diagnostic item");
+  return response.json();
+}
+
+// Módulo 3 — Matriz GUT
+export async function getGutItems(): Promise<(GutItem & { score: number })[]> {
+  const response = await fetch(`${API_BASE}/qhealth/gut-items`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch GUT items");
+  return response.json();
+}
+
+export async function createGutItem(data: InsertGutItem): Promise<GutItem> {
+  const response = await fetch(`${API_BASE}/qhealth/gut-items`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create GUT item");
+  return response.json();
+}
+
+export async function updateGutItem(id: number, updates: Partial<GutItem>): Promise<GutItem> {
+  const response = await fetch(`${API_BASE}/qhealth/gut-items/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update GUT item");
+  return response.json();
+}
+
+// Módulo 4 — Acreditação ONA 2026
+export async function getOnaRequirements(): Promise<OnaRequirement[]> {
+  const response = await fetch(`${API_BASE}/qhealth/ona-requirements`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch ONA requirements");
+  return response.json();
+}
+
+export async function getOnaAdherence(unitId: number): Promise<OnaAdherence[]> {
+  const response = await fetch(`${API_BASE}/qhealth/ona-adherence/${unitId}`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch ONA adherence");
+  return response.json();
+}
+
+export async function updateOnaAdherence(data: { requirementId: number; unitId: number; status: string; comments?: string; confirmedBy?: string }): Promise<OnaAdherence> {
+  const response = await fetch(`${API_BASE}/qhealth/ona-adherence`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update ONA adherence");
+  return response.json();
+}
+
+export async function getOnaEvidences(requirementId: number): Promise<OnaEvidence[]> {
+  const response = await fetch(`${API_BASE}/qhealth/ona-evidences/${requirementId}`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch ONA evidences");
+  return response.json();
+}
+
+export async function createOnaEvidence(data: InsertOnaEvidence): Promise<OnaEvidence> {
+  const response = await fetch(`${API_BASE}/qhealth/ona-evidences`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create ONA evidence");
+  return response.json();
+}
+
+// Módulo 7 — Riscos
+export async function getRisks(): Promise<(Risk & { inherentScore: number; residualScore: number })[]> {
+  const response = await fetch(`${API_BASE}/qhealth/risks`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch risks");
+  return response.json();
+}
+
+export async function createRisk(data: InsertRisk): Promise<Risk> {
+  const response = await fetch(`${API_BASE}/qhealth/risks`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create risk");
+  return response.json();
+}
+
+export async function updateRisk(id: number, updates: Partial<Risk>): Promise<Risk> {
+  const response = await fetch(`${API_BASE}/qhealth/risks/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update risk");
+  return response.json();
+}
+
+export async function getRiskMitigations(riskId: number): Promise<RiskMitigation[]> {
+  const response = await fetch(`${API_BASE}/qhealth/risks/${riskId}/mitigations`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch risk mitigations");
+  return response.json();
+}
+
+// Módulo 9 — Comissões
+export async function getCommissions(): Promise<Commission[]> {
+  const response = await fetch(`${API_BASE}/qhealth/commissions`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch commissions");
+  return response.json();
+}
+
+export async function createCommission(data: InsertCommission): Promise<Commission> {
+  const response = await fetch(`${API_BASE}/qhealth/commissions`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create commission");
+  return response.json();
+}
+
+export async function getCommissionMeetings(commissionId: number): Promise<CommissionMeeting[]> {
+  const response = await fetch(`${API_BASE}/qhealth/commissions/${commissionId}/meetings`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch commission meetings");
+  return response.json();
+}
+
+export async function createCommissionMeeting(data: Omit<CommissionMeeting, 'id' | 'createdAt'>): Promise<CommissionMeeting> {
+  const response = await fetch(`${API_BASE}/qhealth/commission-meetings`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create commission meeting");
+  return response.json();
+}
+
+export async function getCommissionDeliberations(meetingId?: number): Promise<CommissionDeliberation[]> {
+  const url = meetingId
+    ? `${API_BASE}/qhealth/commission-deliberations?meetingId=${meetingId}`
+    : `${API_BASE}/qhealth/commission-deliberations`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch deliberations");
+  return response.json();
+}
+
+// Módulo 10 — Indicadores
+export async function getIndicators(layer?: string): Promise<Indicator[]> {
+  const url = layer ? `${API_BASE}/qhealth/indicators?layer=${layer}` : `${API_BASE}/qhealth/indicators`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch indicators");
+  return response.json();
+}
+
+export async function createIndicator(data: InsertIndicator): Promise<Indicator> {
+  const response = await fetch(`${API_BASE}/qhealth/indicators`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create indicator");
+  return response.json();
+}
+
+export async function getIndicatorValues(indicatorId: number): Promise<IndicatorValue[]> {
+  const response = await fetch(`${API_BASE}/qhealth/indicators/${indicatorId}/values`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch indicator values");
+  return response.json();
+}
+
+export async function createIndicatorValue(data: Omit<IndicatorValue, 'id' | 'createdAt'>): Promise<IndicatorValue> {
+  const response = await fetch(`${API_BASE}/qhealth/indicator-values`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to register indicator value");
+  return response.json();
+}
+
+// Módulo 15 — Documentos & Evidências
+export async function getQHealthDocuments(params?: { type?: string; status?: string }): Promise<Document[]> {
+  const query = new URLSearchParams(params as Record<string, string>).toString();
+  const url = query ? `${API_BASE}/qhealth/documents?${query}` : `${API_BASE}/qhealth/documents`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch documents");
+  return response.json();
+}
+
+export async function createQHealthDocument(data: InsertDocument): Promise<Document> {
+  const response = await fetch(`${API_BASE}/qhealth/documents`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create document");
+  return response.json();
+}
+
+export async function updateQHealthDocument(id: number, updates: Partial<Document>): Promise<Document> {
+  const response = await fetch(`${API_BASE}/qhealth/documents/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update document");
+  return response.json();
+}
+
+export async function registerDocumentReading(documentId: number, userId: string, version: string): Promise<DocumentReading> {
+  const response = await fetch(`${API_BASE}/qhealth/documents/${documentId}/readings`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ userId, version }),
+  });
+  if (!response.ok) throw new Error("Failed to register document reading");
+  return response.json();
+}
+
+// Módulo 17 — Gestão Operacional (Planos de Ação)
+export async function getActionPlans(params?: { status?: string; origin?: string }): Promise<ActionPlan[]> {
+  const query = new URLSearchParams(params as Record<string, string>).toString();
+  const url = query ? `${API_BASE}/qhealth/action-plans?${query}` : `${API_BASE}/qhealth/action-plans`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch action plans");
+  return response.json();
+}
+
+export async function createActionPlan(data: InsertActionPlan): Promise<ActionPlan> {
+  const response = await fetch(`${API_BASE}/qhealth/action-plans`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create action plan");
+  return response.json();
+}
+
+export async function updateActionPlan(id: number, updates: Partial<ActionPlan>): Promise<ActionPlan> {
+  const response = await fetch(`${API_BASE}/qhealth/action-plans/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update action plan");
+  return response.json();
+}
+
+export async function getActionPlanTasks(planId: number): Promise<ActionPlanTask[]> {
+  const response = await fetch(`${API_BASE}/qhealth/action-plans/${planId}/tasks`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch action plan tasks");
+  return response.json();
+}
+
+// Módulo 20 — Notificação de Eventos (Segurança do Paciente)
+export async function getSafetyEvents(params?: { status?: string; category?: string }): Promise<SafetyEvent[]> {
+  const query = new URLSearchParams(params as Record<string, string>).toString();
+  const url = query ? `${API_BASE}/qhealth/safety-events?${query}` : `${API_BASE}/qhealth/safety-events`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch safety events");
+  return response.json();
+}
+
+export async function createSafetyEvent(data: InsertSafetyEvent): Promise<SafetyEvent> {
+  const response = await fetch(`${API_BASE}/qhealth/safety-events`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create safety event");
+  return response.json();
+}
+
+export async function updateSafetyEvent(id: number, updates: Partial<SafetyEvent>): Promise<SafetyEvent> {
+  const response = await fetch(`${API_BASE}/qhealth/safety-events/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(updates),
+  });
+  if (!response.ok) throw new Error("Failed to update safety event");
+  return response.json();
+}
+
+// Módulos 12/16/19 — Protocolos, Treinamentos, Referências
+export async function getManagedProtocols(): Promise<any[]> {
+  const response = await fetch(`${API_BASE}/qhealth/managed-protocols`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch managed protocols");
+  return response.json();
+}
+
+export async function getTrainings(): Promise<any[]> {
+  const response = await fetch(`${API_BASE}/qhealth/trainings`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch trainings");
+  return response.json();
+}
+
+export async function getNormativeReferences(): Promise<any[]> {
+  const response = await fetch(`${API_BASE}/qhealth/normative-references`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch normative references");
+  return response.json();
+}
+
+// Home Executiva — Dashboard QHealth
+export async function getQHealthDashboard(): Promise<{
+  risks: number; actionPlans: number; safetyEvents: number; documents: number;
+  onaScore: { level1: number; level2: number; level3: number; overall: number };
+}> {
+  const response = await fetch(`${API_BASE}/qhealth/dashboard`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch QHealth dashboard");
+  return response.json();
 }

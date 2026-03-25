@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
+import { getRisks, createRisk } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -679,10 +681,48 @@ function RiskListTab() {
   const [filterUnit, setFilterUnit] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
-  const [novoItems, setNovoItems] = useState<typeof risks[0][]>([]);
   const [novoForm, setNovoForm] = useState({ title: "", cat: "Assistencial" as RiskCategory, unit: "", prob: "3", impact: "3" });
+  const qc = useQueryClient();
 
-  const allRisks = [...risks, ...novoItems];
+  const { data: dbRisks } = useQuery({
+    queryKey: ["risks"],
+    queryFn: getRisks,
+    staleTime: 30_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createRisk,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["risks"] });
+      setNovoForm({ title: "", cat: "Assistencial", unit: "", prob: "3", impact: "3" });
+      setShowNovoForm(false);
+      toast.success("Risco cadastrado com sucesso!");
+    },
+    onError: () => toast.error("Erro ao salvar risco."),
+  });
+
+  // Map DB risk to local Risk interface
+  const catToLocal: Record<string, RiskCategory> = {
+    operational: "Operacional", assistencial: "Assistencial",
+    strategic: "Estratégico", regulatory: "Regulatório",
+  };
+
+  const baseRisks: typeof risks = (dbRisks && dbRisks.length > 0)
+    ? dbRisks.map(r => ({
+        id: r.id,
+        title: r.title,
+        cat: catToLocal[r.category] ?? "Operacional",
+        prob: r.probability,
+        impact: r.impact,
+        unit: r.description?.split("Unidade: ")[1]?.split(" ")[0] || "—",
+        status: r.status as RiskStatus,
+        residualProb: r.residualProbability ?? undefined,
+        residualImpact: r.residualImpact ?? undefined,
+        controls: r.existingControls ?? undefined,
+      }))
+    : risks;
+
+  const allRisks = baseRisks;
   const units = Array.from(new Set(allRisks.map((r) => r.unit)));
 
   const filtered = allRisks.filter((r) => {
@@ -698,19 +738,18 @@ function RiskListTab() {
       toast.error("Preencha título e unidade.");
       return;
     }
-    const newRisk: typeof risks[0] = {
-      id: allRisks.length + 1,
-      title: novoForm.title,
-      cat: novoForm.cat,
-      prob: Number(novoForm.prob),
-      impact: Number(novoForm.impact),
-      unit: novoForm.unit,
-      status: "identified",
+    const catToDb: Record<string, string> = {
+      "Assistencial": "assistencial", "Operacional": "operational",
+      "Estratégico": "strategic", "Regulatório": "regulatory",
     };
-    setNovoItems(prev => [...prev, newRisk]);
-    setNovoForm({ title: "", cat: "Assistencial", unit: "", prob: "3", impact: "3" });
-    setShowNovoForm(false);
-    toast.success("Risco cadastrado com sucesso!");
+    createMutation.mutate({
+      title: novoForm.title,
+      description: `Unidade: ${novoForm.unit}`,
+      category: catToDb[novoForm.cat] || "operational",
+      probability: Number(novoForm.prob),
+      impact: Number(novoForm.impact),
+      status: "identified",
+    } as any);
   }
 
   const toggle = (id: number) => setExpandedId(expandedId === id ? null : id);

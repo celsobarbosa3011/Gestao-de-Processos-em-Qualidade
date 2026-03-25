@@ -62,5 +62,10 @@ export async function registerRoutes(
   // QHealth One 2026 — módulos específicos
   app.use("/api/qhealth", qhealthRouter);
 
+  // Health check para Render.com e outros serviços de monitoramento
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   return httpServer;
 }

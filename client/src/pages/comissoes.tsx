@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { printReport } from "@/lib/print-pdf";
+import { getCommissions } from "@/lib/api";
 import {
   Users, Calendar, FileText, Plus, ArrowRight, CheckCircle2,
   AlertCircle, Clock, ChevronRight, MoreHorizontal, Building2,
@@ -174,8 +176,34 @@ export default function Comissoes() {
   const [selectedCommission, setSelectedCommission] = useState<typeof commissions[0] | null>(null);
   const [activeTab, setActiveTab] = useState("lista");
 
-  const totalPending = commissions.reduce((a, c) => a + c.pendingDeliberations, 0);
-  const totalCompleted = commissions.reduce((a, c) => a + c.completedDeliberations, 0);
+  const { data: dbCommissions } = useQuery({
+    queryKey: ["commissions"],
+    queryFn: getCommissions,
+    staleTime: 60_000,
+  });
+
+  // Map DB commissions to display format when available, fallback to mock
+  const displayCommissions = (dbCommissions && dbCommissions.length > 0)
+    ? dbCommissions.map(c => ({
+        id: c.id,
+        code: c.code || c.name.slice(0, 4).toUpperCase(),
+        name: c.name,
+        icon: commissions.find(m => m.code === c.code)?.icon ?? <Shield className="w-5 h-5" />,
+        color: commissions.find(m => m.code === c.code)?.color ?? "slate",
+        regulation: (c as any).regulation || "—",
+        members: (c as any).memberCount || 0,
+        frequency: (c as any).meetingFrequency || "—",
+        lastMeeting: (c as any).lastMeetingDate || "—",
+        nextMeeting: (c as any).nextMeetingDate || "—",
+        status: c.status || "active",
+        pendingDeliberations: 0,
+        completedDeliberations: 0,
+        description: c.description || "",
+      }))
+    : commissions;
+
+  const totalPending = displayCommissions.reduce((a, c) => a + c.pendingDeliberations, 0);
+  const totalCompleted = displayCommissions.reduce((a, c) => a + c.completedDeliberations, 0);
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-5">
@@ -188,7 +216,7 @@ export default function Comissoes() {
             </div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Comissões</h1>
             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-              {commissions.length} comissões ativas
+              {displayCommissions.length} comissões ativas
             </Badge>
           </div>
           <p className="text-slate-500 text-sm">Governança institucional com rastreabilidade total por deliberação</p>
@@ -208,7 +236,7 @@ export default function Comissoes() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Comissões Ativas", value: commissions.length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800" },
+          { label: "Comissões Ativas", value: displayCommissions.length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800" },
           { label: "Pendentes de Reunião", value: upcomingMeetings.length, color: "text-sky-600", bg: "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-800" },
           { label: "Deliberações Abertas", value: totalPending, color: "text-amber-600", bg: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800" },
           { label: "Deliberações Resolvidas", value: totalCompleted, color: "text-slate-700", bg: "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700" },
@@ -238,7 +266,7 @@ export default function Comissoes() {
         {/* TAB: Lista de Comissões */}
         <TabsContent value="lista" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {commissions.map((c) => {
+            {displayCommissions.map((c) => {
               const colors = colorMap[c.color];
               const totalDelibs = c.pendingDeliberations + c.completedDeliberations;
               return (

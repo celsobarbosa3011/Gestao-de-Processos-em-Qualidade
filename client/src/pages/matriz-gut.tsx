@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { printReport } from "@/lib/print-pdf";
+import { getGutItems, createGutItem } from "@/lib/api";
 import {
   Triangle, AlertTriangle, Filter, Plus, ArrowRight, TrendingUp,
   Download, MoreHorizontal, CheckSquare, Building2, Target,
@@ -71,8 +73,25 @@ export default function MatrizGUT() {
   const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
-  const [novoItems, setNovoItems] = useState<typeof gutItems[0][]>([]);
   const [novoForm, setNovoForm] = useState({ title: "", unit: "", responsible: "", gravity: "3", urgency: "3", tendency: "3" });
+  const qc = useQueryClient();
+
+  const { data: dbGutItems } = useQuery({
+    queryKey: ["gut-items"],
+    queryFn: getGutItems,
+    staleTime: 30_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createGutItem,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gut-items"] });
+      setNovoForm({ title: "", unit: "", responsible: "", gravity: "3", urgency: "3", tendency: "3" });
+      setShowNovoForm(false);
+      toast.success("Item GUT cadastrado com sucesso!");
+    },
+    onError: () => toast.error("Erro ao salvar item GUT."),
+  });
 
   function handleNovoSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,11 +99,9 @@ export default function MatrizGUT() {
       toast.error("Preencha título e unidade.");
       return;
     }
-    const allItems = [...gutItems, ...novoItems];
-    const newItem: typeof gutItems[0] = {
-      id: allItems.length + 1,
+    createMutation.mutate({
       title: novoForm.title,
-      origin: "Risco",
+      origin: "Manual",
       originCode: "Manual",
       unit: novoForm.unit,
       chapter: "Cap. 1 — Liderança",
@@ -93,15 +110,20 @@ export default function MatrizGUT() {
       tendency: Number(novoForm.tendency),
       status: "open",
       responsible: novoForm.responsible || "—",
-      aiJustification: "Item cadastrado manualmente.",
-    };
-    setNovoItems(prev => [...prev, newItem]);
-    setNovoForm({ title: "", unit: "", responsible: "", gravity: "3", urgency: "3", tendency: "3" });
-    setShowNovoForm(false);
-    toast.success("Item GUT cadastrado com sucesso!");
+    } as any);
   }
 
-  const sortedItems = [...gutItems, ...novoItems]
+  // Use real data from DB when available, else fallback to mock
+  const baseItems = (dbGutItems && dbGutItems.length > 0)
+    ? dbGutItems.map(i => ({
+        ...i,
+        originCode: (i as any).originCode || "DB",
+        chapter: (i as any).chapter || "Cap. 1",
+        aiJustification: (i as any).aiJustification || "Item do banco de dados.",
+      }))
+    : gutItems;
+
+  const sortedItems = baseItems
     .filter(i => filterOrigin === "all" || i.origin === filterOrigin)
     .filter(i => filterStatus === "all" || i.status === filterStatus)
     .map(i => ({ ...i, score: gutScore(i.gravity, i.urgency, i.tendency) }))

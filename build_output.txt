@@ -1,0 +1,111 @@
+
+> rest-express@1.0.0 build
+> cross-env NODE_ENV=production tsx script/build.ts
+
+building client...
+[36mvite v7.1.12 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 3386 modules transformed.
+rendering chunks...
+[meta-images] no Replit deployment domain found, skipping meta tag updates
+computing gzip size...
+[2m../dist/public/[22m[32mindex.html                                   [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.87 kB[22m
+[2m../dist/public/[22m[35massets/index-POrTkwrk.css                    [39m[1m[2m196.83 kB[22m[1m[22m[2m │ gzip:  28.77 kB[22m
+[2m../dist/public/[22m[36massets/skeleton-XV5y6-Ly.js                  [39m[1m[2m  0.18 kB[22m[1m[22m[2m │ gzip:   0.16 kB[22m
+[2m../dist/public/[22m[36massets/LineChart-SLIXiiRK.js                 [39m[1m[2m  0.27 kB[22m[1m[22m[2m │ gzip:   0.21 kB[22m
+[2m../dist/public/[22m[36massets/BarChart-B6eJArhe.js                  [39m[1m[2m  0.31 kB[22m[1m[22m[2m │ gzip:   0.23 kB[22m
+[2m../dist/public/[22m[36massets/plus-D2nOTVIM.js                      [39m[1m[2m  0.33 kB[22m[1m[22m[2m │ gzip:   0.25 kB[22m
+[2m../dist/public/[22m[36massets/arrow-right-BBQMbe7v.js               [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/clock-BToR26-F.js                     [39m[1m[2m  0.34 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/circle-minus-DfxB0S3s.js              [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/trending-up-C3pHoU6t.js               [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/trending-down-xxdB76hl.js             [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/circle-check-BBt3tWiV.js              [39m[1m[2m  0.35 kB[22m[1m[22m[2m │ gzip:   0.27 kB[22m
+[2m../dist/public/[22m[36massets/play-076C6hwl.js                      [39m[1m[2m  0.36 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/user-tDc11OyR.js                      [39m[1m[2m  0.37 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2m../dist/public/[22m[36massets/info-3mE_Ek_8.js                      [39m[1m[2m  0.38 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/circle-x-DgdQtujF.js                  [39m[1m[2m  0.38 kB[22m[1m[22m[2m │ gzip:   0.28 kB[22m
+[2m../dist/public/[22m[36massets/dollar-sign-CgzpmTln.js               [39m[1m[2m  0.39 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/download-CpafSrDM.js                  [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/activity-Co3as_11.js                  [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/copy-CUftLWGS.js                      [39m[1m[2m  0.41 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/globe-TxC2liiS.js                     [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/user-check-0u5or64u.js                [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/database-7Gjfh5Xw.js                  [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/book-marked-BDhC6Pb1.js               [39m[1m[2m  0.42 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/funnel-B9dMFJjJ.js                    [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/heart-BnoAUS_I.js                     [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/plug-BI_Jw3kT.js                      [39m[1m[2m  0.43 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2m../dist/public/[22m[36massets/zap-CmaM6ooN.js                       [39m[1m[2m  0.44 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2m../dist/public/[22m[36massets/key-D6LL0CIy.js                       [39m[1m[2m  0.44 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/shield-D88pS22g.js                    [39m[1m[2m  0.45 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/pen-line-Fone7qzc.js                  [39m[1m[2m  0.45 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/textarea-CQvdO1l0.js                  [39m[1m[2m  0.46 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2m../dist/public/[22m[36massets/lightbulb-Dt6pv0jP.js                 [39m[1m[2m  0.46 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/send-pFR3Kphv.js                      [39m[1m[2m  0.46 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/square-pen-w6LV3Oq7.js                [39m[1m[2m  0.49 kB[22m[1m[22m[2m │ gzip:   0.34 kB[22m
+[2m../dist/public/[22m[36massets/refresh-cw-ob8lEcgj.js                [39m[1m[2m  0.49 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2m../dist/public/[22m[36massets/heart-pulse-DRtbstET.js               [39m[1m[2m  0.51 kB[22m[1m[22m[2m │ gzip:   0.36 kB[22m
+[2m../dist/public/[22m[36massets/octagon-alert-CvhRloD6.js             [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2m../dist/public/[22m[36massets/table-D6tKoi_t.js                     [39m[1m[2m  1.56 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2m../dist/public/[22m[36massets/progress-CiIs9I-h.js                  [39m[1m[2m  3.23 kB[22m[1m[22m[2m │ gzip:   1.53 kB[22m
+[2m../dist/public/[22m[36massets/switch-DEM_xXK1.js                    [39m[1m[2m  3.48 kB[22m[1m[22m[2m │ gzip:   1.67 kB[22m
+[2m../dist/public/[22m[36massets/alert-dialog-BgAaXln1.js              [39m[1m[2m  5.37 kB[22m[1m[22m[2m │ gzip:   2.10 kB[22m
+[2m../dist/public/[22m[36massets/settings-CeBuZvpn.js                  [39m[1m[2m  6.54 kB[22m[1m[22m[2m │ gzip:   2.23 kB[22m
+[2m../dist/public/[22m[36massets/unidades-negocio-CljBVQi0.js          [39m[1m[2m  7.14 kB[22m[1m[22m[2m │ gzip:   2.42 kB[22m
+[2m../dist/public/[22m[36massets/permissions-CVrdzY6g.js               [39m[1m[2m  7.96 kB[22m[1m[22m[2m │ gzip:   2.33 kB[22m
+[2m../dist/public/[22m[36massets/priorities-CVnIO6jG.js                [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   2.40 kB[22m
+[2m../dist/public/[22m[36massets/process-types-BlRshfQT.js             [39m[1m[2m  8.69 kB[22m[1m[22m[2m │ gzip:   2.63 kB[22m
+[2m../dist/public/[22m[36massets/templates-DGpFheKA.js                 [39m[1m[2m  9.28 kB[22m[1m[22m[2m │ gzip:   3.08 kB[22m
+[2m../dist/public/[22m[36massets/Line-vfZn34w6.js                      [39m[1m[2m 10.94 kB[22m[1m[22m[2m │ gzip:   4.20 kB[22m
+[2m../dist/public/[22m[36massets/AreaChart-pYi_PRXo.js                 [39m[1m[2m 10.98 kB[22m[1m[22m[2m │ gzip:   4.06 kB[22m
+[2m../dist/public/[22m[36massets/automations-AhNk9ja1.js               [39m[1m[2m 11.27 kB[22m[1m[22m[2m │ gzip:   3.49 kB[22m
+[2m../dist/public/[22m[36massets/PieChart-CEgEciI_.js                  [39m[1m[2m 11.60 kB[22m[1m[22m[2m │ gzip:   4.30 kB[22m
+[2m../dist/public/[22m[36massets/RadarChart-9nVFnITt.js                [39m[1m[2m 11.88 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2m../dist/public/[22m[36massets/units-C0dC7X92.js                     [39m[1m[2m 12.24 kB[22m[1m[22m[2m │ gzip:   3.50 kB[22m
+[2m../dist/public/[22m[36massets/custom-fields-BO7U39N4.js             [39m[1m[2m 12.46 kB[22m[1m[22m[2m │ gzip:   4.46 kB[22m
+[2m../dist/public/[22m[36massets/branding-ByurXgjQ.js                  [39m[1m[2m 13.19 kB[22m[1m[22m[2m │ gzip:   3.55 kB[22m
+[2m../dist/public/[22m[36massets/PolarAngleAxis-Bp248QPe.js            [39m[1m[2m 14.53 kB[22m[1m[22m[2m │ gzip:   4.03 kB[22m
+[2m../dist/public/[22m[36massets/logs-BJX8FLun.js                      [39m[1m[2m 15.54 kB[22m[1m[22m[2m │ gzip:   4.59 kB[22m
+[2m../dist/public/[22m[36massets/print-pdf-C5R3sJNf.js                 [39m[1m[2m 16.49 kB[22m[1m[22m[2m │ gzip:   4.44 kB[22m
+[2m../dist/public/[22m[36massets/governanca-clinica-DesrX0WL.js        [39m[1m[2m 16.61 kB[22m[1m[22m[2m │ gzip:   4.61 kB[22m
+[2m../dist/public/[22m[36massets/politicas-_r-kaFKx.js                 [39m[1m[2m 17.69 kB[22m[1m[22m[2m │ gzip:   4.81 kB[22m
+[2m../dist/public/[22m[36massets/comunicacao-2JWbFqSE.js               [39m[1m[2m 17.81 kB[22m[1m[22m[2m │ gzip:   4.91 kB[22m
+[2m../dist/public/[22m[36massets/swot-CsV5adLo.js                      [39m[1m[2m 18.75 kB[22m[1m[22m[2m │ gzip:   5.89 kB[22m
+[2m../dist/public/[22m[36massets/planejamento-bsc-Bdm4KkhN.js          [39m[1m[2m 19.85 kB[22m[1m[22m[2m │ gzip:   5.14 kB[22m
+[2m../dist/public/[22m[36massets/matriz-gut-DXCwaNHA.js                [39m[1m[2m 19.92 kB[22m[1m[22m[2m │ gzip:   5.92 kB[22m
+[2m../dist/public/[22m[36massets/users-GFqkSlH1.js                     [39m[1m[2m 20.62 kB[22m[1m[22m[2m │ gzip:   5.44 kB[22m
+[2m../dist/public/[22m[36massets/referencias-_OQVQWbp.js               [39m[1m[2m 21.19 kB[22m[1m[22m[2m │ gzip:   5.96 kB[22m
+[2m../dist/public/[22m[36massets/home-executiva-Cenmi0iZ.js            [39m[1m[2m 21.50 kB[22m[1m[22m[2m │ gzip:   5.61 kB[22m
+[2m../dist/public/[22m[36massets/dropdown-menu-Cn0fD4zl.js             [39m[1m[2m 23.65 kB[22m[1m[22m[2m │ gzip:   7.14 kB[22m
+[2m../dist/public/[22m[36massets/integracoes-BxIeWAPz.js               [39m[1m[2m 23.75 kB[22m[1m[22m[2m │ gzip:   6.11 kB[22m
+[2m../dist/public/[22m[36massets/treinamentos-VE_CY4qN.js              [39m[1m[2m 23.87 kB[22m[1m[22m[2m │ gzip:   6.19 kB[22m
+[2m../dist/public/[22m[36massets/comissoes-Dr_Xy0WS.js                 [39m[1m[2m 24.46 kB[22m[1m[22m[2m │ gzip:   6.22 kB[22m
+[2m../dist/public/[22m[36massets/administracao-CyxDcmZ7.js             [39m[1m[2m 25.06 kB[22m[1m[22m[2m │ gzip:   6.39 kB[22m
+[2m../dist/public/[22m[36massets/processos-BrsUTvQ9.js                 [39m[1m[2m 26.64 kB[22m[1m[22m[2m │ gzip:   7.12 kB[22m
+[2m../dist/public/[22m[36massets/lgpd-BKEyXVFj.js                      [39m[1m[2m 27.15 kB[22m[1m[22m[2m │ gzip:   6.65 kB[22m
+[2m../dist/public/[22m[36massets/ia-copilot-BtdfvYae.js                [39m[1m[2m 27.30 kB[22m[1m[22m[2m │ gzip:   8.13 kB[22m
+[2m../dist/public/[22m[36massets/diagnostico-gx7VEd1A.js               [39m[1m[2m 28.07 kB[22m[1m[22m[2m │ gzip:   7.37 kB[22m
+[2m../dist/public/[22m[36massets/documentos-BMruwYgF.js                [39m[1m[2m 28.08 kB[22m[1m[22m[2m │ gzip:   7.16 kB[22m
+[2m../dist/public/[22m[36massets/jornada-paciente-BdJ_nU_3.js          [39m[1m[2m 28.49 kB[22m[1m[22m[2m │ gzip:   6.89 kB[22m
+[2m../dist/public/[22m[36massets/protocolos-D0EYPIJy.js                [39m[1m[2m 28.61 kB[22m[1m[22m[2m │ gzip:   7.34 kB[22m
+[2m../dist/public/[22m[36massets/plataforma-BXLL_K5V.js                [39m[1m[2m 36.09 kB[22m[1m[22m[2m │ gzip:   8.81 kB[22m
+[2m../dist/public/[22m[36massets/indicadores-B_bjihka.js               [39m[1m[2m 36.18 kB[22m[1m[22m[2m │ gzip:   8.91 kB[22m
+[2m../dist/public/[22m[36massets/eventos-BVrpLimR.js                   [39m[1m[2m 36.27 kB[22m[1m[22m[2m │ gzip:   8.78 kB[22m
+[2m../dist/public/[22m[36massets/gestao-operacional-CnP0RZbs.js        [39m[1m[2m 37.09 kB[22m[1m[22m[2m │ gzip:   8.90 kB[22m
+[2m../dist/public/[22m[36massets/riscos-BB8BBEMp.js                    [39m[1m[2m 42.32 kB[22m[1m[22m[2m │ gzip:   9.69 kB[22m
+[2m../dist/public/[22m[36massets/manual-CGA_4rJH.js                    [39m[1m[2m 57.82 kB[22m[1m[22m[2m │ gzip:  17.81 kB[22m
+[2m../dist/public/[22m[36massets/acreditacao-ona-D1Ya5g-k.js           [39m[1m[2m 73.04 kB[22m[1m[22m[2m │ gzip:  18.16 kB[22m
+[2m../dist/public/[22m[36massets/generateCategoricalChart-BafHfB-j.js  [39m[1m[2m383.43 kB[22m[1m[22m[2m │ gzip: 105.77 kB[22m
+[2m../dist/public/[22m[36massets/index-Cm6C0Gux.js                     [39m[1m[33m625.47 kB[39m[22m[2m │ gzip: 186.92 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 13.85s[39m
+building server...
+
+  dist\index.cjs  1.3mb
+
+Done in 240ms
