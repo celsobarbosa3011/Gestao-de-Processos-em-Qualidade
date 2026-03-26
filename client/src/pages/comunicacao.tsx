@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenant } from "@/hooks/use-tenant";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -90,7 +91,7 @@ const messages: Message[] = [
     id: 6, type: "Informativo", status: "Publicado",
     title: "Campanha de Vacinação contra Influenza — Início 01/04",
     body: "A campanha de vacinação contra influenza para colaboradores inicia em 01/04/2026. A vacinação ocorre na Sala de Vacinas (térreo) de segunda a sexta, das 08h às 17h. Apresente o crachá funcional.",
-    author: "CCIH — Enf. Patrícia", authorRole: "Coordenadora CCIH",
+    author: "SCIH — Enf. Patrícia", authorRole: "Coordenadora SCIH",
     targetUnit: "Todos os colaboradores", publishedAt: "2026-03-08",
     isPinned: false, readCount: 155, totalTarget: 250,
   },
@@ -113,9 +114,9 @@ const meetings: Meeting[] = [
     organizer: "NSP", type: "Comissão", status: "Agendada",
   },
   {
-    id: 4, title: "CCIH — Reunião Extraordinária",
+    id: 4, title: "SCIH — Reunião Extraordinária",
     date: "2026-03-27", time: "10h00", location: "Auditório",
-    organizer: "CCIH", type: "Comissão", status: "Agendada",
+    organizer: "SCIH", type: "Comissão", status: "Agendada",
   },
   {
     id: 5, title: "Comitê de Qualidade — Fev/26",
@@ -150,21 +151,25 @@ function readPct(m: Message) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Comunicacao() {
+  const { isAdmin } = useTenant();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
 
-  const filtered = messages.filter((m) => {
+  const displayMessages = isAdmin ? messages : [];
+  const displayMeetings = isAdmin ? meetings : [];
+
+  const filtered = displayMessages.filter((m) => {
     const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === "all" || m.type === filterType;
     return matchSearch && matchType;
   });
 
-  const pinned = messages.filter((m) => m.isPinned);
-  const urgentes = messages.filter((m) => m.type === "Urgente").length;
-  const totalPublished = messages.filter((m) => m.status === "Publicado").length;
-  const upcomingMeetings = meetings.filter((m) => m.status === "Agendada").length;
+  const pinned = displayMessages.filter((m) => m.isPinned);
+  const urgentes = displayMessages.filter((m) => m.type === "Urgente").length;
+  const totalPublished = displayMessages.filter((m) => m.status === "Publicado").length;
+  const upcomingMeetings = displayMeetings.filter((m) => m.status === "Agendada").length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -399,7 +404,7 @@ export default function Comunicacao() {
             </div>
 
             <div className="space-y-3">
-              {meetings.map((m) => {
+              {displayMeetings.map((m) => {
                 const sm = meetingStatusMeta(m.status);
                 return (
                   <Card key={m.id} className={cn(

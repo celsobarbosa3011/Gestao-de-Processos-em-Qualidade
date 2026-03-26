@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
+import { EmptyState } from "@/components/empty-state";
 import {
   Workflow, Plus, Search, Download, Eye,
   FileText, Building2, Users, Layers, ArrowRight, Clock
@@ -70,7 +72,7 @@ const processes: HospitalProcess[] = [
     type: "POP", status: "Em revisão", version: "4.0", responsible: "NSP",
     onaRef: "4.1.1 / 4.1.2", lastReview: "Fev/2026", nextReview: "Fev/2027",
     sipoc: {
-      suppliers: ["Admissão", "CCIH", "Farmácia"],
+      suppliers: ["Admissão", "SCIH", "Farmácia"],
       inputs: ["Dados do paciente", "Pulseira de identificação", "Protocolo NSP"],
       process: ["Conferir nome e data nasc.", "Aplicar pulseira", "Checagem dupla em procedimentos", "Verificar alergias", "Registrar no sistema"],
       outputs: ["Paciente identificado", "Risco reduzido", "Registro auditável"],
@@ -79,14 +81,14 @@ const processes: HospitalProcess[] = [
   },
   {
     id: 4, code: "POP-CCH-001", name: "Higienização das Mãos", sector: "Todas as Unidades",
-    type: "POP", status: "Publicado", version: "2.3", responsible: "CCIH",
+    type: "POP", status: "Publicado", version: "2.3", responsible: "SCIH",
     onaRef: "4.2.1", lastReview: "Mar/2026", nextReview: "Mar/2027",
     sipoc: {
-      suppliers: ["CCIH", "Vigilância Sanitária", "Almoxarifado"],
+      suppliers: ["SCIH", "Vigilância Sanitária", "Almoxarifado"],
       inputs: ["Álcool gel", "Sabão antisséptico", "Treinamento da equipe"],
       process: ["Friccionar as mãos", "Cobrir superfícies", "Enxaguar", "Secar", "Registrar adesão"],
       outputs: ["Mãos higienizadas", "Redução de IRAS", "Taxa de adesão"],
-      customers: ["Paciente", "Equipe assistencial", "CCIH"],
+      customers: ["Paciente", "Equipe assistencial", "SCIH"],
     },
   },
   {
@@ -190,11 +192,11 @@ const processes: HospitalProcess[] = [
     type: "POP", status: "Em revisão", version: "2.0", responsible: "Farm. Responsável",
     onaRef: "4.1.3", lastReview: "Mar/2026", nextReview: "Set/2026",
     sipoc: {
-      suppliers: ["Farmácia", "CCIH", "NSP"],
+      suppliers: ["Farmácia", "SCIH", "NSP"],
       inputs: ["Lista MPP ISMP", "Protocolos de segregação", "Equipe treinada"],
       process: ["Identificar MPPs", "Segregar com etiqueta", "Dupla checagem na dispensação", "Registro obrigatório", "Auditoria mensal"],
       outputs: ["MPPs identificados e seguros", "Erros prevenidos", "Conformidade ONA"],
-      customers: ["Paciente", "NSP", "CCIH"],
+      customers: ["Paciente", "NSP", "SCIH"],
     },
   },
   {
@@ -202,11 +204,11 @@ const processes: HospitalProcess[] = [
     type: "Protocolo", status: "Publicado", version: "3.5", responsible: "Intensivista Chefe",
     onaRef: "4.2.3", lastReview: "Fev/2026", nextReview: "Fev/2027",
     sipoc: {
-      suppliers: ["CCIH", "Farmácia", "Enfermagem"],
+      suppliers: ["SCIH", "Farmácia", "Enfermagem"],
       inputs: ["Cateter venoso central", "Bundle IPCS", "EPIs"],
       process: ["Higienizar mãos", "Barreira máxima na inserção", "Clorexidina para antissepsia", "Curativo estéril", "Avaliação diária de retirada"],
       outputs: ["IPCS prevenida", "Taxa de infecção reduzida", "Conformidade bundle"],
-      customers: ["Paciente UTI", "CCIH", "NSP"],
+      customers: ["Paciente UTI", "SCIH", "NSP"],
     },
   },
   {
@@ -226,7 +228,7 @@ const processes: HospitalProcess[] = [
 const sectors = [
   "Todas as Unidades", "Recepção", "Internação", "Pronto-Socorro",
   "Centro Cirúrgico", "UTI", "Farmácia", "CME", "Laboratório",
-  "Hemodiálise", "Diagnóstico por Imagem", "CCIH", "NSP",
+  "Hemodiálise", "Diagnóstico por Imagem", "SCIH", "NSP",
 ];
 
 const statusConfig: Record<ProcessStatus, { label: string; color: string; dot: string }> = {
@@ -255,15 +257,20 @@ const sipocCols = [
 
 export default function ProcessosPage() {
   const [, navigate] = useLocation();
+  const { isAdmin } = useTenant();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSector, setFilterSector] = useState("Todas as Unidades");
   const [filterStatus, setFilterStatus] = useState("Todos");
-  const [selectedProcess, setSelectedProcess] = useState<HospitalProcess>(processes[0]);
   const [showNovoForm, setShowNovoForm] = useState(false);
   const [novoProcesso, setNovoProcesso] = useState({ name: "", sector: "", type: "POP", responsible: "" });
   const [extraProcesses, setExtraProcesses] = useState<HospitalProcess[]>([]);
 
-  const allProcesses = [...processes, ...extraProcesses];
+  // LGPD: mock data visível apenas para admin — usuário regular começa com lista vazia
+  const baseMock: HospitalProcess[] = isAdmin ? processes : [];
+  const allProcesses = [...baseMock, ...extraProcesses];
+  const [selectedProcess, setSelectedProcess] = useState<HospitalProcess | null>(
+    allProcesses.length > 0 ? allProcesses[0] : null
+  );
 
   const filtered = allProcesses.filter((p) => {
     const matchSearch =
@@ -466,12 +473,22 @@ export default function ProcessosPage() {
           </div>
 
           {filtered.length === 0 ? (
-            <Card className="border-dashed border-slate-200">
-              <CardContent className="flex flex-col items-center justify-center py-10 text-slate-400">
-                <FileText className="w-10 h-10 mb-3 opacity-40" />
-                <p className="text-sm">Nenhum processo encontrado com os filtros selecionados</p>
-              </CardContent>
-            </Card>
+            allProcesses.length === 0 ? (
+              <EmptyState
+                title="Nenhum processo cadastrado"
+                description="Cadastre os processos da sua empresa para começar o mapeamento e análise SIPOC."
+                actionLabel="Novo Processo"
+                onAction={() => setShowNovoForm(true)}
+                showLgpdNote={!isAdmin}
+              />
+            ) : (
+              <Card className="border-dashed border-slate-200">
+                <CardContent className="flex flex-col items-center justify-center py-10 text-slate-400">
+                  <FileText className="w-10 h-10 mb-3 opacity-40" />
+                  <p className="text-sm">Nenhum processo encontrado com os filtros selecionados</p>
+                </CardContent>
+              </Card>
+            )
           ) : (
             <div className="space-y-3">
               {filtered.map((proc) => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
 import { printReport } from "@/lib/print-pdf";
 import { getDiagnosticCycles } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -362,6 +363,7 @@ const AdherenceRadio = ({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Diagnostico() {
+  const { isAdmin } = useTenant();
   const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("ciclos");
   const [selectedChapter, setSelectedChapter] = useState(1);
@@ -390,11 +392,19 @@ export default function Diagnostico() {
         status: statusMap[c.status] ?? "Rascunho",
         progress: 0, total: 0, adherent: 0, partial: 0, nonAdherent: 0,
       }))
-    : mockCycles;
+    : (isAdmin ? mockCycles : []);
 
-  const visibleRequirements = mockRequirements.filter(
+  const visibleRequirements = (isAdmin ? mockRequirements : []).filter(
     (r) => r.chapter === selectedChapter
   );
+
+  // Chapter progress computed from user answers (not from hardcoded mock values)
+  function computedChapterPct(chapterId: number): number {
+    const chapterReqs = (isAdmin ? mockRequirements : []).filter(r => r.chapter === chapterId);
+    if (chapterReqs.length === 0) return 0;
+    const answered = chapterReqs.filter(r => answers[r.id]?.status != null).length;
+    return Math.round((answered / chapterReqs.length) * 100);
+  }
 
   function updateAnswer(
     reqId: string,
@@ -412,8 +422,8 @@ export default function Diagnostico() {
   }
 
   const totalAnswered = Object.values(answers).filter((a) => a.status !== null).length;
-  const totalReqs = mockRequirements.length;
-  const overallProgress = Math.round((totalAnswered / totalReqs) * 100);
+  const totalReqs = (isAdmin ? mockRequirements : []).length;
+  const overallProgress = totalReqs > 0 ? Math.round((totalAnswered / totalReqs) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -456,7 +466,7 @@ export default function Diagnostico() {
                 <FileText className="w-4 h-4" />
                 Ver Relatório
               </Button>
-              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2" onClick={() => setShowNovoForm(v => !v)}>
+              <Button className="bg-sky-600 hover:bg-sky-700 text-white gap-2" onClick={() => { setShowNovoForm(v => !v); toast.info("Para iniciar um novo ciclo de diagnóstico, clique em Formulário de Avaliação e preencha os requisitos ONA."); setActiveTab("formulario"); }}>
                 <Plus className="w-4 h-4" />
                 Novo Ciclo
               </Button>
@@ -467,15 +477,15 @@ export default function Diagnostico() {
           <div className="flex gap-4 mt-4 flex-wrap">
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <span className="w-2 h-2 rounded-full bg-sky-500 inline-block" />
-              <span>3 ciclos registrados</span>
+              <span>{displayCycles.length} ciclo{displayCycles.length !== 1 ? "s" : ""} registrado{displayCycles.length !== 1 ? "s" : ""}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span>6 unidades avaliadas</span>
+              <span>{isAdmin ? "6 unidades avaliadas" : "0 unidades avaliadas"}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />
-              <span>66 requisitos ONA mapeados</span>
+              <span>{isAdmin ? `${mockRequirements.length} requisitos ONA mapeados` : "0 requisitos mapeados"}</span>
             </div>
           </div>
         </div>
@@ -654,7 +664,7 @@ export default function Diagnostico() {
                   Capítulos
                 </p>
                 {mockChapters.map((ch) => {
-                  const pct = chapterPercent(ch);
+                  const pct = computedChapterPct(ch.id);
                   const isActive = selectedChapter === ch.id;
                   return (
                     <button
@@ -860,6 +870,16 @@ export default function Diagnostico() {
               TAB 3 — Score por Unidade
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="score" className="mt-6">
+            {!isAdmin ? (
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardContent className="py-16 text-center">
+                  <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium mb-1">Nenhum score de unidade disponível</p>
+                  <p className="text-sm text-slate-400">Complete o Formulário de Avaliação para gerar scores por unidade.</p>
+                </CardContent>
+              </Card>
+            ) : (
+            <>
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <Card className="bg-white border border-slate-200 shadow-sm">
@@ -999,12 +1019,23 @@ export default function Diagnostico() {
                 );
               })}
             </div>
+            </>
+            )}
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB 4 — Comparação entre Ciclos
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="comparacao" className="mt-6">
+            {!isAdmin ? (
+              <Card className="bg-white border border-slate-200 shadow-sm">
+                <CardContent className="py-16 text-center">
+                  <TrendingUp className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium mb-1">Nenhum dado histórico disponível</p>
+                  <p className="text-sm text-slate-400">Complete ciclos de diagnóstico para ver a comparação entre períodos.</p>
+                </CardContent>
+              </Card>
+            ) : (
             <Card className="bg-white border border-slate-200 shadow-sm">
               <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
                 <div className="flex items-center justify-between">
@@ -1161,6 +1192,7 @@ export default function Diagnostico() {
                 </div>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

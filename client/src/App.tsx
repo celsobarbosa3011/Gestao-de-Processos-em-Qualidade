@@ -98,6 +98,15 @@ const Swot = lazy(() => import("@/pages/swot"));
 // Plataforma WhiteLabel — Super Admin
 const Plataforma = lazy(() => import("@/pages/plataforma"));
 
+// Avaliação Inicial ONA 2026
+const AvaliacaoInicialPage = lazy(() => import("@/pages/avaliacao-inicial"));
+
+// Formulários Setoriais
+const SetorForm = lazy(() => import("@/pages/setor-form"));
+
+// Auditoria Inteligente ONA 2026
+const AuditoriaInteligente = lazy(() => import("@/pages/auditoria-inteligente"));
+
 // Admin pages — gerenciamento avançado
 const AdminUsersPage = lazy(() => import("@/pages/admin/users"));
 const AdminUnitsPage = lazy(() => import("@/pages/admin/units"));
@@ -110,6 +119,7 @@ const AdminCustomFieldsPage = lazy(() => import("@/pages/admin/custom-fields"));
 const AdminPrioritiesPage = lazy(() => import("@/pages/admin/priorities"));
 const AdminProcessTypesPage = lazy(() => import("@/pages/admin/process-types"));
 const AdminTemplatesPage = lazy(() => import("@/pages/admin/templates"));
+const AdminIntegracoesPage = lazy(() => import("@/pages/admin/integracoes"));
 
 // Page loading skeleton
 const PageLoader = () => (
@@ -280,6 +290,16 @@ function Router() {
           <Route path="/admin/priorities" component={AdminPrioritiesPage} />
           <Route path="/admin/process-types" component={AdminProcessTypesPage} />
           <Route path="/admin/templates" component={AdminTemplatesPage} />
+          <Route path="/admin/integracoes" component={AdminIntegracoesPage} />
+
+          {/* Avaliação Inicial ONA 2026 */}
+          <Route path="/avaliacao-inicial" component={AvaliacaoInicialPage} />
+
+          {/* Formulários Setoriais */}
+          <Route path="/setor-form" component={SetorForm} />
+
+          {/* Auditoria Inteligente ONA 2026 */}
+          <Route path="/auditoria-inteligente" component={AuditoriaInteligente} />
 
           {/* Root redirect */}
           <Route path="/">

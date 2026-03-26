@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getActionPlans, createActionPlan } from "@/lib/api";
+import { useTenant } from "@/hooks/use-tenant";
 import { cn } from "@/lib/utils";
 import {
   Card,
@@ -223,7 +224,7 @@ const plans: ActionPlan[] = [
     title: "Treinamento de biossegurança para equipe da UTI",
     origin: "Comissão",
     unit: "UTI",
-    responsible: "CCIH",
+    responsible: "SCIH",
     dueDate: "2026-04-30",
     status: "pending",
     priority: "low",
@@ -592,6 +593,7 @@ function DetailDialog({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GestaoOperacional() {
+  const { isAdmin } = useTenant();
   const [view, setView] = useState<"kanban" | "lista">("kanban");
   const [selectedPlan, setSelectedPlan] = useState<ActionPlan | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -633,7 +635,7 @@ export default function GestaoOperacional() {
         total: 0,
         description: p.description || undefined,
       }))
-    : plans;
+    : (isAdmin ? plans : []);
 
   const totalPlans = displayPlans.length;
   const onTime = displayPlans.filter((p) => p.status !== "overdue" && p.status !== "near").length;
@@ -655,19 +657,19 @@ export default function GestaoOperacional() {
   }
 
   // Grouped data for tabs
-  const byResponsible = plans.reduce<Record<string, ActionPlan[]>>((acc, p) => {
+  const byResponsible = displayPlans.reduce<Record<string, ActionPlan[]>>((acc, p) => {
     if (!acc[p.responsible]) acc[p.responsible] = [];
     acc[p.responsible].push(p);
     return acc;
   }, {});
 
-  const byUnit = plans.reduce<Record<string, ActionPlan[]>>((acc, p) => {
+  const byUnit = displayPlans.reduce<Record<string, ActionPlan[]>>((acc, p) => {
     if (!acc[p.unit]) acc[p.unit] = [];
     acc[p.unit].push(p);
     return acc;
   }, {});
 
-  const completedPlans = plans.filter((p) => p.progress === p.total && p.total > 0);
+  const completedPlans = displayPlans.filter((p) => p.progress === p.total && p.total > 0);
   const validatedEffective = Math.floor(completedPlans.length * 0.6);
   const notEffective = completedPlans.length - validatedEffective;
 

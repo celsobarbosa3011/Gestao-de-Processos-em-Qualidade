@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useTenant } from "@/hooks/use-tenant";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTrainings, createTraining } from "@/lib/api";
 import {
   GraduationCap, Plus, Search, Filter, Download, ChevronRight,
   CheckCircle2, AlertCircle, Clock, Users, Building2, Calendar,
@@ -53,9 +56,9 @@ const trainings: Training[] = [
   },
   {
     id: 2, code: "TRE-002",
-    title: "Higiene das Mãos — Bundle CCIH",
+    title: "Higiene das Mãos — Bundle SCIH",
     category: "Segurança", status: "Concluído",
-    instructor: "CCIH — Enf. Patrícia", unit: "UTI + CC",
+    instructor: "SCIH — Enf. Patrícia", unit: "UTI + CC",
     targetAudience: "Equipe UTI e Centro Cirúrgico",
     startDate: "2026-02-10", endDate: "2026-02-20",
     totalParticipants: 65, completedParticipants: 65,
@@ -178,12 +181,53 @@ function completionPct(t: Training) {
 
 export default function Treinamentos() {
   const [, navigate] = useLocation();
+  const { isAdmin } = useTenant();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
   const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoTitulo, setNovoTitulo] = useState("");
+  const [novoTipo, setNovoTipo] = useState("online");
+  const queryClient = useQueryClient();
 
-  const filtered = trainings.filter((t) => {
+  const { data: dbTrainings } = useQuery({
+    queryKey: ["trainings"],
+    queryFn: getTrainings,
+    staleTime: 60_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createTraining,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trainings"] });
+      toast.success("Treinamento cadastrado com sucesso!");
+      setShowNovoForm(false);
+    },
+    onError: () => toast.error("Erro ao cadastrar treinamento."),
+  });
+
+  // Mapear dados do BD para interface local, com fallback no mock
+  const baseTrainings: Training[] = (dbTrainings && dbTrainings.length > 0)
+    ? dbTrainings.map((t, i) => ({
+        id: t.id,
+        code: `TRE-${String(t.id).padStart(3, "0")}`,
+        title: t.title,
+        category: (t.type === "online" ? "Gestão" : t.type === "presential" ? "Clínico" : "Segurança") as Training["category"],
+        status: "Em andamento" as Training["status"],
+        instructor: "—",
+        unit: "Todas",
+        targetAudience: (t.targetRoles || []).join(", ") || "Equipe geral",
+        startDate: t.createdAt ? new Date(t.createdAt).toISOString().split("T")[0] : "—",
+        endDate: "—",
+        totalParticipants: 0,
+        completedParticipants: 0,
+        isONARequired: !!t.onaRequirementId,
+        cargaHoraria: 4,
+        description: t.description || t.title,
+      }))
+    : (isAdmin ? trainings : []);
+
+  const filtered = baseTrainings.filter((t) => {
     const matchSearch =
       t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.code.toLowerCase().includes(search.toLowerCase());
@@ -191,10 +235,10 @@ export default function Treinamentos() {
     return matchSearch && matchStatus;
   });
 
-  const concluded = trainings.filter((t) => t.status === "Concluído").length;
-  const overdue = trainings.filter((t) => t.status === "Vencido").length;
-  const onaRequired = trainings.filter((t) => t.isONARequired).length;
-  const totalParticipants = trainings.reduce((s, t) => s + t.completedParticipants, 0);
+  const concluded = baseTrainings.filter((t) => t.status === "Concluído").length;
+  const overdue = baseTrainings.filter((t) => t.status === "Vencido").length;
+  const onaRequired = baseTrainings.filter((t) => t.isONARequired).length;
+  const totalParticipants = baseTrainings.reduce((s, t) => s + t.completedParticipants, 0);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -245,7 +289,7 @@ export default function Treinamentos() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
-                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="Ex: Segurança do Paciente" />
+                  <input className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300" placeholder="Ex: Segurança do Paciente" value={novoTitulo} onChange={e => setNovoTitulo(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Categoria</label>
@@ -278,8 +322,17 @@ export default function Treinamentos() {
                 <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
                   Cancelar
                 </Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
-                  Salvar Treinamento
+                <Button
+                  size="sm"
+                  className="bg-teal-600 hover:bg-teal-700 text-white text-xs"
+                  disabled={createMutation.isPending}
+                  onClick={() => {
+                    if (!novoTitulo.trim()) { toast.error("Informe o título do treinamento."); return; }
+                    createMutation.mutate({ title: novoTitulo, type: novoTipo, active: true } as any);
+                    setNovoTitulo("");
+                  }}
+                >
+                  {createMutation.isPending ? "Salvando..." : "Salvar Treinamento"}
                 </Button>
               </div>
             </CardContent>
@@ -524,6 +577,12 @@ export default function Treinamentos() {
               TAB 2 — Por Unidade
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="unidades" className="space-y-5">
+            {!isAdmin ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+                <Building2 className="w-8 h-8 opacity-30" />
+                <p className="text-sm">Dados por unidade disponíveis após cadastro de treinamentos.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { label: "Unidades ≥ 85%", value: unitCompletion.filter((u) => u.pct >= 85).length, color: "text-emerald-700", bg: "bg-emerald-50", icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" /> },
@@ -567,12 +626,19 @@ export default function Treinamentos() {
                 );
               })}
             </div>
+            )}
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB 3 — Histórico Mensal
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="historico">
+            {!isAdmin ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+                <TrendingUp className="w-8 h-8 opacity-30" />
+                <p className="text-sm">Histórico disponível após registro de treinamentos.</p>
+              </div>
+            ) : (
             <Card className="bg-white border border-slate-200 shadow-sm">
               <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
                 <div className="flex items-center justify-between">
@@ -624,6 +690,7 @@ export default function Treinamentos() {
                 </div>
               </CardContent>
             </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
 import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -466,16 +467,19 @@ function ScoreRing({ score, color }: { score: number; color: "sky" | "violet" | 
 // ─── Tab: Dashboard ONA ───────────────────────────────────────────────────────
 
 function TabDashboard() {
-  const barData = unitScores.map((u) => ({ name: u.name.split(" ")[0], N1: u.n1, N2: u.n2, N3: u.n3 }));
+  const { isAdmin } = useTenant();
+  const displayUnitScores = isAdmin ? unitScores : [];
+  const displayRadarData = isAdmin ? radarData : [];
+  const barData = displayUnitScores.map((u) => ({ name: u.name.split(" ")[0], N1: u.n1, N2: u.n2, N3: u.n3 }));
 
   return (
     <div className="space-y-6">
       {/* Score cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Nível 1 — Acreditado", score: 84, color: "sky" as const, icon: Award, desc: "Base da Acreditação", target: 80 },
-          { label: "Nível 2 — Pleno", score: 71, color: "violet" as const, icon: ShieldCheck, desc: "Acreditação Plena", target: 80 },
-          { label: "Nível 3 — Excelência", score: 58, color: "amber" as const, icon: Star, desc: "Acreditação com Excelência", target: 80 },
+          { label: "Nível 1 — Acreditado", score: isAdmin ? 84 : 0, color: "sky" as const, icon: Award, desc: "Base da Acreditação", target: 80 },
+          { label: "Nível 2 — Pleno", score: isAdmin ? 71 : 0, color: "violet" as const, icon: ShieldCheck, desc: "Acreditação Plena", target: 80 },
+          { label: "Nível 3 — Excelência", score: isAdmin ? 58 : 0, color: "amber" as const, icon: Star, desc: "Acreditação com Excelência", target: 80 },
         ].map(({ label, score, color, icon: Icon, desc, target }) => (
           <Card key={label} className="border-0 shadow-md overflow-hidden">
             <CardContent className="p-6">
@@ -523,7 +527,7 @@ function TabDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
-              <RadarChart data={radarData}>
+              <RadarChart data={displayRadarData}>
                 <PolarGrid stroke="#e5e7eb" />
                 <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11, fill: "#6b7280" }} />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 9 }} />
@@ -588,7 +592,7 @@ function TabDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {unitScores.map((u) => (
+                {displayUnitScores.map((u) => (
                   <tr key={u.name} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-3 font-medium text-gray-800">{u.name}</td>
                     <td className="py-3 px-3 text-center">
@@ -1260,7 +1264,7 @@ const GRUPOS_ONA_2026: GrupoONA[] = [
   {
     id: "1.1.6", titulo: "Comissões", subsecao: "1.1 – Liderança Organizacional",
     requisitos: [
-      { codigo: "1.1.6.1-N1", descricao: "Comissões obrigatórias constituídas e atuantes (CCIH, CFT, CP, CME, etc.)", nivel: "N1", isCore: true, orientacao: "As comissões obrigatórias por legislação e boas práticas devem estar formalizadas e com atas de reuniões regulares." },
+      { codigo: "1.1.6.1-N1", descricao: "Comissões obrigatórias constituídas e atuantes (SCIH, CFT, CP, CME, etc.)", nivel: "N1", isCore: true, orientacao: "As comissões obrigatórias por legislação e boas práticas devem estar formalizadas e com atas de reuniões regulares." },
       { codigo: "1.1.6.2-N2", descricao: "Funcionamento regular das comissões com deliberações implementadas", nivel: "N2", isCore: false, orientacao: "As comissões se reúnem com periodicidade definida e suas recomendações são implementadas e monitoradas." },
       { codigo: "1.1.6.3-N3", descricao: "Impacto mensurável das comissões na melhoria dos resultados assistenciais", nivel: "N3", isCore: false, orientacao: "A organização demonstra com dados que as comissões contribuem para melhoria de indicadores clínicos e operacionais." },
     ],
@@ -1345,7 +1349,7 @@ const GRUPOS_ONA_2026: GrupoONA[] = [
   {
     id: "1.1.17", titulo: "Prevenção e Controle de Infecção e Biossegurança", subsecao: "1.1 – Liderança Organizacional",
     requisitos: [
-      { codigo: "1.1.17.1-N1", descricao: "CCIH constituída e atuante com programa de PCI formalizado", nivel: "N1", isCore: true, orientacao: "A Comissão de Controle de Infecção Hospitalar deve estar formalmente constituída e com programa de PCI implantado." },
+      { codigo: "1.1.17.1-N1", descricao: "SCIH constituída e atuante com programa de PCI formalizado", nivel: "N1", isCore: true, orientacao: "A Comissão de Controle de Infecção Hospitalar deve estar formalmente constituída e com programa de PCI implantado." },
       { codigo: "1.1.17.2-N2", descricao: "Programas de bundles, higiene das mãos e vigilância de IRAS implementados e monitorados", nivel: "N2", isCore: false, orientacao: "Os programas de PCI incluem vigilância epidemiológica de IRAS com indicadores monitorados e ações." },
       { codigo: "1.1.17.3-N3", descricao: "Resultados de PCI com benchmarking nacional e melhoria contínua demonstrada", nivel: "N3", isCore: false, orientacao: "As taxas de IRAS são comparadas com referenciais nacionais e demonstram tendência de melhoria." },
     ],
@@ -1675,10 +1679,81 @@ function TabAuditoria2026() {
             </div>
 
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1"
+                onClick={() => {
+                  const naoConformes = GRUPOS_ONA_2026.flatMap(g => g.requisitos)
+                    .filter(r => ["Não Conforme", "Conforme Parcial"].includes(respostas[r.codigo]?.conformidade ?? ""));
+                  printReport({
+                    title: "Relatório de Prontidão ONA 2026",
+                    subtitle: `Score N1: ${scoreN1}% | N2: ${scoreN2}% | N3: ${scoreN3}% — Gerado em ${new Date().toLocaleDateString("pt-BR")}`,
+                    module: "Acreditação ONA 2026",
+                    kpis: [
+                      { label: "Score N1 — Segurança", value: `${scoreN1}%`, color: prontoN1 ? "#10b981" : "#ef4444" },
+                      { label: "Score N2 — Gestão Integrada", value: `${scoreN2}%`, color: prontoN2 ? "#10b981" : "#ef4444" },
+                      { label: "Score N3 — Excelência", value: `${scoreN3}%`, color: prontoN3 ? "#10b981" : "#ef4444" },
+                      { label: "Não Conformidades", value: String(naoConformes.length), color: "#ef4444" },
+                      { label: "CORE Bloqueantes", value: String(coreNaoConformes.length), color: "#7c3aed" },
+                    ],
+                    columns: [
+                      { label: "Código", key: "codigo" },
+                      { label: "Requisito ONA", key: "descricao" },
+                      { label: "Nível", key: "nivel" },
+                      { label: "Status", key: "status" },
+                      { label: "CORE", key: "core" },
+                    ],
+                    rows: naoConformes.map(r => ({
+                      codigo: r.codigo,
+                      descricao: r.descricao,
+                      nivel: r.nivel,
+                      status: respostas[r.codigo]?.conformidade ?? "—",
+                      core: r.isCore ? "SIM" : "—",
+                    })),
+                  });
+                }}
+              >
                 <Download className="w-3.5 h-3.5" /> Exportar PDF
               </Button>
-              <Button size="sm" className="h-8 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white">
+              <Button
+                size="sm"
+                className="h-8 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  const naoConformes = GRUPOS_ONA_2026.flatMap(g => g.requisitos)
+                    .filter(r => ["Não Conforme", "Conforme Parcial"].includes(respostas[r.codigo]?.conformidade ?? ""));
+                  if (naoConformes.length === 0) {
+                    toast.success("Nenhuma não conformidade identificada. Sistema em conformidade ONA!");
+                    return;
+                  }
+                  printReport({
+                    title: "Plano de Ação — Não Conformidades ONA 2026",
+                    subtitle: `${naoConformes.length} itens para regularização — Gerado em ${new Date().toLocaleDateString("pt-BR")}`,
+                    module: "Acreditação ONA 2026",
+                    kpis: [
+                      { label: "Não Conformes", value: String(naoConformes.filter(r => respostas[r.codigo]?.conformidade === "Não Conforme").length), color: "#ef4444" },
+                      { label: "Conformes Parciais", value: String(naoConformes.filter(r => respostas[r.codigo]?.conformidade === "Conforme Parcial").length), color: "#f59e0b" },
+                      { label: "CORE Bloqueantes", value: String(coreNaoConformes.length), color: "#7c3aed" },
+                    ],
+                    columns: [
+                      { label: "Código", key: "codigo" },
+                      { label: "Requisito ONA", key: "descricao" },
+                      { label: "Nível", key: "nivel" },
+                      { label: "Status Atual", key: "status" },
+                      { label: "CORE", key: "core" },
+                      { label: "Observação", key: "obs" },
+                    ],
+                    rows: naoConformes.map(r => ({
+                      codigo: r.codigo,
+                      descricao: r.descricao,
+                      nivel: r.nivel,
+                      status: respostas[r.codigo]?.conformidade ?? "—",
+                      core: r.isCore ? "SIM" : "—",
+                      obs: respostas[r.codigo]?.observacao ?? "—",
+                    })),
+                  });
+                }}
+              >
                 <Plus className="w-3.5 h-3.5" /> Gerar Plano de Ação
               </Button>
             </div>

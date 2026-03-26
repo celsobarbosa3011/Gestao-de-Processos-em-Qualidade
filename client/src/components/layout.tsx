@@ -1,6 +1,9 @@
 import { useLocation } from "wouter";
 import { useStore } from "@/lib/store";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useTenant } from "@/hooks/use-tenant";
+import { useQuery } from "@tanstack/react-query";
+import { getAllUnits } from "@/lib/api";
 import {
   LayoutDashboard, Search, Bell, Settings, LogOut, Menu, ChevronDown,
   Building2, BarChart3, FileText, AlertTriangle, Users, ClipboardList,
@@ -10,7 +13,8 @@ import {
   BarChart2, Triangle, ChevronRight, X, Wifi, WifiOff, Globe,
   Calendar, Filter, User, Layers, Store, CreditCard,
   Palette, KeyRound, Workflow, SlidersHorizontal, ListTodo,
-  LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck, Grid2X2
+  LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck, Grid2X2, Cable,
+  Lock, ChevronUp
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -46,7 +50,9 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Home Executiva", path: "/home", icon: <Home className="w-4 h-4" />, highlight: true },
       { label: "Diagnóstico", path: "/diagnostico", icon: <Search className="w-4 h-4" /> },
-      { label: "Acreditação ONA 2026", path: "/acreditacao-ona", icon: <Award className="w-4 h-4" />, highlight: true },
+      { label: "Avaliação Inicial ONA", path: "/avaliacao-inicial", icon: <ClipboardCheck className="w-4 h-4" />, highlight: true },
+      { label: "Acreditação ONA 2026", path: "/acreditacao-ona", icon: <Award className="w-4 h-4" /> },
+      { label: "Auditoria Inteligente IA", path: "/auditoria-inteligente", icon: <Bot className="w-4 h-4" />, badge: "IA", highlight: true },
       { label: "Matriz GUT", path: "/matriz-gut", icon: <Triangle className="w-4 h-4" /> },
     ],
   },
@@ -123,6 +129,7 @@ const adminAdvancedNavGroup: NavGroup = {
     { label: "Templates", path: "/admin/templates", icon: <LayoutTemplate className="w-4 h-4" /> },
     { label: "Campos Customizados", path: "/admin/custom-fields", icon: <SlidersHorizontal className="w-4 h-4" /> },
     { label: "Automações", path: "/admin/automations", icon: <Workflow className="w-4 h-4" /> },
+    { label: "Integrações de API", path: "/admin/integracoes", icon: <Cable className="w-4 h-4" /> },
     { label: "Configurações", path: "/admin/settings", icon: <Settings className="w-4 h-4" /> },
     { label: "Logs de Auditoria", path: "/admin/logs", icon: <ListTodo className="w-4 h-4" /> },
   ],
@@ -140,10 +147,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { currentUser, logout } = useStore();
   const { isConnected } = useWebSocket();
   const { data: branding } = useBrandingConfig();
+  const { isAdmin, companyName: tenantCompany } = useTenant();
   const companyName = branding?.appName || "Hospital Geral";
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [globalSearch, setGlobalSearch] = useState("");
+  const [showUnitPicker, setShowUnitPicker] = useState(false);
+
+  // Empresas cadastradas — para o seletor de admin
+  const { data: allUnits } = useQuery({
+    queryKey: ["units"],
+    queryFn: getAllUnits,
+    staleTime: 300_000,
+    enabled: isAdmin,
+  });
 
   if (!currentUser) return <>{children}</>;
 
@@ -197,13 +214,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex gap-1.5">
             {[1, 2, 3].map(level => (
               <div key={level} className={cn("px-2 py-0.5 rounded-md text-[11px] font-bold border", onaBadgeColor(level))}>
-                N{level}: {level === 1 ? "84%" : level === 2 ? "71%" : "58%"}
+                N{level}: {isAdmin ? (level === 1 ? "84%" : level === 2 ? "71%" : "58%") : "—"}
               </div>
             ))}
           </div>
         </div>
         <div className="mt-2 h-1.5 rounded-full bg-slate-700/50 overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full" style={{ width: "71%" }} />
+          <div className="h-full bg-gradient-to-r from-sky-500 to-emerald-400 rounded-full" style={{ width: isAdmin ? "71%" : "0%" }} />
         </div>
       </div>
 
@@ -349,12 +366,58 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Right actions */}
           <div className="flex items-center gap-1 ml-auto">
-            {/* Unit selector */}
-            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-slate-600 dark:text-slate-400 hidden md:flex">
-              <Building2 className="w-3.5 h-3.5" />
-              <span className="max-w-[120px] truncate">{companyName}</span>
-              <ChevronDown className="w-3 h-3" />
-            </Button>
+
+            {/* ── Seletor / indicador de empresa ── */}
+            {isAdmin ? (
+              /* Admin: dropdown para trocar empresa */
+              <div className="relative hidden md:block">
+                <button
+                  onClick={() => setShowUnitPicker(v => !v)}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="max-w-[120px] truncate">Admin — Todas as Empresas</span>
+                  {showUnitPicker ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+                {showUnitPicker && (
+                  <div className="absolute right-0 top-9 z-50 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2">
+                    <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Empresas Cadastradas</p>
+                    <div className="max-h-48 overflow-y-auto">
+                      {(allUnits ?? []).map((u: any) => (
+                        <button
+                          key={u.id}
+                          onClick={() => setShowUnitPicker(false)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 text-left"
+                        >
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{u.nomeFantasia || u.razaoSocial}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{u.cnpj}</p>
+                          </div>
+                        </button>
+                      ))}
+                      {(!allUnits || allUnits.length === 0) && (
+                        <p className="px-3 py-2 text-xs text-slate-400">Nenhuma empresa cadastrada</p>
+                      )}
+                    </div>
+                    <div className="border-t mt-1 pt-1 px-3">
+                      <button
+                        onClick={() => { navigate("/admin/units"); setShowUnitPicker(false); }}
+                        className="w-full text-left text-xs text-sky-600 hover:text-sky-700 py-1.5 flex items-center gap-1"
+                      >
+                        <Building2 className="w-3 h-3" /> Gerenciar empresas
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Usuário regular: empresa bloqueada (LGPD) */
+              <div className="hidden md:flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200">
+                <Lock className="w-3 h-3 text-emerald-500" />
+                <span className="max-w-[140px] truncate">{tenantCompany}</span>
+              </div>
+            )}
 
             {/* Period filter */}
             <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-slate-600 dark:text-slate-400 hidden md:flex">
@@ -382,6 +445,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Avatar>
           </div>
         </header>
+
+        {/* LGPD Banner — apenas para usuários regulares, lembra que só seus dados são visíveis */}
+        {!isAdmin && (
+          <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-1.5 flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+            <p className="text-[11px] text-emerald-700">
+              <strong>Proteção LGPD:</strong> Você visualiza apenas os dados de{" "}
+              <span className="font-semibold">{tenantCompany}</span>.
+              Informações de outras organizações são mantidas em sigilo.
+            </p>
+          </div>
+        )}
 
         {/* Page Content */}
         <div className="flex-1 bg-slate-50 dark:bg-slate-950">

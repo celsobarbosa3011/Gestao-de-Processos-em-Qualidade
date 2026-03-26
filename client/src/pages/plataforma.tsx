@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAllUnits, createUnit } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +84,7 @@ const moduleCatalog: ModuleDefinition[] = [
   { id: "M06", nome: "Processos", descricao: "Gestão de processos em kanban com workflow e notificações", icone: <ClipboardList className="w-4 h-4" />, categoria: "Qualidade", precoMensal: 49 },
   { id: "M07", nome: "Riscos", descricao: "Gestão de riscos institucionais com matriz e planos de ação", icone: <Shield className="w-4 h-4" />, categoria: "Qualidade", precoMensal: 49 },
   { id: "M08", nome: "Governança Clínica", descricao: "Indicadores clínicos, tendências e score por unidade", icone: <Stethoscope className="w-4 h-4" />, categoria: "Clínico", precoMensal: 79 },
-  { id: "M09", nome: "Comissões", descricao: "Gestão de comissões hospitalares (NSP, CCIH, CME...)", icone: <Users className="w-4 h-4" />, categoria: "Clínico", precoMensal: 49 },
+  { id: "M09", nome: "Comissões", descricao: "Gestão de comissões hospitalares (NSP, SCIH, CME...)", icone: <Users className="w-4 h-4" />, categoria: "Clínico", precoMensal: 49 },
   { id: "M10", nome: "Indicadores", descricao: "KPIs assistenciais e operacionais com metas e trending", icone: <BarChart3 className="w-4 h-4" />, categoria: "Qualidade", precoMensal: 49 },
   { id: "M11", nome: "Jornada do Paciente", descricao: "Swimlane do fluxo assistencial, rupturas e handoffs", icone: <Activity className="w-4 h-4" />, categoria: "Clínico", precoMensal: 79 },
   { id: "M12", nome: "Protocolos Gerenciados", descricao: "Gestão de protocolos com aderência por unidade", icone: <ClipboardList className="w-4 h-4" />, categoria: "Clínico", precoMensal: 49 },
@@ -131,7 +133,7 @@ const tenants: Tenant[] = [
   {
     id: "T001", razaoSocial: "Hospital Geral São Lucas S/A", nomeFantasia: "HSL — São Lucas",
     cnpj: "12.345.678/0001-90", cidade: "São Paulo", uf: "SP", plano: "enterprise",
-    status: "ativo", usuarios: 48, usuariosMax: 100, modulosAtivos: 22, mrr: 2890,
+    status: "ativo", usuarios: 48, usuariosMax: 300, modulosAtivos: 22, mrr: 3490,
     criadoEm: "2025-08-15", vencimentoLicenca: "2026-12-31",
     responsavel: "Dr. Carlos Mendes", email: "carlos.mendes@hsl.com.br", onaScore: 71,
     modulos: moduleCatalog.map(m => ({ moduleId: m.id, ativo: true, ativadoEm: "2025-08-15" })),
@@ -139,7 +141,7 @@ const tenants: Tenant[] = [
   {
     id: "T002", razaoSocial: "Clínica Santa Maria Ltda", nomeFantasia: "Clínica Santa Maria",
     cnpj: "23.456.789/0001-01", cidade: "Rio de Janeiro", uf: "RJ", plano: "professional",
-    status: "ativo", usuarios: 18, usuariosMax: 30, modulosAtivos: 18, mrr: 1290,
+    status: "ativo", usuarios: 18, usuariosMax: 50, modulosAtivos: 20, mrr: 1490,
     criadoEm: "2025-10-01", vencimentoLicenca: "2026-10-31",
     responsavel: "Dra. Ana Lima", email: "ana.lima@santamaria.com.br", onaScore: 63,
     modulos: planConfig.professional.modulos.map(id => ({ moduleId: id, ativo: true, ativadoEm: "2025-10-01" })),
@@ -171,12 +173,12 @@ const tenants: Tenant[] = [
 ];
 
 const mrrTrend = [
-  { mes: "Out/25", mrr: 3200, clientes: 2 },
-  { mes: "Nov/25", mrr: 4500, clientes: 3 },
-  { mes: "Dez/25", mrr: 4500, clientes: 3 },
-  { mes: "Jan/26", mrr: 5680, clientes: 4 },
-  { mes: "Fev/26", mrr: 5680, clientes: 4 },
-  { mes: "Mar/26", mrr: 5670, clientes: 5 },
+  { mes: "Out/25", mrr: 3_490, clientes: 2 },
+  { mes: "Nov/25", mrr: 4_980, clientes: 3 },
+  { mes: "Dez/25", mrr: 4_980, clientes: 3 },
+  { mes: "Jan/26", mrr: 6_470, clientes: 4 },
+  { mes: "Fev/26", mrr: 6_470, clientes: 4 },
+  { mes: "Mar/26", mrr: 6_470, clientes: 5 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -360,17 +362,105 @@ function getInitialTab(pathname: string): string {
   return "empresas";
 }
 
+// ── Pricing Data ───────────────────────────────────────────────────────────────
+
+const planPricing: Record<TenantPlan, { mensal: number; anual: number; desconto: number; economia: number; maxUsers: number; tagline: string }> = {
+  starter: {
+    mensal: 590,
+    anual: 4_990,          // ~R$415/mês — economize R$2.090/ano (30% off)
+    desconto: 30,
+    economia: 2_090,
+    maxUsers: 10,
+    tagline: "Ideal para clínicas e UPAs",
+  },
+  professional: {
+    mensal: 1_490,
+    anual: 12_990,         // ~R$1.082/mês — economize R$4.890/ano (27% off)
+    desconto: 27,
+    economia: 4_890,
+    maxUsers: 50,
+    tagline: "Hospitais médios e redes de saúde",
+  },
+  enterprise: {
+    mensal: 3_490,
+    anual: 29_900,         // ~R$2.492/mês — economize R$11.980/ano (29% off)
+    desconto: 29,
+    economia: 11_980,
+    maxUsers: 300,
+    tagline: "Complexos hospitalares e grupos de saúde",
+  },
+};
+
 export default function Plataforma() {
   const [location, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [activeTab, setActiveTab] = useState(getInitialTab(location));
   const [showNewTenantForm, setShowNewTenantForm] = useState(false);
+  const [billingCycle, setBillingCycle] = useState<"mensal" | "anual">("mensal");
 
-  const totalMRR = tenants.filter(t => t.status === "ativo").reduce((a, t) => a + t.mrr, 0);
-  const totalTenants = tenants.length;
-  const activeTenants = tenants.filter(t => t.status === "ativo").length;
-  const trialTenants = tenants.filter(t => t.status === "trial").length;
-  const totalUsers = tenants.reduce((a, t) => a + t.usuarios, 0);
+  // Formulário Nova Empresa
+  const [formRazao, setFormRazao] = useState("");
+  const [formFantasia, setFormFantasia] = useState("");
+  const [formCnpj, setFormCnpj] = useState("");
+  const [formResponsavel, setFormResponsavel] = useState("");
+  const [formEmail, setFormEmail] = useState("");
+  const [formCidade, setFormCidade] = useState("");
+  const [formUF, setFormUF] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formPlano, setFormPlano] = useState<TenantPlan>("starter");
+
+  // DB integration — carrega unidades reais
+  const { data: dbUnits } = useQuery({
+    queryKey: ["units"],
+    queryFn: getAllUnits,
+    staleTime: 120_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createUnit,
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ["units"] });
+      toast.success(`Empresa "${created.nomeFantasia || created.razaoSocial}" cadastrada com sucesso!`);
+      setShowNewTenantForm(false);
+      setFormRazao(""); setFormFantasia(""); setFormCnpj("");
+      setFormResponsavel(""); setFormEmail(""); setFormCidade(""); setFormUF(""); setFormPhone("");
+    },
+    onError: (err: any) => toast.error(err.message || "Erro ao cadastrar empresa"),
+  });
+
+  // Mescla unidades do BD com shape Tenant (mock para campos não existentes no BD)
+  const baseTenants: Tenant[] = (dbUnits && dbUnits.length > 0)
+    ? dbUnits.map((u, i) => {
+        const mock = tenants[i % tenants.length];
+        return {
+          id: String(u.id),
+          razaoSocial: u.razaoSocial,
+          nomeFantasia: u.nomeFantasia || u.razaoSocial,
+          cnpj: u.cnpj,
+          cidade: u.city || mock.cidade,
+          uf: u.state || mock.uf,
+          plano: mock.plano,
+          status: (u.status === "active" ? "ativo" : u.status) as TenantStatus,
+          usuarios: mock.usuarios,
+          usuariosMax: mock.usuariosMax,
+          modulosAtivos: mock.modulosAtivos,
+          mrr: mock.mrr,
+          criadoEm: u.createdAt ? new Date(u.createdAt).toISOString().slice(0, 10) : mock.criadoEm,
+          vencimentoLicenca: mock.vencimentoLicenca,
+          responsavel: mock.responsavel,
+          email: u.email || mock.email,
+          modulos: mock.modulos,
+          onaScore: mock.onaScore,
+        };
+      })
+    : tenants;
+
+  const totalMRR = baseTenants.filter(t => t.status === "ativo").reduce((a, t) => a + t.mrr, 0);
+  const totalTenants = baseTenants.length;
+  const activeTenants = baseTenants.filter(t => t.status === "ativo").length;
+  const trialTenants = baseTenants.filter(t => t.status === "trial").length;
+  const totalUsers = baseTenants.reduce((a, t) => a + t.usuarios, 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -483,10 +573,99 @@ export default function Plataforma() {
 
         {/* ── Tab 1: Empresas ───────────────────────────────────────────── */}
         <TabsContent value="empresas" className="space-y-4 mt-4">
+
+          {/* ── Formulário Nova Empresa ── */}
+          {showNewTenantForm && (
+            <Card className="border-2 border-amber-300 bg-amber-50 shadow-md">
+              <CardHeader className="pb-2 pt-4 px-5">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-bold text-amber-900 flex items-center gap-2">
+                    <Plus className="w-5 h-5 text-amber-600" />
+                    Cadastrar Nova Empresa
+                  </CardTitle>
+                  <button
+                    onClick={() => setShowNewTenantForm(false)}
+                    className="text-slate-400 hover:text-red-500 transition-colors text-lg font-bold leading-none"
+                  >✕</button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-5 pb-5 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Razão Social *</label>
+                    <input value={formRazao} onChange={e => setFormRazao(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Nome jurídico da empresa" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Nome Fantasia</label>
+                    <input value={formFantasia} onChange={e => setFormFantasia(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Nome comercial" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">CNPJ *</label>
+                    <input value={formCnpj} onChange={e => setFormCnpj(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="00.000.000/0001-00" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Responsável</label>
+                    <input value={formResponsavel} onChange={e => setFormResponsavel(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Nome do responsável" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">E-mail</label>
+                    <input type="email" value={formEmail} onChange={e => setFormEmail(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="contato@empresa.com.br" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Telefone</label>
+                    <input value={formPhone} onChange={e => setFormPhone(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="(00) 00000-0000" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Cidade</label>
+                    <input value={formCidade} onChange={e => setFormCidade(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="São Paulo" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">UF</label>
+                    <input value={formUF} onChange={e => setFormUF(e.target.value.toUpperCase().slice(0,2))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="SP" maxLength={2} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-600">Plano</label>
+                    <select value={formPlano} onChange={e => setFormPlano(e.target.value as TenantPlan)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400">
+                      <option value="starter">Starter</option>
+                      <option value="professional">Professional</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-2 border-t border-amber-200">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowNewTenantForm(false)}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs gap-1.5"
+                    disabled={createMutation.isPending}
+                    onClick={() => {
+                      if (!formRazao.trim()) return toast.error("Razão Social é obrigatória");
+                      if (!formCnpj.trim()) return toast.error("CNPJ é obrigatório");
+                      createMutation.mutate({
+                        razaoSocial: formRazao.trim(),
+                        nomeFantasia: formFantasia.trim() || null,
+                        cnpj: formCnpj.replace(/\D/g, ""),
+                        email: formEmail.trim() || null,
+                        phone: formPhone.trim() || null,
+                        city: formCidade.trim() || null,
+                        state: formUF.trim() || null,
+                        status: "active",
+                      } as any);
+                    }}
+                  >
+                    {createMutation.isPending ? "Salvando…" : "✓ Cadastrar Empresa"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="flex gap-4">
             {/* Tenant list */}
             <div className="flex-1 space-y-3">
-              {tenants.map(tenant => (
+              {baseTenants.map(tenant => (
                 <TenantCard
                   key={tenant.id}
                   tenant={tenant}
@@ -652,24 +831,97 @@ export default function Plataforma() {
 
         {/* ── Tab 3: Licenças & Planos ──────────────────────────────────── */}
         <TabsContent value="licencas" className="space-y-6 mt-4">
+
+          {/* Billing cycle toggle */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 bg-gray-100 p-1 rounded-xl">
+              <button
+                onClick={() => setBillingCycle("mensal")}
+                className={cn(
+                  "px-5 py-2 rounded-lg text-sm font-medium transition-all",
+                  billingCycle === "mensal"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setBillingCycle("anual")}
+                className={cn(
+                  "flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all",
+                  billingCycle === "anual"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                Anual
+                <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  ATÉ 30% OFF
+                </span>
+              </button>
+            </div>
+            {billingCycle === "anual" && (
+              <p className="text-xs text-emerald-600 font-medium">
+                🎉 Pague por 9 meses e use o ano todo — até 3 meses grátis!
+              </p>
+            )}
+          </div>
+
           {/* Plan cards */}
           <div className="grid grid-cols-3 gap-4">
             {(["starter", "professional", "enterprise"] as TenantPlan[]).map(plan => {
               const pm = planConfig[plan];
+              const pp = planPricing[plan];
               const planTenants = tenants.filter(t => t.plano === plan);
-              const planPrices: Record<TenantPlan, number> = { starter: 490, professional: 1290, enterprise: 2890 };
+              const priceDisplay = billingCycle === "anual" ? pp.anual : pp.mensal;
+              const monthlyEquiv = billingCycle === "anual" ? Math.round(pp.anual / 12) : pp.mensal;
               return (
-                <Card key={plan} className={cn("border-2", pm.border)}>
-                  <CardHeader className="pb-3">
+                <Card key={plan} className={cn("border-2 relative overflow-hidden", pm.border, plan === "professional" && "shadow-lg scale-[1.02]")}>
+                  {plan === "professional" && (
+                    <div className="absolute top-0 left-0 right-0 bg-blue-600 text-white text-center text-[10px] font-bold py-1 tracking-wider uppercase">
+                      Mais Popular
+                    </div>
+                  )}
+                  {plan === "enterprise" && (
+                    <div className="absolute top-0 left-0 right-0 bg-amber-500 text-white text-center text-[10px] font-bold py-1 tracking-wider uppercase">
+                      Melhor Custo-Benefício
+                    </div>
+                  )}
+                  <CardHeader className={cn("pb-3", (plan === "professional" || plan === "enterprise") && "pt-8")}>
                     <div className="flex items-center gap-2">
                       <span className={pm.color}>{pm.icon}</span>
                       <CardTitle className={cn("text-base", pm.color)}>{pm.label}</CardTitle>
                       <Badge className={cn("ml-auto text-xs", pm.color, pm.bg)}>{planTenants.length} empresa{planTenants.length !== 1 ? "s" : ""}</Badge>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900 mt-2">
-                      R${planPrices[plan].toLocaleString("pt-BR")}
-                      <span className="text-sm font-normal text-gray-400">/mês</span>
-                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{pp.tagline}</p>
+
+                    {/* Price display */}
+                    {billingCycle === "mensal" ? (
+                      <div className="mt-3">
+                        <p className="text-3xl font-bold text-gray-900">
+                          R${priceDisplay.toLocaleString("pt-BR")}
+                          <span className="text-sm font-normal text-gray-400">/mês</span>
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">Cobrado mensalmente</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm text-gray-400 line-through">R${(pp.mensal * 12).toLocaleString("pt-BR")}/ano</span>
+                          <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">{pp.desconto}% OFF</Badge>
+                        </div>
+                        <p className="text-3xl font-bold text-gray-900">
+                          R${priceDisplay.toLocaleString("pt-BR")}
+                          <span className="text-sm font-normal text-gray-400">/ano</span>
+                        </p>
+                        <p className="text-xs text-emerald-600 font-medium mt-0.5">
+                          ≈ R${monthlyEquiv.toLocaleString("pt-BR")}/mês · Economia de R${pp.economia.toLocaleString("pt-BR")}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-400 mt-1">Até {pp.maxUsers} usuários</p>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Módulos inclusos ({pm.modulos.length})</p>
@@ -691,9 +943,20 @@ export default function Plataforma() {
                         </div>
                       )}
                     </div>
-                    <Button className={cn("w-full mt-3 text-xs border-0", plan === "enterprise" ? "bg-amber-600 hover:bg-amber-700 text-white" : plan === "professional" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-600 hover:bg-gray-700 text-white")} onClick={() => toast.success(`Nova empresa criada no plano ${plan}!`)}>
+                    <Button
+                      className={cn("w-full mt-3 text-xs border-0", plan === "enterprise" ? "bg-amber-600 hover:bg-amber-700 text-white" : plan === "professional" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-700 hover:bg-gray-800 text-white")}
+                      onClick={() => toast.success(`Nova empresa criada no plano ${pm.label} — ${billingCycle}!`)}
+                    >
                       Criar empresa neste plano
                     </Button>
+                    {billingCycle === "mensal" && (
+                      <button
+                        onClick={() => setBillingCycle("anual")}
+                        className="w-full text-center text-[11px] text-emerald-600 hover:text-emerald-700 font-medium mt-1 transition-colors"
+                      >
+                        Migrar para anual e economizar R${pp.economia.toLocaleString("pt-BR")} →
+                      </button>
+                    )}
                   </CardContent>
                 </Card>
               );

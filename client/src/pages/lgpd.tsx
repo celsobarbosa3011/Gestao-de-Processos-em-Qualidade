@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
+import { useTenant } from "@/hooks/use-tenant";
 import {
   Shield, AlertTriangle, CheckCircle2, Clock, FileText,
   Users, Lock, Eye, Download, Plus, Search, AlertCircle,
@@ -62,7 +63,7 @@ const dataMappings: DataMapping[] = [
   { id: 4, category: "Dados Genéticos e Biométricos", dataType: "Sensível", description: "Exames genéticos, biometria para acesso e identificação", legalBasis: "Consentimento", retention: "Enquanto necessário + 5 anos", controller: "Laboratório", sensitive: true, sector: "Laboratório" },
   { id: 5, category: "Imagens Médicas (PACS)", dataType: "Sensível", description: "Radiografias, tomografias, ressonâncias e laudos de imagem", legalBasis: "Tutela da Saúde", retention: "10 anos (CFM)", controller: "Coord. Imagem", sensitive: true, sector: "Diagnóstico por Imagem" },
   { id: 6, category: "Dados de Pesquisa Clínica", dataType: "Sensível", description: "Dados coletados em estudos e pesquisas aprovados pelo CEP", legalBasis: "Consentimento", retention: "10 anos (Res. CNS 466)", controller: "CEP", sensitive: true, sector: "Pesquisa" },
-  { id: 7, category: "Notificações Compulsórias", dataType: "Pessoal", description: "Dados reportados à Vigilância Sanitária e Epidemiológica", legalBasis: "Obrigação Legal", retention: "Permanente (interesse público)", controller: "CCIH", sensitive: false, sector: "CCIH" },
+  { id: 7, category: "Notificações Compulsórias", dataType: "Pessoal", description: "Dados reportados à Vigilância Sanitária e Epidemiológica", legalBasis: "Obrigação Legal", retention: "Permanente (interesse público)", controller: "SCIH", sensitive: false, sector: "SCIH" },
   { id: 8, category: "Câmeras de Segurança (CCTV)", dataType: "Pessoal", description: "Imagens de monitoramento de áreas hospitalares", legalBasis: "Interesse Legítimo", retention: "30 dias", controller: "Segurança", sensitive: false, sector: "Administração" },
   { id: 9, category: "Dados de Saúde Ocupacional", dataType: "Sensível", description: "Atestados, exames admissionais, periódicos e demissionais (PCMSO)", legalBasis: "Obrigação Legal", retention: "20 anos (NR-7)", controller: "Médico do Trabalho", sensitive: true, sector: "SESMT" },
   { id: 10, category: "Comunicações Eletrônicas", dataType: "Pessoal", description: "E-mails institucionais, chat interno e logs de acesso ao sistema", legalBasis: "Contrato", retention: "1 ano", controller: "TI", sensitive: false, sector: "TI" },
@@ -118,17 +119,23 @@ const legalBasisColors: Record<LegalBasis, string> = {
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function LGPDPage() {
+  const { isAdmin } = useTenant();
   const [searchTerm, setSearchTerm] = useState("");
   const [showNovoIncidente, setShowNovoIncidente] = useState(false);
   const [novoIncidente, setNovoIncidente] = useState({ descricao: "", dados: "", titulares: "", severidade: "Média" });
 
-  const totalSensiveis = dataMappings.filter((d) => d.sensitive).length;
-  const totalMapeados = dataMappings.length;
-  const incidentesAbertos = incidents.filter((i) => i.status === "Aberto" || i.status === "Em análise").length;
-  const requisicoesAbertas = subjectRequests.filter((r) => r.status === "Pendente" || r.status === "Em análise").length;
-  const conformidade = 78;
+  const displayDataMappings = isAdmin ? dataMappings : [];
+  const displayIncidents = isAdmin ? incidents : [];
+  const displaySubjectRequests = isAdmin ? subjectRequests : [];
+  const displayRipdItems = isAdmin ? ripdItems : [];
 
-  const filteredData = dataMappings.filter(
+  const totalSensiveis = displayDataMappings.filter((d) => d.sensitive).length;
+  const totalMapeados = displayDataMappings.length;
+  const incidentesAbertos = displayIncidents.filter((i) => i.status === "Aberto" || i.status === "Em análise").length;
+  const requisicoesAbertas = displaySubjectRequests.filter((r) => r.status === "Pendente" || r.status === "Em análise").length;
+  const conformidade = isAdmin ? 78 : 0;
+
+  const filteredData = displayDataMappings.filter(
     (d) =>
       d.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.sector.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -198,7 +205,7 @@ export default function LGPDPage() {
           <UserCheck className="w-4 h-4 text-blue-600 flex-shrink-0" />
           <div className="flex-1">
             <span className="text-sm font-semibold text-blue-800 dark:text-blue-300">DPO Designado — </span>
-            <span className="text-sm text-blue-700 dark:text-blue-400">Dr.ª Ana Paula Ferreira · E-mail: dpo@hospital.com.br · Tel.: (11) 9 8888-7777</span>
+            <span className="text-sm text-blue-700 dark:text-blue-400">{isAdmin ? "Dr.ª Ana Paula Ferreira · E-mail: dpo@hospital.com.br · Tel.: (11) 9 8888-7777" : "Nenhum DPO designado. Cadastre um DPO em Administração."}</span>
           </div>
           <Button size="sm" variant="outline" className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 flex-shrink-0" onClick={() => toast.info("Abrindo canal do DPO...")}>
             <Bell className="w-3 h-3 mr-1" /> Contatar DPO
@@ -330,10 +337,10 @@ export default function LGPDPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             {[
-              { label: "Pendentes", value: subjectRequests.filter(r => r.status === "Pendente").length, color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
-              { label: "Em Análise", value: subjectRequests.filter(r => r.status === "Em análise").length, color: "text-sky-700", bg: "bg-sky-50 border-sky-200" },
-              { label: "Atendidas", value: subjectRequests.filter(r => r.status === "Atendido").length, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
-              { label: "Total", value: subjectRequests.length, color: "text-slate-700", bg: "bg-slate-50 border-slate-200" },
+              { label: "Pendentes", value: displaySubjectRequests.filter(r => r.status === "Pendente").length, color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+              { label: "Em Análise", value: displaySubjectRequests.filter(r => r.status === "Em análise").length, color: "text-sky-700", bg: "bg-sky-50 border-sky-200" },
+              { label: "Atendidas", value: displaySubjectRequests.filter(r => r.status === "Atendido").length, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
+              { label: "Total", value: displaySubjectRequests.length, color: "text-slate-700", bg: "bg-slate-50 border-slate-200" },
             ].map(k => (
               <Card key={k.label} className={cn("border", k.bg)}>
                 <CardContent className="pt-3 pb-3 px-4">
@@ -360,7 +367,7 @@ export default function LGPDPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {subjectRequests.map((r) => (
+                    {displaySubjectRequests.map((r) => (
                       <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-4 py-3 text-xs text-slate-500">{r.date}</td>
                         <td className="px-4 py-3 text-xs font-medium text-slate-700 dark:text-slate-300">{r.type}</td>
@@ -390,7 +397,7 @@ export default function LGPDPage() {
             <p className="text-sm text-slate-600 dark:text-slate-400">Registro de incidentes de segurança · Notificação ANPD (Art. 48 LGPD)</p>
           </div>
           <div className="space-y-3">
-            {incidents.map((inc) => (
+            {displayIncidents.map((inc) => (
               <Card key={inc.id} className={cn("border", inc.status === "Aberto" || inc.status === "Em análise" ? "border-red-200 bg-red-50/30 dark:border-red-900 dark:bg-red-950/10" : "border-slate-200 dark:border-slate-800")}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -435,7 +442,7 @@ export default function LGPDPage() {
             </Button>
           </div>
           <div className="space-y-3">
-            {ripdItems.map((item, i) => (
+            {displayRipdItems.map((item, i) => (
               <Card key={i} className="border border-slate-200 dark:border-slate-800">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">
@@ -466,7 +473,7 @@ export default function LGPDPage() {
         <TabsContent value="bases" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(Object.keys(legalBasisColors) as LegalBasis[]).map((basis) => {
-              const items = dataMappings.filter((d) => d.legalBasis === basis);
+              const items = displayDataMappings.filter((d) => d.legalBasis === basis);
               return (
                 <Card key={basis} className="border border-slate-200 dark:border-slate-800">
                   <CardHeader className="pb-2 pt-4 px-5">

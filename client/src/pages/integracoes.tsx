@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -118,22 +119,27 @@ const apiKeys: ApiKey[] = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function Integracoes() {
+  const { isAdmin } = useTenant();
   const [categoryFilter, setCategoryFilter] = useState<IntegrationCategory | "todos">("todos");
   const [statusFilter, setStatusFilter] = useState<IntegrationStatus | "todos">("todos");
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
   const [showPayload, setShowPayload] = useState<string | null>(null);
   const [showKey, setShowKey] = useState<string | null>(null);
 
-  const filteredIntegrations = integrations.filter(i => {
+  const displayIntegrations = isAdmin ? integrations : [];
+  const displayWebhookEvents = isAdmin ? webhookEvents : [];
+  const displayApiKeys = isAdmin ? apiKeys : [];
+
+  const filteredIntegrations = displayIntegrations.filter(i => {
     const catOk = categoryFilter === "todos" || i.categoria === categoryFilter;
     const statusOk = statusFilter === "todos" || i.status === statusFilter;
     return catOk && statusOk;
   });
 
-  const connectedCount = integrations.filter(i => i.status === "connected").length;
-  const partialCount = integrations.filter(i => i.status === "partial").length;
-  const errorCount = integrations.filter(i => i.status === "error").length;
-  const totalEvents = integrations.reduce((a, i) => a + i.eventos, 0);
+  const connectedCount = displayIntegrations.filter(i => i.status === "connected").length;
+  const partialCount = displayIntegrations.filter(i => i.status === "partial").length;
+  const errorCount = displayIntegrations.filter(i => i.status === "error").length;
+  const totalEvents = displayIntegrations.reduce((a, i) => a + i.eventos, 0);
 
   return (
     <div className="p-6 space-y-6">
@@ -167,7 +173,7 @@ export default function Integracoes() {
               <div>
                 <p className="text-sm text-gray-500">Conectadas</p>
                 <p className="text-3xl font-bold text-emerald-600 mt-1">{connectedCount}</p>
-                <p className="text-xs text-gray-400 mt-1">de {integrations.length} integrações</p>
+                <p className="text-xs text-gray-400 mt-1">de {displayIntegrations.length} integrações</p>
               </div>
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -208,8 +214,8 @@ export default function Integracoes() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-500">Chaves de API Ativas</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{apiKeys.filter(k => k.ativa).length}</p>
-                <p className="text-xs text-gray-400 mt-1">{apiKeys.length} total</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{displayApiKeys.filter(k => k.ativa).length}</p>
+                <p className="text-xs text-gray-400 mt-1">{displayApiKeys.length} total</p>
               </div>
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Key className="w-5 h-5 text-purple-600" />
@@ -429,7 +435,7 @@ export default function Integracoes() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
-                {webhookEvents.map(ev => {
+                {displayWebhookEvents.map(ev => {
                   const sm = eventStatusMeta(ev.status);
                   const isExpanded = showPayload === ev.id;
                   return (
@@ -465,9 +471,9 @@ export default function Integracoes() {
           {/* Event type summary */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: "Sucesso", count: webhookEvents.filter(e => e.status === "success").length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
-              { label: "Erro", count: webhookEvents.filter(e => e.status === "error").length, color: "text-red-600", bg: "bg-red-50 border-red-200" },
-              { label: "Pendente", count: webhookEvents.filter(e => e.status === "pending").length, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
+              { label: "Sucesso", count: displayWebhookEvents.filter(e => e.status === "success").length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200" },
+              { label: "Erro", count: displayWebhookEvents.filter(e => e.status === "error").length, color: "text-red-600", bg: "bg-red-50 border-red-200" },
+              { label: "Pendente", count: displayWebhookEvents.filter(e => e.status === "pending").length, color: "text-amber-600", bg: "bg-amber-50 border-amber-200" },
             ].map(item => (
               <div key={item.label} className={cn("border rounded-lg p-4 text-center", item.bg)}>
                 <p className={cn("text-2xl font-bold", item.color)}>{item.count}</p>
@@ -488,7 +494,7 @@ export default function Integracoes() {
           </div>
 
           <div className="space-y-3">
-            {apiKeys.map(key => (
+            {displayApiKeys.map(key => (
               <Card key={key.id} className={cn(!key.ativa && "opacity-60")}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-4">

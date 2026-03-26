@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { getUnits } from "@/lib/api";
+import { useTenant } from "@/hooks/use-tenant";
 import {
   Building2, BarChart3, FileText, Users, AlertTriangle, CheckCircle2,
   TrendingUp, ArrowRight, Plus, Settings, Star, Activity, Award,
@@ -34,7 +37,28 @@ const semaphoreConfig = {
 
 export default function UnidadesNegocio() {
   const [, navigate] = useLocation();
+  const { isAdmin } = useTenant();
   const [selected, setSelected] = useState<typeof units[0] | null>(null);
+
+  const { data: dbUnits } = useQuery({
+    queryKey: ["units"],
+    queryFn: getUnits,
+    staleTime: 120_000,
+  });
+
+  // LGPD: DB data shown with real values (no mock score injection); fallback mock only for admin
+  const displayUnits = (dbUnits && dbUnits.length > 0)
+    ? dbUnits.map((u) => ({
+        id: u.id,
+        name: u.nomeFantasia || u.razaoSocial,
+        code: u.cnpj?.slice(0, 4) || u.razaoSocial?.slice(0, 3).toUpperCase() || "UN",
+        type: u.razaoSocial || "Unidade",
+        score: 0, onaN1: 0, onaN2: 0, onaN3: 0,
+        status: "yellow" as const,
+        pops: 0, protocols: 0, plans: 0, overdue: 0,
+        staff: 0,
+      }))
+    : (isAdmin ? units : []);
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-5">
@@ -48,7 +72,7 @@ export default function UnidadesNegocio() {
           </div>
           <p className="text-slate-500 text-sm">Visão individual e consolidação corporativa por unidade assistencial</p>
         </div>
-        <Button size="sm" className="h-8 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white border-0" onClick={() => toast.info("Cadastro de nova unidade em breve disponível")}>
+        <Button size="sm" className="h-8 gap-1.5 text-xs bg-sky-600 hover:bg-sky-700 text-white border-0" onClick={() => navigate("/plataforma")}>
           <Plus className="w-3.5 h-3.5" />
           Nova Unidade
         </Button>
@@ -56,7 +80,7 @@ export default function UnidadesNegocio() {
 
       {/* Ranking de unidades */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-3">
-        {units.sort((a, b) => b.score - a.score).map((unit, i) => {
+        {displayUnits.sort((a, b) => b.score - a.score).map((unit, i) => {
           const sem = semaphoreConfig[unit.status as keyof typeof semaphoreConfig];
           const isSelected = selected?.id === unit.id;
           return (

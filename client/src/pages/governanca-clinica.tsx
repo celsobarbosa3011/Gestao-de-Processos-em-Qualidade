@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useTenant } from "@/hooks/use-tenant";
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
+import { getIndicators } from "@/lib/api";
 import {
   HeartPulse, TrendingUp, AlertTriangle, ChevronRight,
   Activity, BarChart3, Building2, Users, AlertCircle,
@@ -128,15 +131,45 @@ function scoreBg(score: number) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function GovernancaClinical() {
+  const { isAdmin } = useTenant();
   const [, navigate] = useLocation();
   const [filterCat, setFilterCat] = useState("all");
 
-  const filtered = clinicalIndicators.filter(
+  // Load clinical indicators from DB (safety + operational layers)
+  const { data: dbIndicators } = useQuery({
+    queryKey: ["indicators", "clinical"],
+    queryFn: () => getIndicators("safety"),
+    staleTime: 60_000,
+  });
+
+  // Use DB indicators if available, mapped to local format; else fallback to mock
+  const displayIndicators = (dbIndicators && dbIndicators.length > 0)
+    ? dbIndicators.map(ind => ({
+        id: ind.id,
+        code: ind.code || `IGC-${ind.id.toString().padStart(3, "0")}`,
+        name: ind.name,
+        value: 0,
+        unit: ind.unit,
+        target: parseFloat(ind.target || "0"),
+        benchmark: 0,
+        trend: "stable" as const,
+        status: "ok" as const,
+        category: ind.category || "Operacional",
+        description: ind.description || ind.formula || "",
+        lastUpdate: "—",
+        history: [0, 0, 0, 0, 0, 0],
+      }))
+    : (isAdmin ? clinicalIndicators : []);
+
+  const displayAlerts = isAdmin ? alerts : [];
+  const displayUnitRanking = isAdmin ? unitRanking : [];
+
+  const filtered = displayIndicators.filter(
     (i) => filterCat === "all" || i.category === filterCat
   );
 
-  const alertCount = clinicalIndicators.filter((i) => i.status === "alert").length;
-  const okCount = clinicalIndicators.filter((i) => i.status === "ok").length;
+  const alertCount = displayIndicators.filter((i) => i.status === "alert").length;
+  const okCount = displayIndicators.filter((i) => i.status === "ok").length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -175,8 +208,8 @@ export default function GovernancaClinical() {
           {[
             { label: "Indicadores OK", value: okCount, icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />, bg: "bg-emerald-50", text: "text-emerald-700" },
             { label: "Em Alerta", value: alertCount, icon: <AlertCircle className="w-5 h-5 text-amber-500" />, bg: "bg-amber-50", text: "text-amber-700" },
-            { label: "Alertas Abertos", value: alerts.length, icon: <AlertTriangle className="w-5 h-5 text-rose-500" />, bg: "bg-rose-50", text: "text-rose-700" },
-            { label: "Unidades Avaliadas", value: unitRanking.length, icon: <Building2 className="w-5 h-5 text-sky-500" />, bg: "bg-sky-50", text: "text-sky-700" },
+            { label: "Alertas Abertos", value: displayAlerts.length, icon: <AlertTriangle className="w-5 h-5 text-rose-500" />, bg: "bg-rose-50", text: "text-rose-700" },
+            { label: "Unidades Avaliadas", value: displayUnitRanking.length, icon: <Building2 className="w-5 h-5 text-sky-500" />, bg: "bg-sky-50", text: "text-sky-700" },
           ].map((k) => (
             <Card key={k.label} className="bg-white border border-slate-200 shadow-sm">
               <CardContent className="py-4 px-5 flex items-center gap-3">
@@ -193,15 +226,15 @@ export default function GovernancaClinical() {
         </div>
 
         {/* ── Alerts Banner ── */}
-        {alerts.length > 0 && (
+        {displayAlerts.length > 0 && (
           <Card className="bg-amber-50 border border-amber-200 shadow-sm mb-5">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-semibold text-amber-800">{alerts.length} alertas ativos de governança clínica</span>
+                <span className="text-sm font-semibold text-amber-800">{displayAlerts.length} alertas ativos de governança clínica</span>
               </div>
               <div className="space-y-2">
-                {alerts.map((a) => (
+                {displayAlerts.map((a) => (
                   <div key={a.id} className="flex items-start gap-3 bg-white rounded-lg p-3 border border-amber-100">
                     <Badge className={cn("text-xs border flex-shrink-0 mt-0.5", severityMeta(a.severity))}>
                       {a.severity === "alta" ? "Alta" : a.severity === "media" ? "Média" : "Baixa"}
@@ -313,6 +346,12 @@ export default function GovernancaClinical() {
               TAB 2 — Tendências
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="tendencias" className="space-y-5">
+            {!isAdmin ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+                <Activity className="w-8 h-8 opacity-30" />
+                <p className="text-sm">Tendências disponíveis após registro de indicadores clínicos.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <Card className="bg-white border border-slate-200 shadow-sm">
                 <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
@@ -358,6 +397,7 @@ export default function GovernancaClinical() {
                 </CardContent>
               </Card>
             </div>
+            )}
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
@@ -373,7 +413,7 @@ export default function GovernancaClinical() {
               </CardHeader>
               <CardContent className="px-4 pt-4 pb-5">
                 <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={unitRanking} margin={{ top: 4, right: 16, left: -15, bottom: 0 }} barGap={4}>
+                  <BarChart data={displayUnitRanking} margin={{ top: 4, right: 16, left: -15, bottom: 0 }} barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                     <XAxis dataKey="unit" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
                     <YAxis domain={[60, 100]} tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}`} />
@@ -388,7 +428,7 @@ export default function GovernancaClinical() {
             </Card>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {unitRanking.map((u) => (
+              {displayUnitRanking.map((u) => (
                 <Card key={u.unit} className="bg-white border border-slate-200 shadow-sm">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">

@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  getAllProfiles,
+  createProfile,
+  deleteProfile,
+  getAllUnits,
+  createUnit,
+} from "@/lib/api";
 import {
   Settings,
   Users,
@@ -29,6 +39,9 @@ import {
   WifiOff,
   Cpu,
   Database,
+  Building2,
+  X,
+  KeyRound,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -100,15 +113,18 @@ const auditLogs: AuditLog[] = [
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const roleConfig = {
+const roleConfig: Record<string, { label: string; color: string }> = {
   admin: { label: "Administrador", color: "bg-red-500/15 text-red-400 border-red-500/30" },
+  user: { label: "Usuário", color: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
   gestor: { label: "Gestor", color: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
   operador: { label: "Operador", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
   visualizador: { label: "Visualizador", color: "bg-slate-600/40 text-slate-400 border-slate-600/50" },
 };
 
-const statusUserConfig = {
+const statusUserConfig: Record<string, { label: string; color: string; dot: string }> = {
+  active: { label: "Ativo", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
   ativo: { label: "Ativo", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
+  suspended: { label: "Suspenso", color: "bg-slate-600/40 text-slate-400 border-slate-600", dot: "bg-slate-500" },
   inativo: { label: "Inativo", color: "bg-slate-600/40 text-slate-400 border-slate-600", dot: "bg-slate-500" },
   pendente: { label: "Pendente", color: "bg-amber-500/15 text-amber-400 border-amber-500/30", dot: "bg-amber-400 animate-pulse" },
 };
@@ -129,19 +145,91 @@ const severityConfig = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Administracao() {
+  const { isAdmin } = useTenant();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("usuarios");
   const [userSearch, setUserSearch] = useState("");
 
-  const filteredUsers = systemUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.unit.toLowerCase().includes(userSearch.toLowerCase())
+  // ── Real API data ──────────────────────────────────────────────────────────
+  const { data: realProfiles = [], isLoading: loadingProfiles } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: getAllProfiles,
+    staleTime: 30_000,
+  });
+
+  const { data: realUnits = [], isLoading: loadingUnits } = useQuery({
+    queryKey: ["units"],
+    queryFn: getAllUnits,
+    staleTime: 30_000,
+  });
+
+  // ── Novo Usuário form state ────────────────────────────────────────────────
+  const [showNovoUsuario, setShowNovoUsuario] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoEmail, setNovoEmail] = useState("");
+  const [novoRole, setNovoRole] = useState("user");
+  const [novoUnit, setNovoUnit] = useState("");
+
+  const createUserMutation = useMutation({
+    mutationFn: (data: { name: string; email: string; role: string; unit: string; status: string }) =>
+      createProfile(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success(`Usuário "${result.name}" criado!`, {
+        description: result.emailSent
+          ? "Senha provisória enviada por e-mail."
+          : "Usuário criado. Envie a senha provisória manualmente.",
+      });
+      setShowNovoUsuario(false);
+      setNovoNome(""); setNovoEmail(""); setNovoRole("user"); setNovoUnit("");
+    },
+    onError: (err: any) => toast.error(err.message || "Erro ao criar usuário"),
+  });
+
+  // ── Nova Empresa form state ────────────────────────────────────────────────
+  const [showNovaEmpresa, setShowNovaEmpresa] = useState(false);
+  const [empCnpj, setEmpCnpj] = useState("");
+  const [empRazao, setEmpRazao] = useState("");
+  const [empFantasia, setEmpFantasia] = useState("");
+  const [empEmail, setEmpEmail] = useState("");
+  const [empPhone, setEmpPhone] = useState("");
+
+  const createUnitMutation = useMutation({
+    mutationFn: (data: any) => createUnit(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["units"] });
+      toast.success(`Empresa "${result.nomeFantasia || result.razaoSocial}" criada!`);
+      setShowNovaEmpresa(false);
+      setEmpCnpj(""); setEmpRazao(""); setEmpFantasia(""); setEmpEmail(""); setEmpPhone("");
+    },
+    onError: (err: any) => toast.error(err.message || "Erro ao criar empresa"),
+  });
+
+  // ── Delete user ────────────────────────────────────────────────────────────
+  const deleteUserMutation = useMutation({
+    mutationFn: (id: string) => deleteProfile(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success("Usuário removido.");
+    },
+    onError: () => toast.error("Erro ao remover usuário"),
+  });
+
+  // ── Display data (real API preferred, mock fallback for admin demo) ─────────
+  const displaySystemUsers = realProfiles.length > 0 ? realProfiles : (isAdmin ? systemUsers : []);
+  const displayIntegrations = isAdmin ? integrations : [];
+  const displayAuditLogs = isAdmin ? auditLogs : [];
+
+  const filteredUsers = displaySystemUsers.filter(
+    (u: any) =>
+      (u.name || "").toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.email || "").toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.unit || "").toLowerCase().includes(userSearch.toLowerCase())
   );
 
-  const activeUsers = systemUsers.filter((u) => u.status === "ativo").length;
-  const connectedIntegrations = integrations.filter((i) => i.status === "conectado").length;
-  const criticalLogs = auditLogs.filter((l) => l.severity === "critical").length;
+  const activeUsers = displaySystemUsers.filter((u) => u.status === "ativo" || u.status === "active").length;
+  const connectedIntegrations = displayIntegrations.filter((i) => i.status === "conectado").length;
+  const criticalLogs = displayAuditLogs.filter((l) => l.severity === "critical").length;
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-100">
@@ -164,7 +252,11 @@ export default function Administracao() {
               <Download className="w-4 h-4 mr-2" />
               Exportar Auditoria
             </Button>
-            <Button size="sm" className="bg-sky-600 hover:bg-sky-500 text-white" onClick={() => toast.info("Cadastro de novo usuário disponível em Admin → Usuários & Perfis")}>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => { setShowNovaEmpresa(true); setActiveTab("empresas"); }}>
+              <Building2 className="w-4 h-4 mr-2" />
+              Nova Empresa
+            </Button>
+            <Button size="sm" className="bg-sky-600 hover:bg-sky-500 text-white" onClick={() => { setShowNovoUsuario(true); setActiveTab("usuarios"); }}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Usuário
             </Button>
@@ -174,11 +266,11 @@ export default function Administracao() {
         {/* KPI row */}
         <div className="grid grid-cols-5 gap-4 mt-5">
           {[
-            { label: "Usuários Ativos", value: activeUsers, sub: `de ${systemUsers.length} cadastrados`, icon: <Users className="w-4 h-4" />, color: "text-sky-400" },
-            { label: "Integrações", value: `${connectedIntegrations}/${integrations.length}`, sub: "conectadas", icon: <Plug className="w-4 h-4" />, color: "text-emerald-400" },
+            { label: "Usuários Ativos", value: activeUsers, sub: `de ${displaySystemUsers.length} cadastrados`, icon: <Users className="w-4 h-4" />, color: "text-sky-400" },
+            { label: "Integrações", value: `${connectedIntegrations}/${displayIntegrations.length}`, sub: "conectadas", icon: <Plug className="w-4 h-4" />, color: "text-emerald-400" },
             { label: "Alertas Críticos", value: criticalLogs, sub: "últimas 24h", icon: <AlertTriangle className="w-4 h-4" />, color: "text-red-400" },
-            { label: "Uptime Sistema", value: "99.97%", sub: "últimos 30 dias", icon: <Activity className="w-4 h-4" />, color: "text-emerald-400" },
-            { label: "Último Backup", value: "03:00", sub: "hoje, 21/03", icon: <Database className="w-4 h-4" />, color: "text-slate-400" },
+            { label: "Uptime Sistema", value: isAdmin ? "99.97%" : "—", sub: isAdmin ? "últimos 30 dias" : "", icon: <Activity className="w-4 h-4" />, color: "text-emerald-400" },
+            { label: "Último Backup", value: isAdmin ? "03:00" : "—", sub: isAdmin ? "hoje, 21/03" : "", icon: <Database className="w-4 h-4" />, color: "text-slate-400" },
           ].map((kpi) => (
             <Card key={kpi.label} className="bg-slate-800/50 border-slate-700/50">
               <CardContent className="p-4 flex items-center gap-3">
@@ -203,6 +295,7 @@ export default function Administracao() {
             <TabsList className="bg-slate-800/50 border border-slate-700/50">
               {[
                 { value: "usuarios", label: "Usuários & Perfis", icon: <Users className="w-3.5 h-3.5" /> },
+                { value: "empresas", label: "Empresas", icon: <Building2 className="w-3.5 h-3.5" /> },
                 { value: "permissoes", label: "Permissões", icon: <Shield className="w-3.5 h-3.5" /> },
                 { value: "integracoes", label: "Integrações", icon: <Plug className="w-3.5 h-3.5" /> },
                 { value: "auditoria", label: "Log de Auditoria", icon: <Eye className="w-3.5 h-3.5" /> },
@@ -222,6 +315,102 @@ export default function Administracao() {
 
           {/* Usuários */}
           <TabsContent value="usuarios" className="flex-1 overflow-auto m-0 p-6 space-y-4">
+
+            {/* ── Formulário Novo Usuário ───────────────────────────────── */}
+            {showNovoUsuario && (
+              <Card className="bg-slate-800/60 border-sky-500/40 shadow-lg">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm text-sky-300 flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Novo Usuário
+                    </CardTitle>
+                    <Button variant="ghost" size="icon" className="w-6 h-6 text-slate-400 hover:text-white" onClick={() => setShowNovoUsuario(false)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Nome completo *</p>
+                      <Input
+                        placeholder="Ex: Dr. João Silva"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={novoNome}
+                        onChange={(e) => setNovoNome(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">E-mail *</p>
+                      <Input
+                        type="email"
+                        placeholder="usuario@empresa.com"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={novoEmail}
+                        onChange={(e) => setNovoEmail(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Perfil de acesso *</p>
+                      <Select value={novoRole} onValueChange={setNovoRole}>
+                        <SelectTrigger className="bg-slate-700 border-slate-600 text-slate-100">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="user">Usuário</SelectItem>
+                          <SelectItem value="gestor">Gestor</SelectItem>
+                          <SelectItem value="operador">Operador</SelectItem>
+                          <SelectItem value="visualizador">Visualizador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Empresa / Unidade *</p>
+                      <Select value={novoUnit} onValueChange={setNovoUnit}>
+                        <SelectTrigger className="bg-slate-700 border-slate-600 text-slate-100">
+                          <SelectValue placeholder="Selecione a empresa" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {realUnits.map((u: any) => (
+                            <SelectItem key={u.id} value={String(u.id)}>
+                              {u.nomeFantasia || u.razaoSocial}
+                            </SelectItem>
+                          ))}
+                          {realUnits.length === 0 && (
+                            <SelectItem value="pendente">Pendente (sem empresa)</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Uma senha provisória será gerada e enviada ao e-mail do usuário. O usuário deverá alterá-la no primeiro acesso.
+                  </p>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" className="border-slate-600 text-slate-400" onClick={() => setShowNovoUsuario(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-sky-600 hover:bg-sky-500 text-white"
+                      disabled={!novoNome.trim() || !novoEmail.trim() || !novoUnit || createUserMutation.isPending}
+                      onClick={() => createUserMutation.mutate({
+                        name: novoNome.trim(),
+                        email: novoEmail.trim(),
+                        role: novoRole,
+                        unit: novoUnit,
+                        status: "active",
+                      })}
+                    >
+                      {createUserMutation.isPending ? "Criando..." : "Criar Usuário"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="flex items-center gap-3">
               <div className="relative flex-1 max-w-sm">
                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -235,6 +424,12 @@ export default function Administracao() {
               <Badge className="bg-slate-700/60 text-slate-300 border-slate-600">
                 {filteredUsers.length} usuário{filteredUsers.length !== 1 ? "s" : ""}
               </Badge>
+              {!showNovoUsuario && (
+                <Button size="sm" variant="outline" className="border-sky-600 text-sky-400 hover:bg-sky-900/30" onClick={() => setShowNovoUsuario(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Novo Usuário
+                </Button>
+              )}
             </div>
 
             <Card className="bg-slate-800/30 border-slate-700/50">
@@ -246,21 +441,28 @@ export default function Administracao() {
                       <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Perfil</th>
                       <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Unidade</th>
                       <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Status</th>
-                      <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">MFA</th>
-                      <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Último Acesso</th>
+                      <th className="text-left text-xs text-slate-500 font-medium px-4 py-3">Criado em</th>
                       <th className="text-xs text-slate-500 font-medium px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user) => {
-                      const role = roleConfig[user.role];
-                      const status = statusUserConfig[user.status];
+                    {loadingProfiles && (
+                      <tr><td colSpan={6} className="text-center py-8 text-slate-500 text-sm">Carregando usuários...</td></tr>
+                    )}
+                    {!loadingProfiles && filteredUsers.length === 0 && (
+                      <tr><td colSpan={6} className="text-center py-8 text-slate-500 text-sm">Nenhum usuário encontrado.</td></tr>
+                    )}
+                    {filteredUsers.map((user: any) => {
+                      const role = roleConfig[user.role] ?? { label: user.role, color: "bg-slate-600/40 text-slate-400 border-slate-600/50" };
+                      const status = statusUserConfig[user.status] ?? { label: user.status, color: "bg-slate-600/40 text-slate-400 border-slate-600", dot: "bg-slate-500" };
+                      const initials = (user.name || "?").split(" ").map((n: string) => n[0]).slice(0, 2).join("");
+                      const createdAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString("pt-BR") : "—";
                       return (
                         <tr key={user.id} className="border-b border-slate-700/30 hover:bg-slate-800/40 transition-colors">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500/30 to-emerald-500/30 border border-sky-500/20 flex items-center justify-center text-xs font-bold text-sky-300">
-                                {user.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                                {initials}
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-slate-200">{user.name}</p>
@@ -274,7 +476,7 @@ export default function Administracao() {
                             </Badge>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-sm text-slate-300">{user.unit}</span>
+                            <span className="text-sm text-slate-300">{user.unit || "—"}</span>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
@@ -285,22 +487,27 @@ export default function Administracao() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {user.mfaEnabled
-                              ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                              : <Lock className="w-4 h-4 text-slate-600" />
-                            }
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-xs text-slate-400">{user.lastAccess}</span>
+                            <span className="text-xs text-slate-400">{createdAt}</span>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-sky-400" onClick={() => toast.info("Editar usuário — disponível em Admin → Usuários & Perfis")}>
-                                <Edit className="w-3.5 h-3.5" />
+                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-amber-400" title="Gerar senha provisória" onClick={() => toast.info("Para gerar nova senha provisória, use o painel de usuário.")}>
+                                <KeyRound className="w-3.5 h-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="w-7 h-7 text-slate-400 hover:text-red-400" onClick={() => toast.info("Remover usuário — disponível em Admin → Usuários & Perfis")}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+                              {user.role !== "admin" && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-7 h-7 text-slate-400 hover:text-red-400"
+                                  onClick={() => {
+                                    if (confirm(`Remover usuário "${user.name}"?`)) {
+                                      deleteUserMutation.mutate(user.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -310,6 +517,164 @@ export default function Administracao() {
                 </table>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* Empresas */}
+          <TabsContent value="empresas" className="flex-1 overflow-auto m-0 p-6 space-y-4">
+
+            {/* ── Formulário Nova Empresa ───────────────────────────────── */}
+            {showNovaEmpresa && (
+              <Card className="bg-slate-800/60 border-emerald-500/40 shadow-lg">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm text-emerald-300 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Nova Empresa / Unidade
+                    </CardTitle>
+                    <Button variant="ghost" size="icon" className="w-6 h-6 text-slate-400 hover:text-white" onClick={() => setShowNovaEmpresa(false)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">CNPJ *</p>
+                      <Input
+                        placeholder="00.000.000/0000-00"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={empCnpj}
+                        onChange={(e) => setEmpCnpj(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Nome Fantasia</p>
+                      <Input
+                        placeholder="Nome comercial da empresa"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={empFantasia}
+                        onChange={(e) => setEmpFantasia(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-400 mb-1">Razão Social *</p>
+                      <Input
+                        placeholder="Razão social conforme CNPJ"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={empRazao}
+                        onChange={(e) => setEmpRazao(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">E-mail</p>
+                      <Input
+                        type="email"
+                        placeholder="contato@empresa.com"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={empEmail}
+                        onChange={(e) => setEmpEmail(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Telefone</p>
+                      <Input
+                        placeholder="(00) 00000-0000"
+                        className="bg-slate-700 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                        value={empPhone}
+                        onChange={(e) => setEmpPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" size="sm" className="border-slate-600 text-slate-400" onClick={() => setShowNovaEmpresa(false)}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                      disabled={!empCnpj.trim() || !empRazao.trim() || createUnitMutation.isPending}
+                      onClick={() => createUnitMutation.mutate({
+                        cnpj: empCnpj.trim(),
+                        razaoSocial: empRazao.trim(),
+                        nomeFantasia: empFantasia.trim() || undefined,
+                        email: empEmail.trim() || undefined,
+                        phone: empPhone.trim() || undefined,
+                        status: "active",
+                      })}
+                    >
+                      {createUnitMutation.isPending ? "Criando..." : "Criar Empresa"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-300">
+                Empresas cadastradas ({loadingUnits ? "…" : realUnits.length})
+              </h3>
+              {!showNovaEmpresa && (
+                <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-400 hover:bg-emerald-900/30" onClick={() => setShowNovaEmpresa(true)}>
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Nova Empresa
+                </Button>
+              )}
+            </div>
+
+            {loadingUnits && (
+              <p className="text-center text-slate-500 text-sm py-8">Carregando empresas...</p>
+            )}
+
+            {!loadingUnits && realUnits.length === 0 && (
+              <Card className="bg-slate-800/30 border-dashed border-slate-700">
+                <CardContent className="py-12 text-center">
+                  <Building2 className="w-10 h-10 text-slate-600 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm font-medium">Nenhuma empresa cadastrada</p>
+                  <p className="text-slate-600 text-xs mt-1">Clique em "Nova Empresa" para começar</p>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="grid grid-cols-1 gap-3">
+              {realUnits.map((unit: any) => (
+                <Card key={unit.id} className="bg-slate-800/40 border-slate-700/50 hover:border-slate-600 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-sky-500/20 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold text-slate-100">
+                            {unit.nomeFantasia || unit.razaoSocial}
+                          </p>
+                          <Badge className="text-xs bg-emerald-500/15 text-emerald-400 border-emerald-500/30" variant="outline">
+                            ID #{unit.id}
+                          </Badge>
+                          <Badge className={cn("text-xs border", unit.status === "active" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-slate-600/40 text-slate-400 border-slate-600")} variant="outline">
+                            {unit.status === "active" ? "Ativo" : unit.status}
+                          </Badge>
+                        </div>
+                        {unit.nomeFantasia && (
+                          <p className="text-xs text-slate-500 mt-0.5">{unit.razaoSocial}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-1 flex-wrap">
+                          <span className="text-xs text-slate-500">CNPJ: {unit.cnpj}</span>
+                          {unit.email && <span className="text-xs text-slate-500">{unit.email}</span>}
+                          {unit.phone && <span className="text-xs text-slate-500">{unit.phone}</span>}
+                          {unit.city && <span className="text-xs text-slate-500">{unit.city}{unit.state ? ` / ${unit.state}` : ""}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <p className="text-xs text-slate-600">
+                          {realProfiles.filter((p: any) => p.unit === String(unit.id)).length} usuário(s)
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
 
           {/* Permissões */}
@@ -350,7 +715,7 @@ export default function Administracao() {
           {/* Integrações */}
           <TabsContent value="integracoes" className="flex-1 overflow-auto m-0 p-6 space-y-4">
             <div className="grid grid-cols-1 gap-3">
-              {integrations.map((integ) => {
+              {displayIntegrations.map((integ) => {
                 const statusCfg = integrationStatusConfig[integ.status];
                 return (
                   <Card key={integ.id} className="bg-slate-800/40 border-slate-700/50 hover:border-slate-600/70 transition-colors">
@@ -420,7 +785,7 @@ export default function Administracao() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-slate-700/40">
-                  {auditLogs.map((log) => {
+                  {displayAuditLogs.map((log) => {
                     const sevCfg = severityConfig[log.severity];
                     return (
                       <div key={log.id} className="flex items-start gap-4 px-4 py-3 hover:bg-slate-800/40 transition-colors">
@@ -447,6 +812,12 @@ export default function Administracao() {
 
           {/* Sistema */}
           <TabsContent value="sistema" className="flex-1 overflow-auto m-0 p-6 space-y-5">
+            {!isAdmin ? (
+              <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
+                <Server className="w-10 h-10 opacity-30" />
+                <p className="text-sm">Informações do sistema disponíveis apenas para administradores.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-5">
               {/* System status */}
               <Card className="bg-slate-800/40 border-slate-700/50">
@@ -568,6 +939,7 @@ export default function Administracao() {
                 </CardContent>
               </Card>
             </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

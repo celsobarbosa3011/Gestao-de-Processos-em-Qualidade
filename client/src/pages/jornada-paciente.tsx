@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getPatientJourney } from "@/lib/api";
+import { useTenant } from "@/hooks/use-tenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -338,18 +341,61 @@ function Swimlane({ journey }: { journey: JourneyType2 }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function JornadaPaciente() {
+  const { isAdmin } = useTenant();
   const [selectedJourney, setSelectedJourney] = useState<JourneyType>("eletivo");
   const [ruptureFilter, setRuptureFilter] = useState<"todos" | RuptureLevel>("todos");
   const [selectedRupture, setSelectedRupture] = useState<Rupture | null>(null);
 
-  const journey = journeys.find(j => j.tipo === selectedJourney)!;
-  const filteredRupturas = ruptureFilter === "todos"
-    ? rupturas
-    : rupturas.filter(r => r.nivel === ruptureFilter);
+  // ── DB integration ───────────────────────────────────────────────────────
+  const { data: dbSteps } = useQuery({
+    queryKey: ["patient-journey"],
+    queryFn: getPatientJourney,
+    staleTime: 120_000,
+  });
 
-  const openRupturas = rupturas.filter(r => r.status !== "resolvida").length;
-  const criticalRupturas = rupturas.filter(r => r.nivel === "critico" && r.status !== "resolvida").length;
-  const avgSatisfacao = Math.round(journeys.reduce((a, j) => a + j.satisfacao, 0) / journeys.length);
+  const PHASE_TO_TYPE: Record<string, JourneyType> = {
+    elective: "eletivo", urgency: "urgencia", emergency: "emergencia",
+    eletivo: "eletivo", urgencia: "urgencia", emergencia: "emergencia",
+  };
+
+  // If DB has steps, rebuild journeys from DB data, else use mock
+  const baseJourneys: JourneyType2[] = (dbSteps && dbSteps.length > 0)
+    ? (() => {
+        const byType: Record<JourneyType, JourneyStep[]> = { eletivo: [], urgencia: [], emergencia: [] };
+        dbSteps.forEach((s, i) => {
+          const tipo: JourneyType = PHASE_TO_TYPE[s.phase ?? ""] ?? "eletivo";
+          const mock = eletivoSteps[i % eletivoSteps.length];
+          byType[tipo].push({
+            id: String(s.id),
+            setor: s.responsible ?? mock.setor,
+            etapa: s.name,
+            responsavel: s.responsible ?? mock.responsavel,
+            tempoMedioMin: s.avgDurationMinutes ?? mock.tempoMedioMin,
+            tempoMetaMin: s.slaMinutes ?? mock.tempoMetaMin,
+            status: (s.bottleneck ? "critico" : s.status === "inactive" ? "inativo" : "ok") as StepStatus,
+            handoffs: mock.handoffs,
+            rupturas: mock.rupturas,
+          });
+        });
+        return journeys.map(j => ({
+          ...j,
+          steps: byType[j.tipo].length > 0 ? byType[j.tipo] : j.steps,
+        }));
+      })()
+    : (isAdmin ? journeys : []);
+
+  const journey = baseJourneys.find(j => j.tipo === selectedJourney) ?? null;
+  const displayRupturas = isAdmin ? rupturas : [];
+  const filteredRupturas = ruptureFilter === "todos"
+    ? displayRupturas
+    : displayRupturas.filter(r => r.nivel === ruptureFilter);
+
+  const displayHandoffs = isAdmin ? handoffs : [];
+  const openRupturas = displayRupturas.filter(r => r.status !== "resolvida").length;
+  const criticalRupturas = displayRupturas.filter(r => r.nivel === "critico" && r.status !== "resolvida").length;
+  const avgSatisfacao = baseJourneys.length > 0
+    ? Math.round(baseJourneys.reduce((a, j) => a + j.satisfacao, 0) / baseJourneys.length)
+    : 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -379,8 +425,8 @@ export default function JornadaPaciente() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-500">Jornadas Mapeadas</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">3</p>
-                <p className="text-xs text-gray-400 mt-1">Eletivo · Urgência · Emergência</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{baseJourneys.length}</p>
+                <p className="text-xs text-gray-400 mt-1">{isAdmin ? "Eletivo · Urgência · Emergência" : "Nenhuma jornada mapeada"}</p>
               </div>
               <div className="p-2 bg-blue-100 rounded-lg">
                 <UserCheck className="w-5 h-5 text-blue-600" />
@@ -407,8 +453,8 @@ export default function JornadaPaciente() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm text-gray-500">Pontos de Handoff</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{handoffs.length}</p>
-                <p className="text-xs text-amber-600 mt-1">4 com perda de info &gt;15%</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{displayHandoffs.length}</p>
+                <p className="text-xs text-amber-600 mt-1">{displayHandoffs.filter(h => h.perdaInfo > 15).length} com perda de info &gt;15%</p>
               </div>
               <div className="p-2 bg-amber-100 rounded-lg">
                 <ArrowRightLeft className="w-5 h-5 text-amber-600" />
@@ -447,7 +493,7 @@ export default function JornadaPaciente() {
           {/* Journey selector */}
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600 font-medium">Tipo de Jornada:</span>
-            {journeys.map(j => {
+            {baseJourneys.map(j => {
               const m = journeyTypeMeta(j.tipo);
               return (
                 <button
@@ -466,7 +512,7 @@ export default function JornadaPaciente() {
             })}
           </div>
 
-          <Swimlane journey={journey} />
+          {journey && <Swimlane journey={journey} />}
 
           {/* Step status legend */}
           <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -652,7 +698,7 @@ export default function JornadaPaciente() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {handoffs.map(h => {
+                    {displayHandoffs.map(h => {
                       const desvio = h.tempoEsperaMed - h.tempoEsperaMeta;
                       const ratio = h.tempoEsperaMed / h.tempoEsperaMeta;
                       const statusLabel = ratio <= 1 ? "ok" : ratio <= 1.5 ? "alerta" : "critico";
@@ -697,7 +743,7 @@ export default function JornadaPaciente() {
             <CardContent>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart
-                  data={handoffs.map(h => ({ name: h.ponto.split(" → ")[1] || h.ponto, atual: h.tempoEsperaMed, meta: h.tempoEsperaMeta }))}
+                  data={displayHandoffs.map(h => ({ name: h.ponto.split(" → ")[1] || h.ponto, atual: h.tempoEsperaMed, meta: h.tempoEsperaMeta }))}
                   margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

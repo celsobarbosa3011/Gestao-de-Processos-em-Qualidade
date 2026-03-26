@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useTenant } from "@/hooks/use-tenant";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getBscObjectives, createBscObjective } from "@/lib/api";
 import { printReport } from "@/lib/print-pdf";
 import {
   Target, ChevronRight, TrendingUp, Users, DollarSign,
@@ -102,7 +105,7 @@ const objectives: StrategicObjective[] = [
     indicator: "Densidade de IPCS — UTI",
     target: "< 2,0", current: "1,8",
     progress: 90, status: "Concluído",
-    responsible: "CCIH", deadline: "2026-06-30",
+    responsible: "SCIH", deadline: "2026-06-30",
   },
   {
     id: 9, perspective: "Processos Internos", code: "OBJ-P03",
@@ -168,20 +171,77 @@ const PERSPECTIVES: Perspective[] = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const PERSPECTIVE_LABELS: Record<string, Perspective> = {
+  financial: "Financeira",
+  customers: "Clientes/Pacientes",
+  processes: "Processos Internos",
+  learning: "Aprendizado & Crescimento",
+};
+
 export default function PlanejamentoBSC() {
+  const { isAdmin } = useTenant();
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [filterPerspective, setFilterPerspective] = useState<"all" | Perspective>("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoObjetivo, setNovoObjetivo] = useState("");
+  const [novaPerspectiva, setNovaPerspectiva] = useState("Financeira");
+  const [novaMeta, setNovaMeta] = useState("");
+  const [novoPrazo, setNovoPrazo] = useState("");
 
-  const filtered = objectives.filter(
+  // ── DB integration ───────────────────────────────────────────────────────
+  const { data: dbObjectives } = useQuery({
+    queryKey: ["bsc-objectives"],
+    queryFn: () => getBscObjectives(),
+    staleTime: 120_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createBscObjective,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bsc-objectives"] });
+      toast.success("Objetivo estratégico criado com sucesso!");
+      setShowNovoForm(false);
+      setNovoObjetivo(""); setNovaMeta(""); setNovoPrazo("");
+    },
+    onError: () => toast.error("Erro ao criar objetivo"),
+  });
+
+  // Merge DB objectives with mock enrichment
+  const baseObjectives: StrategicObjective[] = (dbObjectives && dbObjectives.length > 0)
+    ? dbObjectives.map((o, i) => {
+        const mock = objectives[i % objectives.length];
+        const statusMap: Record<string, ObjectiveStatus> = {
+          "on_track": "No prazo", "at_risk": "Em risco", "delayed": "Em atraso", "completed": "Concluído",
+        };
+        const perspective = PERSPECTIVE_LABELS[(o as any).perspectiveCode] ?? mock.perspective;
+        return {
+          id: o.id,
+          perspective,
+          code: `OBJ-${String(o.id).padStart(3, "0")}`,
+          objective: o.title,
+          indicator: mock.indicator,
+          target: o.target ?? mock.target,
+          current: o.currentValue ?? mock.current,
+          progress: o.currentValue && o.target
+            ? Math.min(100, Math.round((Number(o.currentValue.replace(/[^0-9.]/g, "")) / Number(o.target.replace(/[^0-9.]/g, ""))) * 100))
+            : mock.progress,
+          status: statusMap[o.status ?? ""] ?? mock.status,
+          responsible: o.responsible ?? mock.responsible,
+          deadline: o.deadline ?? mock.deadline,
+        };
+      })
+    : (isAdmin ? objectives : []);
+
+  const filtered = baseObjectives.filter(
     (o) => filterPerspective === "all" || o.perspective === filterPerspective
   );
 
-  const onPrazo = objectives.filter((o) => o.status === "No prazo").length;
-  const emAtraso = objectives.filter((o) => o.status === "Em atraso").length;
-  const emRisco = objectives.filter((o) => o.status === "Em risco").length;
-  const concluido = objectives.filter((o) => o.status === "Concluído").length;
-  const avgProgress = Math.round(objectives.reduce((s, o) => s + o.progress, 0) / objectives.length);
+  const onPrazo = baseObjectives.filter((o) => o.status === "No prazo").length;
+  const emAtraso = baseObjectives.filter((o) => o.status === "Em atraso").length;
+  const emRisco = baseObjectives.filter((o) => o.status === "Em risco").length;
+  const concluido = baseObjectives.filter((o) => o.status === "Concluído").length;
+  const avgProgress = baseObjectives.length > 0 ? Math.round(baseObjectives.reduce((s, o) => s + o.progress, 0) / baseObjectives.length) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -229,11 +289,11 @@ export default function PlanejamentoBSC() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Objetivo</label>
-                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Descreva o objetivo estratégico" />
+                  <input value={novoObjetivo} onChange={e => setNovoObjetivo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Descreva o objetivo estratégico" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Perspectiva</label>
-                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                  <select value={novaPerspectiva} onChange={e => setNovaPerspectiva(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
                     <option>Financeira</option>
                     <option>Clientes/Pacientes</option>
                     <option>Processos Internos</option>
@@ -242,16 +302,26 @@ export default function PlanejamentoBSC() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Meta</label>
-                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Ex.: ≥ 80%" />
+                  <input value={novaMeta} onChange={e => setNovaMeta(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Ex.: ≥ 80%" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Prazo</label>
-                  <input type="date" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                  <input type="date" value={novoPrazo} onChange={e => setNovoPrazo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" />
                 </div>
               </div>
               <div className="flex gap-2 justify-end pt-1">
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
-                <Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => { toast.success("Objetivo criado com sucesso!"); setShowNovoForm(false); }}>Salvar</Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={createMutation.isPending}
+                  onClick={() => {
+                    if (!novoObjetivo.trim()) return toast.error("Informe o objetivo");
+                    createMutation.mutate({ title: novoObjetivo.trim(), target: novaMeta, deadline: novoPrazo || "2026-12-31", perspectiveId: 1 } as any);
+                  }}
+                >
+                  {createMutation.isPending ? "Salvando…" : "Salvar"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -297,8 +367,8 @@ export default function PlanejamentoBSC() {
           <TabsContent value="mapa" className="space-y-4">
             {PERSPECTIVES.map((perspective) => {
               const meta = perspectiveMeta[perspective];
-              const pObjs = objectives.filter((o) => o.perspective === perspective);
-              const avgPct = Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length);
+              const pObjs = baseObjectives.filter((o) => o.perspective === perspective);
+              const avgPct = pObjs.length > 0 ? Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length) : 0;
               return (
                 <Card key={perspective} className={cn("border shadow-sm", meta.bg)}>
                   <CardHeader className="pb-2 pt-4 px-5">
@@ -428,6 +498,12 @@ export default function PlanejamentoBSC() {
               TAB 3 — Painel de Controle (Radar)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="radar">
+            {!isAdmin ? (
+              <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+                <Target className="w-8 h-8 opacity-30" />
+                <p className="text-sm">Painel de controle disponível após cadastro de objetivos estratégicos.</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <Card className="bg-white border border-slate-200 shadow-sm">
                 <CardHeader className="px-6 pt-5 pb-3 border-b border-slate-100">
@@ -471,8 +547,8 @@ export default function PlanejamentoBSC() {
               {/* Summary by perspective */}
               {PERSPECTIVES.map((perspective) => {
                 const meta = perspectiveMeta[perspective];
-                const pObjs = objectives.filter((o) => o.perspective === perspective);
-                const avgPct = Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length);
+                const pObjs = baseObjectives.filter((o) => o.perspective === perspective);
+                const avgPct = pObjs.length > 0 ? Math.round(pObjs.reduce((s, o) => s + o.progress, 0) / pObjs.length) : 0;
                 const ok = pObjs.filter((o) => o.status === "No prazo" || o.status === "Concluído").length;
                 return (
                   <Card key={perspective} className={cn("border shadow-sm", meta.bg)}>
@@ -497,6 +573,7 @@ export default function PlanejamentoBSC() {
                 );
               })}
             </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

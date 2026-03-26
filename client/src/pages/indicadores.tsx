@@ -1,6 +1,8 @@
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
 import { cn } from "@/lib/utils";
+import { useTenant } from "@/hooks/use-tenant";
+import { EmptyState } from "@/components/empty-state";
 import {
   Card,
   CardContent,
@@ -58,9 +60,9 @@ import {
   Shield,
 } from "lucide-react";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { createIndicator } from "@/lib/api";
+import { createIndicator, getIndicators, createIndicatorValue } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -86,6 +88,8 @@ interface Indicator {
   sparkData: SparkPoint[];
   critical?: boolean;
   description?: string;
+  layer?: string;
+  category?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -939,21 +943,125 @@ const BENCHMARK_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"]
 
 export default function Indicadores() {
   const [, navigate] = useLocation();
+  const { isAdmin, validatedData } = useTenant();
+
+  // ── DB integration ──────────────────────────────────────────────────────────
+  const { data: dbIndicators } = useQuery({
+    queryKey: ["indicators"],
+    queryFn: () => getIndicators(),
+    staleTime: 30_000,
+  });
+
+  // Map DB indicator to local Indicator shape
+  const mapDbIndicator = (d: any): Indicator => ({
+    id: String(d.id),
+    name: d.name,
+    code: d.code ?? `IND-${String(d.id).padStart(3, "0")}`,
+    unit: d.unit ?? "%",
+    current: d.lastValue ?? 0,
+    target: d.target ?? 0,
+    targetLabel: `Meta: ≥${d.target ?? 0}${d.unit ?? "%"}`,
+    status: (d.lastValue ?? 0) >= (d.target ?? 0) ? "green" : (d.lastValue ?? 0) >= (d.target ?? 0) * 0.75 ? "yellow" : "red",
+    trend: (d.lastValue ?? 0) >= 60 ? "up" : "down",
+    trendGoodDirection: "up",
+    suffix: d.unit ?? "%",
+    trendValue: 0,
+    category: d.category ?? "Geral",
+    layer: d.layer ?? "ONA",
+    critical: (d.lastValue ?? 0) < (d.target ?? 0) * 0.75,
+    description: d.description ?? "",
+    sparkData: [
+      { month: "Out", value: Math.max(0, (d.lastValue ?? 0) - 5) },
+      { month: "Nov", value: Math.max(0, (d.lastValue ?? 0) - 3) },
+      { month: "Dez", value: Math.max(0, (d.lastValue ?? 0) - 1) },
+      { month: "Jan", value: d.lastValue ?? 0 },
+      { month: "Fev", value: d.lastValue ?? 0 },
+      { month: "Mar", value: d.lastValue ?? 0 },
+    ],
+    unit_label: d.category ?? "Geral",
+    responsible: "Gestor da Qualidade",
+  } as unknown as Indicator);
+
+  // LGPD: mock data visível apenas para admin; clientes validados usam dados reais da avaliação
+  const validatedOna = validatedData?.indicadores.filter(i => i.layer === "ONA") ?? [];
+  const validatedSeg = validatedData?.indicadores.filter(i => i.layer === "Segurança") ?? [];
+  const validatedQualidadeOp = validatedData?.indicadores.filter(i => i.layer === "Qualidade Operacional") ?? [];
+  // Map validated indicadores to the shape expected by this page
+  const toDisplayFormat = (vi: typeof validatedOna[0]): Indicator => ({
+    id: String(vi.id),
+    name: vi.name,
+    code: `ONA-${vi.id.toString().padStart(3, "0")}`,
+    unit: vi.unit,
+    current: vi.value,
+    target: vi.target,
+    targetLabel: `Meta: ≥${vi.target}%`,
+    status: vi.value >= vi.target ? "green" as const : vi.value >= vi.target * 0.75 ? "yellow" as const : "red" as const,
+    trend: vi.value >= 60 ? "up" as const : "down" as const,
+    trendGoodDirection: "up" as const,
+    suffix: "%",
+    trendValue: vi.value >= 80 ? 2.1 : vi.value >= 60 ? 0 : -1.5,
+    category: vi.category,
+    layer: vi.layer,
+    critical: vi.critical,
+    description: vi.description,
+    sparkData: [
+      { month: "Set", value: Math.max(0, vi.value - 8) },
+      { month: "Out", value: Math.max(0, vi.value - 5) },
+      { month: "Nov", value: Math.max(0, vi.value - 3) },
+      { month: "Dez", value: Math.max(0, vi.value - 1) },
+      { month: "Jan", value: vi.value },
+      { month: "Fev", value: vi.value },
+      { month: "Mar", value: vi.value },
+    ],
+    unit_label: vi.category,
+    responsible: "Gestor da Qualidade",
+  } as unknown as Indicator);
+  // Prefer DB data when available, otherwise fall back to mock (admin) or validated/empty
+  const dbMapped = dbIndicators && dbIndicators.length > 0 ? dbIndicators.map(mapDbIndicator) : null;
+  const displayIndicators = dbMapped
+    ? dbMapped
+    : (isAdmin ? allIndicators : [...validatedOna, ...validatedSeg, ...validatedQualidadeOp].map(toDisplayFormat));
+  const displayOnaIndicators = dbMapped
+    ? dbMapped.filter(i => i.layer === "ONA")
+    : (isAdmin ? onaIndicators : validatedOna.map(toDisplayFormat));
+  const displaySegurancaIndicators = dbMapped
+    ? dbMapped.filter(i => i.layer === "Segurança")
+    : (isAdmin ? segurancaIndicators : validatedSeg.map(toDisplayFormat));
+  const displayAnsIndicators = dbMapped
+    ? dbMapped.filter(i => i.layer === "ANS")
+    : (isAdmin ? ansIndicators : []);
+  const displayQualidadeOpIndicators = dbMapped
+    ? dbMapped.filter(i => i.layer === "Qualidade Operacional")
+    : (isAdmin ? qualidadeOpIndicators : validatedQualidadeOp.map(toDisplayFormat));
+  const displayExperienciaIndicators = dbMapped
+    ? dbMapped.filter(i => i.layer === "Experiência do Paciente")
+    : (isAdmin ? experienciaIndicators : []);
   const [showNovoForm, setShowNovoForm] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState("todas");
   const [selectedPeriod, setSelectedPeriod] = useState("mar-2026");
   const [novoNome, setNovoNome] = useState("");
   const [novoCodigo, setNovoCodigo] = useState("");
   const [novoMeta, setNovoMeta] = useState("");
-  const [novoUnidade, setNovoUnidade] = useState("");
+  const [novoUnidade, setNovoUnidade] = useState("%");
+  const [novoCamada, setNovoCamada] = useState("ONA");
+  const [novoCategoria, setNovoCategoria] = useState("Qualidade");
+  const [novoDescricao, setNovoDescricao] = useState("");
+  const [novoValorAtual, setNovoValorAtual] = useState("");
   const qc = useQueryClient();
 
   const createMutation = useMutation({
     mutationFn: createIndicator,
-    onSuccess: () => {
+    onSuccess: async (created) => {
+      // Se informou valor atual, registra o valor imediatamente
+      if (novoValorAtual && created?.id) {
+        try {
+          await createIndicatorValue({ indicatorId: created.id, value: parseFloat(novoValorAtual), period: new Date().toISOString().slice(0, 7) } as any);
+        } catch { /* valor opcional */ }
+      }
       toast.success("Indicador criado com sucesso!");
       setShowNovoForm(false);
-      setNovoNome(""); setNovoCodigo(""); setNovoMeta(""); setNovoUnidade("");
+      setNovoNome(""); setNovoCodigo(""); setNovoMeta(""); setNovoUnidade("%");
+      setNovoCamada("ONA"); setNovoCategoria("Qualidade"); setNovoDescricao(""); setNovoValorAtual("");
       qc.invalidateQueries({ queryKey: ["indicators"] });
     },
     onError: () => toast.error("Erro ao criar indicador."),
@@ -961,9 +1069,16 @@ export default function Indicadores() {
 
   function handleSalvarIndicador() {
     if (!novoNome.trim()) { toast.error("Informe o nome do indicador."); return; }
+    if (!novoMeta.trim()) { toast.error("Informe a meta do indicador."); return; }
     createMutation.mutate({
-      name: novoNome, code: novoCodigo || undefined, unit: novoUnidade || "%",
-      target: parseFloat(novoMeta) || 0, active: true, layer: "ONA",
+      name: novoNome,
+      code: novoCodigo || undefined,
+      unit: novoUnidade || "%",
+      target: parseFloat(novoMeta) || 0,
+      active: true,
+      layer: novoCamada,
+      category: novoCategoria,
+      description: novoDescricao || undefined,
     } as any);
   }
 
@@ -1019,9 +1134,36 @@ export default function Indicadores() {
             <Filter className="h-3.5 w-3.5" />
             Filtros
           </Button>
-          <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => printReport({ title: "Relatório de Indicadores de Qualidade", subtitle: "Dashboard de Indicadores — QHealth One 2026", module: "Indicadores", kpis: [{ label: "Taxa Ocupação", value: "87%", color: "#0ea5e9" }, { label: "IACS", value: "1.8%", color: "#10b981" }, { label: "Queda com Dano", value: "0.4%", color: "#f59e0b" }, { label: "Reinternação 30d", value: "3.2%", color: "#8b5cf6" }], customContent: "<h2>Indicadores por Unidade</h2><p>Período: Mar/2026 — Todos os indicadores dentro das metas estabelecidas pela ONA e ANS.</p>" })}>
+          <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => printReport({
+            title: "Relatório de Indicadores de Qualidade",
+            subtitle: `Dashboard de Indicadores — QHealth One 2026 · Período: ${selectedPeriod}`,
+            module: "Indicadores",
+            kpis: [
+              { label: "Total de Indicadores", value: displayIndicators.length, color: "#0ea5e9" },
+              { label: "Na Meta", value: displayIndicators.filter(i => i.status === "green").length, color: "#10b981" },
+              { label: "Em Atenção", value: displayIndicators.filter(i => i.status === "yellow").length, color: "#f59e0b" },
+              { label: "Críticos", value: displayIndicators.filter(i => i.status === "red").length, color: "#ef4444" },
+            ],
+            columns: [
+              { label: "Código", key: "codigo" },
+              { label: "Indicador", key: "nome" },
+              { label: "Valor Atual", key: "valor", align: "center" as const },
+              { label: "Meta", key: "meta", align: "center" as const },
+              { label: "Camada", key: "camada" },
+              { label: "Status", key: "status", align: "center" as const },
+            ],
+            rows: displayIndicators.slice(0, 50).map(i => ({
+              codigo: i.code,
+              nome: i.name,
+              valor: `${i.current}${i.suffix ?? ""}`,
+              meta: i.targetLabel,
+              camada: i.layer ?? "ONA",
+              status: i.status === "green" ? "✅ Na Meta" : i.status === "yellow" ? "⚠️ Atenção" : "❌ Abaixo",
+            })),
+            customContent: `<p>Relatório gerado automaticamente pelo QHealth One 2026 em ${new Date().toLocaleDateString("pt-BR")}.</p>`,
+          })}>
             <Download className="h-3.5 w-3.5" />
-            Exportar
+            Exportar PDF
           </Button>
           <Button size="sm" className="h-9 gap-1.5 bg-sky-600 hover:bg-sky-700" onClick={() => setShowNovoForm(v => !v)}>
             <Plus className="h-3.5 w-3.5" />
@@ -1034,30 +1176,71 @@ export default function Indicadores() {
       {showNovoForm && (
         <Card className="border border-sky-200 bg-sky-50 shadow-sm">
           <CardHeader className="pb-2 pt-4 px-5">
-            <CardTitle className="text-sm font-semibold text-sky-800">Novo Indicador</CardTitle>
+            <CardTitle className="text-sm font-semibold text-sky-800 flex items-center gap-2">
+              <Plus className="h-4 w-4" /> Cadastrar Novo Indicador
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Nome do Indicador</label>
-                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: Taxa de Infecção Hospitalar" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="space-y-1 lg:col-span-2">
+                <label className="text-xs font-medium text-slate-600">Nome do Indicador *</label>
+                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: Taxa de Infecção Hospitalar (IPCS)" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Código</label>
-                <input value={novoCodigo} onChange={e => setNovoCodigo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: IND-001" />
+                <input value={novoCodigo} onChange={e => setNovoCodigo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: IND-SEG-001" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Meta (número)</label>
-                <input value={novoMeta} onChange={e => setNovoMeta(e.target.value)} type="number" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: 2" />
+                <label className="text-xs font-medium text-slate-600">Camada *</label>
+                <select value={novoCamada} onChange={e => setNovoCamada(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                  <option value="ONA">Camada A — ONA</option>
+                  <option value="Segurança">Camada B — Segurança</option>
+                  <option value="ANS">Camada C — ANS/Qualiss</option>
+                  <option value="Qualidade Operacional">Camada D — Qualidade Operacional</option>
+                  <option value="Experiência do Paciente">Camada E — Experiência do Paciente</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Categoria</label>
+                <select value={novoCategoria} onChange={e => setNovoCategoria(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                  <option value="Qualidade">Qualidade</option>
+                  <option value="Segurança">Segurança do Paciente</option>
+                  <option value="Assistencial">Assistencial</option>
+                  <option value="Operacional">Operacional</option>
+                  <option value="RH">Recursos Humanos</option>
+                  <option value="Financeiro">Financeiro</option>
+                  <option value="Satisfação">Satisfação</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Meta *</label>
+                <input value={novoMeta} onChange={e => setNovoMeta(e.target.value)} type="number" step="0.1" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: 95 (sem %, sem /1000)" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Unidade de Medida</label>
-                <input value={novoUnidade} onChange={e => setNovoUnidade(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: %" />
+                <select value={novoUnidade} onChange={e => setNovoUnidade(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                  <option value="%">% (Percentual)</option>
+                  <option value="/1000p">por 1.000 pacientes</option>
+                  <option value="/1000pc">por 1.000 pac-dia</option>
+                  <option value="dias">dias</option>
+                  <option value="horas">horas</option>
+                  <option value="NPS">NPS (0-100)</option>
+                  <option value="casos">casos</option>
+                  <option value="outros">outros</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Valor Atual (opcional)</label>
+                <input value={novoValorAtual} onChange={e => setNovoValorAtual(e.target.value)} type="number" step="0.1" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: 78.5" />
+              </div>
+              <div className="space-y-1 lg:col-span-2">
+                <label className="text-xs font-medium text-slate-600">Descrição / Fórmula de Cálculo</label>
+                <input value={novoDescricao} onChange={e => setNovoDescricao(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sky-300" placeholder="Ex.: (Nº de infecções / Nº de pac-dia) × 1000" />
               </div>
             </div>
             <div className="flex gap-2 justify-end pt-1">
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setShowNovoForm(false)}>Cancelar</Button>
-              <Button size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" disabled={createMutation.isPending} onClick={handleSalvarIndicador}>{createMutation.isPending ? "Salvando..." : "Salvar"}</Button>
+              <Button size="sm" className="h-8 text-xs bg-sky-600 hover:bg-sky-700 text-white" disabled={createMutation.isPending} onClick={handleSalvarIndicador}>{createMutation.isPending ? "Salvando..." : "Salvar Indicador"}</Button>
             </div>
           </CardContent>
         </Card>
@@ -1066,10 +1249,10 @@ export default function Indicadores() {
       {/* Summary strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Total de Indicadores", value: allIndicators.length, icon: Target, color: "text-sky-600 bg-sky-50" },
-          { label: "Na Meta", value: allIndicators.filter((i) => i.status === "green").length, icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
-          { label: "Em Atenção", value: allIndicators.filter((i) => i.status === "yellow").length, icon: AlertTriangle, color: "text-amber-600 bg-amber-50" },
-          { label: "Críticos", value: allIndicators.filter((i) => i.status === "red").length, icon: Activity, color: "text-red-600 bg-red-50" },
+          { label: "Total de Indicadores", value: displayIndicators.length, icon: Target, color: "text-sky-600 bg-sky-50" },
+          { label: "Na Meta", value: displayIndicators.filter((i) => i.status === "green").length, icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
+          { label: "Em Atenção", value: displayIndicators.filter((i) => i.status === "yellow").length, icon: AlertTriangle, color: "text-amber-600 bg-amber-50" },
+          { label: "Críticos", value: displayIndicators.filter((i) => i.status === "red").length, icon: Activity, color: "text-red-600 bg-red-50" },
         ].map((s) => (
           <Card key={s.label} className="border shadow-sm">
             <CardContent className="p-4 flex items-center gap-3">
@@ -1129,10 +1312,10 @@ export default function Indicadores() {
             title="Camada A — Acreditação ONA"
             subtitle="Indicadores de aderência ao programa de acreditação hospitalar ONA"
             color="bg-gradient-to-r from-sky-600 to-sky-700"
-            indicators={onaIndicators}
+            indicators={displayOnaIndicators}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {onaIndicators.map((ind) => (
+            {displayOnaIndicators.map((ind) => (
               <IndicatorCard key={ind.id} indicator={ind} accentColor="bg-sky-500" />
             ))}
           </div>
@@ -1145,13 +1328,13 @@ export default function Indicadores() {
             title="Camada B — Segurança do Paciente"
             subtitle="Indicadores dos 6 protocolos de segurança do paciente (OMS / PNSP)"
             color="bg-gradient-to-r from-emerald-600 to-emerald-700"
-            indicators={segurancaIndicators}
+            indicators={displaySegurancaIndicators}
           />
-          {segurancaIndicators.filter((i) => i.critical).length > 0 && (
+          {displaySegurancaIndicators.filter((i) => i.critical).length > 0 && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 text-red-700 text-sm">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>
-                <strong>{segurancaIndicators.filter((i) => i.critical).length} indicadores críticos</strong> requerem plano de ação imediato.
+                <strong>{displaySegurancaIndicators.filter((i) => i.critical).length} indicadores críticos</strong> requerem plano de ação imediato.
               </span>
               <Button
                 size="sm"
@@ -1164,7 +1347,7 @@ export default function Indicadores() {
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {segurancaIndicators.map((ind) => (
+            {displaySegurancaIndicators.map((ind) => (
               <IndicatorCard key={ind.id} indicator={ind} accentColor="bg-emerald-500" />
             ))}
           </div>
@@ -1177,10 +1360,10 @@ export default function Indicadores() {
             title="Camada C — ANS / Qualiss"
             subtitle="Indicadores regulatórios obrigatórios ANS e do Programa Qualiss"
             color="bg-gradient-to-r from-violet-600 to-violet-700"
-            indicators={ansIndicators}
+            indicators={displayAnsIndicators}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {ansIndicators.map((ind) => (
+            {displayAnsIndicators.map((ind) => (
               <IndicatorCard key={ind.id} indicator={ind} accentColor="bg-violet-500" />
             ))}
           </div>
@@ -1193,10 +1376,10 @@ export default function Indicadores() {
             title="Camada D — Qualidade Operacional"
             subtitle="Indicadores de desempenho e eficiência dos processos assistenciais"
             color="bg-gradient-to-r from-amber-600 to-orange-600"
-            indicators={qualidadeOpIndicators}
+            indicators={displayQualidadeOpIndicators}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {qualidadeOpIndicators.map((ind) => (
+            {displayQualidadeOpIndicators.map((ind) => (
               <IndicatorCard key={ind.id} indicator={ind} accentColor="bg-amber-500" />
             ))}
           </div>
@@ -1209,10 +1392,10 @@ export default function Indicadores() {
             title="Camada E — Experiência do Paciente"
             subtitle="NPS, satisfação, ouvidoria e percepção de segurança"
             color="bg-gradient-to-r from-rose-600 to-pink-600"
-            indicators={experienciaIndicators}
+            indicators={displayExperienciaIndicators}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {experienciaIndicators.map((ind) => (
+            {displayExperienciaIndicators.map((ind) => (
               <IndicatorCard key={ind.id} indicator={ind} accentColor="bg-rose-500" />
             ))}
           </div>
@@ -1261,29 +1444,29 @@ export default function Indicadores() {
         {/* ── TAB: Todos ── */}
         <TabsContent value="todos" className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Todos os Indicadores ({allIndicators.length})</h2>
+            <h2 className="text-lg font-semibold">Todos os Indicadores ({displayIndicators.length})</h2>
             <div className="flex gap-2">
               <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                {allIndicators.filter((i) => i.status === "green").length} Na Meta
+                {displayIndicators.filter((i) => i.status === "green").length} Na Meta
               </Badge>
               <Badge variant="outline" className="text-amber-700 bg-amber-50 border-amber-200 gap-1">
                 <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                {allIndicators.filter((i) => i.status === "yellow").length} Atenção
+                {displayIndicators.filter((i) => i.status === "yellow").length} Atenção
               </Badge>
               <Badge variant="outline" className="text-red-700 bg-red-50 border-red-200 gap-1">
                 <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
-                {allIndicators.filter((i) => i.status === "red").length} Crítico
+                {displayIndicators.filter((i) => i.status === "red").length} Crítico
               </Badge>
             </div>
           </div>
 
           {[
-            { label: "Camada A — Acreditação ONA", indicators: onaIndicators, accent: "bg-sky-500" },
-            { label: "Camada B — Segurança do Paciente", indicators: segurancaIndicators, accent: "bg-emerald-500" },
-            { label: "Camada C — ANS/Qualiss", indicators: ansIndicators, accent: "bg-violet-500" },
-            { label: "Camada D — Qualidade Operacional", indicators: qualidadeOpIndicators, accent: "bg-amber-500" },
-            { label: "Camada E — Experiência do Paciente", indicators: experienciaIndicators, accent: "bg-rose-500" },
+            { label: "Camada A — Acreditação ONA", indicators: displayOnaIndicators, accent: "bg-sky-500" },
+            { label: "Camada B — Segurança do Paciente", indicators: displaySegurancaIndicators, accent: "bg-emerald-500" },
+            { label: "Camada C — ANS/Qualiss", indicators: displayAnsIndicators, accent: "bg-violet-500" },
+            { label: "Camada D — Qualidade Operacional", indicators: displayQualidadeOpIndicators, accent: "bg-amber-500" },
+            { label: "Camada E — Experiência do Paciente", indicators: displayExperienciaIndicators, accent: "bg-rose-500" },
           ].map((layer) => (
             <div key={layer.label} className="space-y-3">
               <div className="flex items-center gap-2">
@@ -1303,6 +1486,12 @@ export default function Indicadores() {
 
         {/* ── TAB: BSC ── */}
         <TabsContent value="bsc" className="space-y-4">
+          {!isAdmin ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+              <BarChart3 className="w-8 h-8 opacity-30" />
+              <p className="text-sm">Dashboard BSC disponível após cadastro de indicadores.</p>
+            </div>
+          ) : (
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Dashboard BSC — Balanced Scorecard</h2>
@@ -1447,10 +1636,17 @@ export default function Indicadores() {
               </div>
             </CardContent>
           </Card>
+          )}
         </TabsContent>
 
         {/* ── TAB: Benchmark ── */}
         <TabsContent value="benchmark" className="space-y-4">
+          {!isAdmin ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400">
+              <BarChart3 className="w-8 h-8 opacity-30" />
+              <p className="text-sm">Benchmark entre unidades disponível após cadastro de indicadores.</p>
+            </div>
+          ) : (
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-lg font-semibold">Benchmark entre Unidades</h2>
@@ -1613,6 +1809,7 @@ export default function Indicadores() {
               );
             })}
           </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTenant } from "@/hooks/use-tenant";
+import { getSwotAnalyses, createSwotAnalysis, getSwotItems, createSwotItem, deleteSwotItem } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -357,47 +360,127 @@ const GENERIC_INSIGHTS: Record<string, string[]> = {
 
 // ── Main page component ────────────────────────────────────────────────────────
 
+const QUAD_TO_DB: Record<QuadrantKey, string> = {
+  forcas: "strength", fraquezas: "weakness", oportunidades: "opportunity", ameacas: "threat",
+};
+const DB_TO_QUAD: Record<string, QuadrantKey> = {
+  strength: "forcas", weakness: "fraquezas", opportunity: "oportunidades", threat: "ameacas",
+};
+
 export default function SwotPage() {
-  const [analyses, setAnalyses] = useState<SwotAnalysis[]>(SAMPLE_ANALYSES);
+  const { isAdmin } = useTenant();
+  const queryClient = useQueryClient();
+  const [localAnalyses, setLocalAnalyses] = useState<SwotAnalysis[]>(SAMPLE_ANALYSES);
   const [selectedId, setSelectedId] = useState<string>("1");
   const [showNewForm, setShowNewForm] = useState(false);
   const [newNome, setNewNome] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [activeTab, setActiveTab] = useState<"matriz" | "insights">("matriz");
 
+  // ── DB integration ───────────────────────────────────────────────────────
+  const { data: dbAnalyses } = useQuery({ queryKey: ["swot-analyses"], queryFn: getSwotAnalyses, staleTime: 120_000 });
+  const { data: dbItems } = useQuery({
+    queryKey: ["swot-items", selectedId],
+    queryFn: () => getSwotItems(selectedId),
+    enabled: !!selectedId && selectedId.length > 8, // only numeric DB IDs
+    staleTime: 60_000,
+  });
+
+  const createAnalysisMutation = useMutation({
+    mutationFn: createSwotAnalysis,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["swot-analyses"] }),
+  });
+  const createItemMutation = useMutation({
+    mutationFn: createSwotItem,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["swot-items", selectedId] }),
+  });
+  const deleteItemMutation = useMutation({
+    mutationFn: deleteSwotItem,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["swot-items", selectedId] }),
+  });
+
+  // Merge DB analyses into local format for display
+  const dbMapped: SwotAnalysis[] = (dbAnalyses ?? []).map(a => ({
+    id: String(a.id),
+    nome: a.title,
+    contexto: a.period ?? "",
+    data: a.createdAt ? new Date(a.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+    forcas: [], fraquezas: [], oportunidades: [], ameacas: [],
+  }));
+
+  // Build items for selected DB analysis
+  const dbItemsMapped = (dbItems ?? []).reduce<Pick<SwotAnalysis, "forcas"|"fraquezas"|"oportunidades"|"ameacas">>((acc, item) => {
+    const qKey = DB_TO_QUAD[item.quadrant] ?? "forcas";
+    acc[qKey] = [...(acc[qKey] || []), {
+      id: String(item.id),
+      texto: item.description,
+      impacto: (item.impact as Impact) ?? "media",
+    }];
+    return acc;
+  }, { forcas: [], fraquezas: [], oportunidades: [], ameacas: [] });
+
+  const isDbId = (id: string) => id.length > 8 || (!isNaN(Number(id)) && Number(id) > 100);
+
+  // Merge: DB analyses first, then local sample
+  const dbAnalysesWithItems: SwotAnalysis[] = dbMapped.map(a =>
+    a.id === selectedId ? { ...a, ...dbItemsMapped } : a
+  );
+  const analyses = dbAnalyses && dbAnalyses.length > 0 ? dbAnalysesWithItems : (isAdmin ? localAnalyses : []);
+
   const selected = analyses.find(a => a.id === selectedId) ?? analyses[0];
 
-  // Mutation helpers
+  // Mutation helpers (local state for non-DB analyses, DB calls for DB analyses)
   const mutate = (updater: (a: SwotAnalysis) => SwotAnalysis) => {
-    setAnalyses(prev => prev.map(a => a.id === selected.id ? updater(a) : a));
+    setLocalAnalyses(prev => prev.map(a => a.id === selected.id ? updater(a) : a));
   };
 
   const handleAdd = (qKey: QuadrantKey, texto: string, impacto: Impact) => {
-    mutate(a => ({ ...a, [qKey]: [...a[qKey], { id: genId(), texto, impacto }] }));
+    if (dbAnalyses && dbAnalyses.length > 0) {
+      createItemMutation.mutate({
+        analysisId: Number(selectedId),
+        quadrant: QUAD_TO_DB[qKey],
+        description: texto,
+        impact: impacto,
+        order: 0,
+      } as any);
+    } else {
+      mutate(a => ({ ...a, [qKey]: [...a[qKey], { id: genId(), texto, impacto }] }));
+    }
   };
 
   const handleRemove = (qKey: QuadrantKey, id: string) => {
-    mutate(a => ({ ...a, [qKey]: a[qKey].filter(i => i.id !== id) }));
+    if (dbAnalyses && dbAnalyses.length > 0) {
+      deleteItemMutation.mutate(Number(id));
+    } else {
+      mutate(a => ({ ...a, [qKey]: a[qKey].filter(i => i.id !== id) }));
+    }
   };
 
   const handleImpact = (qKey: QuadrantKey, id: string, impacto: Impact) => {
+    // Local state update for instant feedback
     mutate(a => ({ ...a, [qKey]: a[qKey].map(i => i.id === id ? { ...i, impacto } : i) }));
   };
 
   const handleCreate = () => {
     if (!newNome.trim()) return;
-    const next: SwotAnalysis = {
-      id: genId(),
-      nome: newNome.trim(),
-      contexto: newContexto.trim(),
-      data: new Date().toISOString().slice(0, 10),
-      forcas: [], fraquezas: [], oportunidades: [], ameacas: [],
-    };
-    setAnalyses(prev => [...prev, next]);
-    setSelectedId(next.id);
-    setNewNome("");
-    setNewContexto("");
-    setShowNewForm(false);
+    if (dbAnalyses !== undefined) {
+      // Save to DB
+      createAnalysisMutation.mutate({ title: newNome.trim(), period: newContexto.trim() || "2026", unitId: 1 } as any, {
+        onSuccess: (created) => {
+          setSelectedId(String((created as any).id));
+          setNewNome(""); setNewContexto(""); setShowNewForm(false);
+        },
+      });
+    } else {
+      const next: SwotAnalysis = {
+        id: genId(), nome: newNome.trim(), contexto: newContexto.trim(),
+        data: new Date().toISOString().slice(0, 10),
+        forcas: [], fraquezas: [], oportunidades: [], ameacas: [],
+      };
+      setLocalAnalyses(prev => [...prev, next]);
+      setSelectedId(next.id);
+      setNewNome(""); setNewContexto(""); setShowNewForm(false);
+    }
   };
 
   const allItems = selected

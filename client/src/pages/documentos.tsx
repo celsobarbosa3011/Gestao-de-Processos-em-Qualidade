@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useTenant } from "@/hooks/use-tenant";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getQHealthDocuments, createQHealthDocument } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -196,17 +199,62 @@ function KpiCard({ label, value, sub, color }: { label: string; value: string | 
 // ─── TAB 1: Lista Mestra ──────────────────────────────────────────────────────
 
 function ListaMestra() {
+  const { isAdmin } = useTenant();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("Todos");
   const [statusFilter, setStatusFilter] = useState<string>("Todos");
   const [unitFilter, setUnitFilter] = useState<string>("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoTitulo, setNovoTitulo] = useState("");
+  const [novoTipo, setNovoTipo] = useState<DocType>("POP");
+  const queryClient = useQueryClient();
+
+  const { data: dbDocs } = useQuery({
+    queryKey: ["qhealth-documents"],
+    queryFn: () => getQHealthDocuments(),
+    staleTime: 60_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createQHealthDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["qhealth-documents"] });
+      toast.success("Documento cadastrado com sucesso!");
+      setShowNovoForm(false);
+      setNovoTitulo("");
+    },
+    onError: () => toast.error("Erro ao cadastrar documento."),
+  });
+
+  // Mapear dados do BD com fallback no mock
+  const statusDbMap: Record<string, DocStatus> = {
+    approved: "Vigente", review: "Em Revisão", obsolete: "Vencido", draft: "Rascunho",
+  };
+  const typeDbMap: Record<string, DocType> = {
+    POP: "POP", Protocol: "Protocolo", Policy: "Política", Manual: "Manual",
+    Form: "Formulário", Regulation: "Regimento", Norm: "Norma",
+  };
+  const baseDocuments: Document[] = (dbDocs && dbDocs.length > 0)
+    ? dbDocs.map(d => ({
+        id: String(d.id),
+        code: d.code || `DOC-${String(d.id).padStart(3, "0")}`,
+        title: d.title,
+        type: (typeDbMap[d.type] || "POP") as DocType,
+        unit: "Geral",
+        version: d.currentVersion,
+        status: (statusDbMap[d.status] || "Rascunho") as DocStatus,
+        expiry: d.validUntil ? new Date(d.validUntil).toLocaleDateString("pt-BR") : null,
+        reads: 0,
+        expired: d.validUntil ? new Date(d.validUntil) < new Date() : false,
+        expiringSoon: false,
+      }))
+    : (isAdmin ? DOCUMENTS : []);
 
   const types: string[] = ["Todos", "POP", "Protocolo", "Política", "Manual", "Formulário", "Regimento", "Norma"];
   const statuses: string[] = ["Todos", "Vigente", "Em Revisão", "Vencido", "Rascunho"];
-  const units = ["all", ...Array.from(new Set(DOCUMENTS.map(d => d.unit)))];
+  const units = ["all", ...Array.from(new Set(baseDocuments.map(d => d.unit)))];
 
-  const filtered = DOCUMENTS.filter(doc => {
+  const filtered = baseDocuments.filter(doc => {
     const matchSearch = doc.title.toLowerCase().includes(search.toLowerCase()) || doc.code.toLowerCase().includes(search.toLowerCase());
     const matchType   = typeFilter === "Todos"   || doc.type   === typeFilter;
     const matchStatus = statusFilter === "Todos"  || doc.status === statusFilter || (statusFilter === "Vencido" && doc.expired);
@@ -214,16 +262,17 @@ function ListaMestra() {
     return matchSearch && matchType && matchStatus && matchUnit;
   });
 
-  const expiredCount    = DOCUMENTS.filter(d => d.expired || d.status === "Vencido").length;
-  const vigentCount     = DOCUMENTS.filter(d => d.status === "Vigente" && !d.expired).length;
-  const revisaoCount    = DOCUMENTS.filter(d => d.status === "Em Revisão").length;
-  const rascunhoCount   = DOCUMENTS.filter(d => d.status === "Rascunho").length;
+  const displayDocuments = isAdmin ? DOCUMENTS : [];
+  const expiredCount    = displayDocuments.filter(d => d.expired || d.status === "Vencido").length;
+  const vigentCount     = displayDocuments.filter(d => d.status === "Vigente" && !d.expired).length;
+  const revisaoCount    = displayDocuments.filter(d => d.status === "Em Revisão").length;
+  const rascunhoCount   = displayDocuments.filter(d => d.status === "Rascunho").length;
 
   return (
     <div className="space-y-4">
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Total de Documentos" value={DOCUMENTS.length} color="border-l-blue-500" />
+        <KpiCard label="Total de Documentos" value={displayDocuments.length} color="border-l-blue-500" />
         <KpiCard label="Vigentes"    value={vigentCount}   color="border-l-emerald-500" sub="ativos" />
         <KpiCard label="Em Revisão"  value={revisaoCount}  color="border-l-amber-500" />
         <KpiCard label="Vencidos"    value={expiredCount}  color="border-l-red-500" sub="requer ação" />
@@ -314,18 +363,22 @@ function ListaMestra() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
-                <Input className="h-8 text-sm" placeholder="Título do documento" />
+                <Input className="h-8 text-sm" placeholder="Título do documento" value={novoTitulo} onChange={e => setNovoTitulo(e.target.value)} />
               </div>
               <div>
                 <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
-                <select className="w-full h-8 px-3 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300">
-                  <option>POP</option>
-                  <option>Protocolo</option>
-                  <option>Política</option>
-                  <option>Manual</option>
-                  <option>Formulário</option>
-                  <option>Regimento</option>
-                  <option>Norma</option>
+                <select
+                  className="w-full h-8 px-3 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  value={novoTipo}
+                  onChange={e => setNovoTipo(e.target.value as DocType)}
+                >
+                  <option value="POP">POP</option>
+                  <option value="Protocol">Protocolo</option>
+                  <option value="Policy">Política</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Form">Formulário</option>
+                  <option value="Regulation">Regimento</option>
+                  <option value="Norm">Norma</option>
                 </select>
               </div>
               <div>
@@ -337,8 +390,16 @@ function ListaMestra() {
               <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
                 Cancelar
               </Button>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
-                Salvar
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                disabled={createMutation.isPending}
+                onClick={() => {
+                  if (!novoTitulo.trim()) { toast.error("Informe o título do documento."); return; }
+                  createMutation.mutate({ title: novoTitulo, type: novoTipo, status: "draft", currentVersion: "1.0", reviewPeriodDays: 365, mandatoryReading: false } as any);
+                }}
+              >
+                {createMutation.isPending ? "Salvando..." : "Salvar"}
               </Button>
             </div>
           </CardContent>
@@ -436,6 +497,8 @@ function ListaMestra() {
 // ─── TAB 2: Workflow ──────────────────────────────────────────────────────────
 
 function WorkflowAprovacao() {
+  const { isAdmin } = useTenant();
+  const displayWorkflowItems = isAdmin ? WORKFLOW_ITEMS : [];
   return (
     <div className="space-y-6">
       {/* Pipeline legend */}
@@ -467,7 +530,7 @@ function WorkflowAprovacao() {
 
       {/* Document cards */}
       <div className="grid gap-4">
-        {WORKFLOW_ITEMS.map(item => {
+        {displayWorkflowItems.map(item => {
           const stage = WORKFLOW_STAGES[item.stage];
           const Icon  = stage.icon;
           return (
@@ -530,6 +593,8 @@ function WorkflowAprovacao() {
 // ─── TAB 3: Leituras Obrigatórias ────────────────────────────────────────────
 
 function LeiturasObrigatorias() {
+  const { isAdmin } = useTenant();
+  const displayMandatoryReadings = isAdmin ? MANDATORY_READINGS : [];
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
@@ -542,7 +607,7 @@ function LeiturasObrigatorias() {
       </div>
 
       <div className="grid gap-4">
-        {MANDATORY_READINGS.map(item => {
+        {displayMandatoryReadings.map(item => {
           const pct = Math.round((item.completed / item.total) * 100);
           const isExpanded = expanded === item.docCode;
           return (
@@ -616,16 +681,18 @@ function LeiturasObrigatorias() {
 // ─── TAB 4: Evidências ONA ────────────────────────────────────────────────────
 
 function EvidenciasONA() {
-  const atendido = ONA_EVIDENCE.filter(r => r.status === "Atendido").length;
-  const parcial  = ONA_EVIDENCE.filter(r => r.status === "Parcial").length;
-  const ausente  = ONA_EVIDENCE.filter(r => r.status === "Ausente").length;
-  const pct = Math.round((atendido / ONA_EVIDENCE.length) * 100);
+  const { isAdmin } = useTenant();
+  const displayOnaEvidence = isAdmin ? ONA_EVIDENCE : [];
+  const atendido = displayOnaEvidence.filter(r => r.status === "Atendido").length;
+  const parcial  = displayOnaEvidence.filter(r => r.status === "Parcial").length;
+  const ausente  = displayOnaEvidence.filter(r => r.status === "Ausente").length;
+  const pct = displayOnaEvidence.length > 0 ? Math.round((atendido / displayOnaEvidence.length) * 100) : 0;
 
   return (
     <div className="space-y-4">
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Total de Requisitos" value={ONA_EVIDENCE.length} color="border-l-blue-500" />
+        <KpiCard label="Total de Requisitos" value={displayOnaEvidence.length} color="border-l-blue-500" />
         <KpiCard label="Atendidos"  value={atendido} color="border-l-emerald-500" sub={`${pct}% de conformidade`} />
         <KpiCard label="Parcial"    value={parcial}  color="border-l-amber-500" />
         <KpiCard label="Ausentes"   value={ausente}  color="border-l-red-500" sub="requer documentação" />
@@ -658,7 +725,7 @@ function EvidenciasONA() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {ONA_EVIDENCE.map(row => (
+                {displayOnaEvidence.map(row => (
                   <tr
                     key={row.onaCode}
                     className={cn(

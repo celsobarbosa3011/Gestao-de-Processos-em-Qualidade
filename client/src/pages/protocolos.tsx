@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useTenant } from "@/hooks/use-tenant";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getManagedProtocols, createManagedProtocol } from "@/lib/api";
 import { printReport } from "@/lib/print-pdf";
 import {
   BookMarked, BarChart2, Plus, Search, Filter, Download,
@@ -86,7 +89,7 @@ const protocols: Protocol[] = [
   {
     id: 4, code: "PROT-004", name: "Protocolo de Higiene das Mãos",
     category: "Segurança", status: "Ativo", version: "4.0", approvedDate: "2026-02-01",
-    nextReview: "2027-02-01", responsible: "CCIH", isCore: true,
+    nextReview: "2027-02-01", responsible: "SCIH", isCore: true,
     units: ["UTI", "CC", "PS", "Internação", "CME", "Farmácia"],
     adherence: 82, adherenceTrend: "stable",
     description: "Protocolo dos 5 momentos da higiene das mãos da OMS com monitoramento por auditoria periódica e metas por unidade.",
@@ -131,10 +134,10 @@ const protocols: Protocol[] = [
   {
     id: 9, code: "PROT-009", name: "Protocolo de Prevenção de IRAS",
     category: "Segurança", status: "Ativo", version: "3.1", approvedDate: "2026-01-15",
-    nextReview: "2027-01-15", responsible: "CCIH", isCore: true,
+    nextReview: "2027-01-15", responsible: "SCIH", isCore: true,
     units: ["UTI", "CC", "Hemodinâmica"],
     adherence: 85, adherenceTrend: "stable",
-    description: "Bundles de prevenção de IPCS, PAV, ITU relacionada a cateter e ISC com monitoramento mensal e relatório para CCIH.",
+    description: "Bundles de prevenção de IPCS, PAV, ITU relacionada a cateter e ISC com monitoramento mensal e relatório para SCIH.",
     alerts: [],
   },
   {
@@ -202,13 +205,55 @@ function adherenceBarColor(v: number) {
 
 export default function Protocolos() {
   const [, navigate] = useLocation();
+  const { isAdmin } = useTenant();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoNome, setNovoNome] = useState("");
+  const [novoTipo, setNovoTipo] = useState("sepse");
+  const queryClient = useQueryClient();
 
-  const filtered = protocols.filter((p) => {
+  const { data: dbProtocols } = useQuery({
+    queryKey: ["managed-protocols"],
+    queryFn: getManagedProtocols,
+    staleTime: 60_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createManagedProtocol,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["managed-protocols"] });
+      toast.success("Protocolo cadastrado com sucesso!");
+      setShowNovoForm(false);
+      setNovoNome("");
+    },
+    onError: () => toast.error("Erro ao cadastrar protocolo."),
+  });
+
+  // Mapear dados do BD com fallback no mock
+  const baseProtocols: Protocol[] = (dbProtocols && dbProtocols.length > 0)
+    ? dbProtocols.map(p => ({
+        id: p.id,
+        code: p.code || `PROT-${String(p.id).padStart(3, "0")}`,
+        name: p.name,
+        category: "Clínico" as ProtocolCategory,
+        status: (p.status === "active" ? "Ativo" : p.status === "review" ? "Em revisão" : p.status === "draft" ? "Rascunho" : "Suspenso") as ProtocolStatus,
+        version: p.version,
+        approvedDate: p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "—",
+        nextReview: p.reviewDate ? new Date(p.reviewDate).toISOString().split("T")[0] : "—",
+        responsible: "—",
+        units: ["Todas"],
+        adherence: p.adherenceTarget ?? 90,
+        adherenceTrend: "stable" as const,
+        isCore: true,
+        description: p.description || p.name,
+        alerts: [],
+      }))
+    : (isAdmin ? protocols : []);
+
+  const filtered = baseProtocols.filter((p) => {
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.code.toLowerCase().includes(search.toLowerCase());
@@ -217,12 +262,12 @@ export default function Protocolos() {
     return matchSearch && matchStatus && matchCat;
   });
 
-  const totalActive = protocols.filter((p) => p.status === "Ativo").length;
-  const avgAdherence = Math.round(
-    protocols.reduce((s, p) => s + p.adherence, 0) / protocols.length
-  );
-  const withAlerts = protocols.filter((p) => p.alerts.length > 0).length;
-  const coreCount = protocols.filter((p) => p.isCore).length;
+  const totalActive = baseProtocols.filter((p) => p.status === "Ativo").length;
+  const avgAdherence = baseProtocols.length > 0
+    ? Math.round(baseProtocols.reduce((s, p) => s + p.adherence, 0) / baseProtocols.length)
+    : 0;
+  const withAlerts = baseProtocols.filter((p) => p.alerts.length > 0).length;
+  const coreCount = baseProtocols.filter((p) => p.isCore).length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -246,7 +291,7 @@ export default function Protocolos() {
               </p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Relatório de Protocolos Gerenciados", subtitle: "Aderência e status dos protocolos clínicos e de segurança", module: "Protocolos Gerenciados", columns: [{ label: "Protocolo", key: "nome" }, { label: "Categoria", key: "cat" }, { label: "Versão", key: "versao" }, { label: "Aderência", key: "ader" }, { label: "Status", key: "status" }], rows: [{ nome: "Cirurgia Segura — Checklist OMS", cat: "Segurança do Paciente", versao: "v3.1", ader: "94%", status: "✓ Vigente" }, { nome: "Sepse — Identificação e Tratamento Precoce", cat: "Protocolo Clínico", versao: "v2.4", ader: "87%", status: "✓ Vigente" }, { nome: "Higienização das Mãos — OMS 5 Momentos", cat: "CCIH / Prevenção", versao: "v5.0", ader: "81%", status: "✓ Vigente" }, { nome: "Prevenção de Quedas — Estratificação de Risco", cat: "Segurança do Paciente", versao: "v2.2", ader: "78%", status: "⚠ Revisão" }, { nome: "Identificação do Paciente — Pulseira", cat: "Segurança do Paciente", versao: "v4.0", ader: "98%", status: "✓ Vigente" }, { nome: "Medicamentos de Alta Vigilância — Dupla Checagem", cat: "Farmácia", versao: "v2.1", ader: "91%", status: "✓ Vigente" }] })}>
+              <Button variant="outline" className="border-slate-200 text-slate-600 gap-2 text-sm" onClick={() => printReport({ title: "Relatório de Protocolos Gerenciados", subtitle: "Aderência e status dos protocolos clínicos e de segurança", module: "Protocolos Gerenciados", columns: [{ label: "Protocolo", key: "nome" }, { label: "Categoria", key: "cat" }, { label: "Versão", key: "versao" }, { label: "Aderência", key: "ader" }, { label: "Status", key: "status" }], rows: [{ nome: "Cirurgia Segura — Checklist OMS", cat: "Segurança do Paciente", versao: "v3.1", ader: "94%", status: "✓ Vigente" }, { nome: "Sepse — Identificação e Tratamento Precoce", cat: "Protocolo Clínico", versao: "v2.4", ader: "87%", status: "✓ Vigente" }, { nome: "Higienização das Mãos — OMS 5 Momentos", cat: "SCIH / Prevenção", versao: "v5.0", ader: "81%", status: "✓ Vigente" }, { nome: "Prevenção de Quedas — Estratificação de Risco", cat: "Segurança do Paciente", versao: "v2.2", ader: "78%", status: "⚠ Revisão" }, { nome: "Identificação do Paciente — Pulseira", cat: "Segurança do Paciente", versao: "v4.0", ader: "98%", status: "✓ Vigente" }, { nome: "Medicamentos de Alta Vigilância — Dupla Checagem", cat: "Farmácia", versao: "v2.1", ader: "91%", status: "✓ Vigente" }] })}>
                 <Download className="w-4 h-4" />
                 Exportar
               </Button>
@@ -270,7 +315,7 @@ export default function Protocolos() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
-                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Nome do protocolo" />
+                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="Nome do protocolo" value={novoNome} onChange={e => setNovoNome(e.target.value)} />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
@@ -290,8 +335,16 @@ export default function Protocolos() {
                 <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
                   Cancelar
                 </Button>
-                <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
-                  Salvar
+                <Button
+                  size="sm"
+                  className="bg-violet-600 hover:bg-violet-700 text-white text-xs"
+                  disabled={createMutation.isPending}
+                  onClick={() => {
+                    if (!novoNome.trim()) { toast.error("Informe o nome do protocolo."); return; }
+                    createMutation.mutate({ name: novoNome, type: novoTipo, status: "active", version: "1.0", adherenceTarget: 90 } as any);
+                  }}
+                >
+                  {createMutation.isPending ? "Salvando..." : "Salvar"}
                 </Button>
               </div>
             </CardContent>

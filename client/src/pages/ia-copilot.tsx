@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTenant } from "@/hooks/use-tenant";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -322,7 +323,8 @@ function TypingIndicator() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function IACopilot() {
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const { isAdmin } = useTenant();
+  const [messages, setMessages] = useState<ChatMessage[]>(isAdmin ? INITIAL_MESSAGES : []);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -580,11 +582,11 @@ export default function IACopilot() {
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-slate-400">Score Geral</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-lg font-bold text-white">71%</span>
+                        <span className="text-lg font-bold text-white">{isAdmin ? "71%" : "—"}</span>
                         <span className="text-[10px] text-slate-500">/ meta 80%</span>
                       </div>
                     </div>
-                    <Progress value={71} className="h-2 bg-slate-700" />
+                    <Progress value={isAdmin ? 71 : 0} className="h-2 bg-slate-700" />
                     <div className="flex justify-between mt-1.5">
                       <span className="text-[10px] text-slate-600">0%</span>
                       <div className="flex items-center gap-1">
@@ -597,7 +599,7 @@ export default function IACopilot() {
 
                   {/* Gap list */}
                   <div className="space-y-2">
-                    {GAPS.map((gap, i) => {
+                    {(isAdmin ? GAPS : []).map((gap, i) => {
                       const cfg = severityConfig(gap.severity);
                       return (
                         <div key={i} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-800/40 border border-slate-700/30 hover:border-slate-600/40 transition-colors">
@@ -639,7 +641,7 @@ export default function IACopilot() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-2">
-                  {EVIDENCE_SUGGESTIONS.map((ev, i) => (
+                  {(isAdmin ? EVIDENCE_SUGGESTIONS : []).map((ev, i) => (
                     <div key={i} className="p-3 rounded-lg bg-slate-800/40 border border-slate-700/30 hover:border-slate-600/40 transition-colors">
                       <div className="flex items-start gap-2">
                         <div className="w-7 h-7 rounded-lg bg-slate-700/60 flex items-center justify-center flex-shrink-0 mt-0.5">

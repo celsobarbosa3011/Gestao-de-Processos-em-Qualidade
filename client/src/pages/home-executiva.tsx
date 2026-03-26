@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { getQHealthDashboard } from "@/lib/api";
+import { useTenant } from "@/hooks/use-tenant";
 import {
   ShieldCheck, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
   Clock, Building2, BarChart3, Users, FileText, Zap, Award, Target,
@@ -121,7 +124,7 @@ const topActions = [
 
 const commissionAgenda = [
   { name: "NSP", date: "25/03", type: "Ordinária", status: "scheduled" },
-  { name: "CCIH", date: "27/03", type: "Extraordinária", status: "scheduled" },
+  { name: "SCIH", date: "27/03", type: "Extraordinária", status: "scheduled" },
   { name: "Prontuários", date: "28/03", type: "Ordinária", status: "scheduled" },
   { name: "Óbitos e Biópsias", date: "01/04", type: "Ordinária", status: "scheduled" },
 ];
@@ -215,6 +218,102 @@ const gutColor = (gut: number) => {
 export default function HomeExecutiva() {
   const [, navigate] = useLocation();
   const [view, setView] = useState<"executive" | "operational">("executive");
+  const { isAdmin, companyName, validatedData } = useTenant();
+
+  const { data: dashData } = useQuery({
+    queryKey: ["qhealth-dashboard"],
+    queryFn: getQHealthDashboard,
+    staleTime: 60_000,
+  });
+
+  // LGPD: fallback com mock apenas para admin; novos clientes começam com zeros reais
+  const fallback = (mockVal: string) => dashData ? undefined : (isAdmin ? mockVal : "0");
+
+  // Build live KPI values using validated data when available (non-admin with assessment)
+  const validatedOnaScore = validatedData?.scores;
+  const validatedRiscoCount = validatedData?.riscos.length ?? 0;
+  const validatedCapaCount = validatedData?.capas.length ?? 0;
+  const validatedPoliticaCount = validatedData?.politicas.length ?? 0;
+  const validatedIndOnTarget = validatedData
+    ? validatedData.indicadores.filter(i => i.value >= i.target).length
+    : 0;
+  const validatedIndTotal = validatedData?.indicadores.length ?? 0;
+
+  const liveKpiCards = [
+    {
+      title: "Score ONA Global",
+      value: dashData ? `${dashData.onaScore.overall}%` : (validatedOnaScore ? `${validatedOnaScore.overall}%` : (isAdmin ? "71%" : "0%")),
+      trend: +3.2,
+      icon: <Award className="w-5 h-5" />,
+      color: "sky",
+      sub: dashData
+        ? `N1:${dashData.onaScore.level1}% N2:${dashData.onaScore.level2}% N3:${dashData.onaScore.level3}%`
+        : (validatedOnaScore
+          ? `N1:${validatedOnaScore.n1}% N2:${validatedOnaScore.n2}% N3:${validatedOnaScore.n3}%`
+          : "Preencha a Avaliação Inicial para calcular"),
+      path: "/acreditacao-ona",
+    },
+    {
+      title: "Total Planos de Ação",
+      value: dashData ? String(dashData.actionPlans) : (isAdmin ? "18" : (validatedData ? String(validatedCapaCount) : "0")),
+      trend: -4,
+      icon: <AlertTriangle className="w-5 h-5" />,
+      color: "red",
+      sub: "Planos cadastrados no sistema",
+      path: "/gestao-operacional",
+    },
+    {
+      title: "Riscos Cadastrados",
+      value: dashData ? String(dashData.risks) : (isAdmin ? "7" : (validatedData ? String(validatedRiscoCount) : "0")),
+      trend: -1,
+      icon: <AlertCircle className="w-5 h-5" />,
+      color: "orange",
+      sub: "Total na matriz de riscos",
+      path: "/riscos",
+    },
+    {
+      title: "Eventos de Segurança",
+      value: dashData ? String(dashData.safetyEvents) : (isAdmin ? "12" : "0"),
+      trend: -3,
+      icon: <Activity className="w-5 h-5" />,
+      color: "purple",
+      sub: "Notificações NSP registradas",
+      path: "/eventos",
+    },
+    {
+      title: "Documentos Cadastrados",
+      value: dashData ? String(dashData.documents) : (isAdmin ? "23" : (validatedData ? String(validatedPoliticaCount) : "0")),
+      trend: +2,
+      icon: <FileText className="w-5 h-5" />,
+      color: "amber",
+      sub: "POPs, protocolos e políticas",
+      path: "/documentos",
+    },
+    {
+      title: "Indicadores no Alvo",
+      value: isAdmin ? "68%" : (validatedData && validatedIndTotal > 0 ? `${Math.round((validatedIndOnTarget / validatedIndTotal) * 100)}%` : "0%"),
+      trend: +5,
+      icon: <BarChart3 className="w-5 h-5" />,
+      color: "emerald",
+      sub: isAdmin ? "34 de 50 indicadores" : (validatedData ? `${validatedIndOnTarget} de ${validatedIndTotal} indicadores` : "Cadastre indicadores para medir"),
+      path: "/indicadores",
+    },
+  ];
+
+  const liveOnaScore = dashData
+    ? { ...onaScoreData, level1: dashData.onaScore.level1, level2: dashData.onaScore.level2, level3: dashData.onaScore.level3, overall: dashData.onaScore.overall }
+    : (validatedOnaScore
+      ? { level1: validatedOnaScore.n1, level2: validatedOnaScore.n2, level3: validatedOnaScore.n3, overall: validatedOnaScore.overall, trend: 0 }
+      : (isAdmin ? onaScoreData : { level1: 0, level2: 0, level3: 0, overall: 0, trend: 0 }));
+
+  // LGPD: mock data only visible to admin
+  const displayUnitRanking = isAdmin ? unitRanking : [];
+  const displayTopRisks = isAdmin ? topRisks : [];
+  const displayTopActions = isAdmin ? topActions : [];
+  const displayCommissionAgenda = isAdmin ? commissionAgenda : [];
+  const displayOnaLevelProgress = isAdmin ? onaLevelProgress : [];
+  const displayIndicatorTrend = isAdmin ? indicatorTrend : [];
+  const displayRadarData = isAdmin ? radarData : (validatedData?.radarData ?? []);
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
@@ -293,7 +392,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="grid grid-cols-3 gap-4">
-              {onaLevelProgress.map((l) => (
+              {displayOnaLevelProgress.map((l) => (
                 <div key={l.level} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{l.level}</span>
@@ -313,7 +412,7 @@ export default function HomeExecutiva() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {kpiCards.map((kpi) => (
+        {liveKpiCards.map((kpi) => (
           <Card
             key={kpi.title}
             className={cn(
@@ -358,7 +457,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="space-y-2.5">
-              {unitRanking.map((unit, i) => (
+              {displayUnitRanking.map((unit, i) => (
                 <div key={unit.name} className="flex items-center gap-3 group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-1.5 rounded-lg transition-colors">
                   <span className="text-xs font-bold text-slate-400 w-4 flex-shrink-0">#{i + 1}</span>
                   <SemaphoreIndicator status={unit.status as any} />
@@ -408,7 +507,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="space-y-2.5">
-              {topRisks.map((risk) => (
+              {displayTopRisks.map((risk) => (
                 <div key={risk.id} className="flex items-start gap-2.5 group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
                   <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md border flex-shrink-0 mt-0.5", gutColor(risk.gut))}>
                     {risk.gut}
@@ -441,7 +540,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="space-y-2.5">
-              {topActions.map((action) => (
+              {displayTopActions.map((action) => (
                 <div key={action.id} className="group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
                   <div className="flex items-start gap-2">
                     <div className="w-2 h-2 rounded-full bg-red-500 mt-1.5 flex-shrink-0" />
@@ -473,7 +572,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-3 pb-4">
             <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={indicatorTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={displayIndicatorTrend} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradOna" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.15} />
@@ -521,7 +620,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-3 pb-4">
             <ResponsiveContainer width="100%" height={200}>
-              <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+              <RadarChart data={displayRadarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                 <PolarGrid stroke="#e2e8f0" />
                 <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#64748b" }} />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 9, fill: "#94a3b8" }} />
@@ -549,7 +648,7 @@ export default function HomeExecutiva() {
           </CardHeader>
           <CardContent className="px-5 pb-5">
             <div className="space-y-2.5">
-              {commissionAgenda.map((c) => (
+              {displayCommissionAgenda.map((c) => (
                 <div key={c.name} className="flex items-center gap-3 group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
                   <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0 border border-emerald-100 dark:border-emerald-800">
                     <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -587,17 +686,17 @@ export default function HomeExecutiva() {
               <div className="rounded-xl bg-slate-800/60 border border-slate-700/50 p-3">
                 <p className="text-[11px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Análise desta semana</p>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  O hospital está em trajetória positiva (+3.2% no Score ONA). Os principais gaps estão nos critérios de
-                  <span className="text-sky-300 font-medium"> Identificação do Paciente</span> e
-                  <span className="text-amber-300 font-medium"> Protocolos de Segurança no CC</span>.
-                  Prioridade imediata: atualizar 3 POPs vencidos do NSP antes da próxima visita simulada.
+                  {isAdmin
+                    ? <>O hospital está em trajetória positiva (+3.2% no Score ONA). Os principais gaps estão nos critérios de <span className="text-sky-300 font-medium">Identificação do Paciente</span> e <span className="text-amber-300 font-medium">Protocolos de Segurança no CC</span>. Prioridade imediata: atualizar 3 POPs vencidos do NSP antes da próxima visita simulada.</>
+                    : "Cadastre os dados da sua instituição para receber análises e recomendações personalizadas do IA ONA Copilot."
+                  }
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Requisitos com gap", value: "28", color: "text-red-400" },
-                  { label: "Evidências sugeridas", value: "14", color: "text-sky-400" },
-                  { label: "Score previsto (90d)", value: "76%", color: "text-emerald-400" },
+                  { label: "Requisitos com gap", value: isAdmin ? "28" : (validatedData ? String(validatedData.gaps.length) : "0"), color: "text-red-400" },
+                  { label: "Evidências sugeridas", value: isAdmin ? "14" : (validatedData ? String(validatedData.politicas.length) : "0"), color: "text-sky-400" },
+                  { label: "Score previsto (90d)", value: isAdmin ? "76%" : (validatedData ? `${Math.min(100, validatedData.scores.overall + 8)}%` : "—"), color: "text-emerald-400" },
                 ].map(item => (
                   <div key={item.label} className="text-center rounded-lg bg-slate-800/40 p-2.5">
                     <p className={cn("text-xl font-bold", item.color)}>{item.value}</p>

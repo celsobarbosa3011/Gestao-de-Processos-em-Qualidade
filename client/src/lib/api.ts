@@ -1,4 +1,4 @@
-import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit, ProcessType, Priority, DiagnosticCycle, InsertDiagnosticCycle, DiagnosticItem, InsertDiagnosticItem, GutItem, InsertGutItem, OnaRequirement, OnaEvidence, InsertOnaEvidence, OnaAdherence, Risk, InsertRisk, RiskMitigation, Commission, InsertCommission, CommissionMeeting, CommissionDeliberation, Indicator, InsertIndicator, IndicatorValue, Document, InsertDocument, DocumentReading, ActionPlan, InsertActionPlan, ActionPlanTask, SafetyEvent, InsertSafetyEvent } from "@shared/schema";
+import type { Profile, Process, ProcessComment, ProcessEvent, AlertSettings, InsertProcess, UpdateProcess, BrandingConfig, WipLimit, UpdateWipLimit, ProcessChecklist, ProcessAttachment, ProcessLabel, ChatMessage, Permission, RolePermission, UserPermission, ProcessTemplate, FeatureToggle, TimeEntry, InsertTimeEntry, CustomField, InsertCustomField, CustomFieldValue, Automation, InsertAutomation, Notification, Swimlane, InsertSwimlane, DashboardWidget, InsertDashboardWidget, Unit, InsertUnit, UpdateUnit, ProcessType, Priority, DiagnosticCycle, InsertDiagnosticCycle, DiagnosticItem, InsertDiagnosticItem, GutItem, InsertGutItem, OnaRequirement, OnaEvidence, InsertOnaEvidence, OnaAdherence, Risk, InsertRisk, RiskMitigation, Commission, InsertCommission, CommissionMeeting, CommissionDeliberation, Indicator, InsertIndicator, IndicatorValue, Document, InsertDocument, DocumentReading, ActionPlan, InsertActionPlan, ActionPlanTask, SafetyEvent, InsertSafetyEvent, SwotAnalysis, InsertSwotAnalysis, SwotItem, InsertSwotItem, BscPerspective, BscObjective, InsertBscObjective, ManagedProtocol, Training, PatientJourneyStep, InsertPatientJourneyStep } from "@shared/schema";
 import { useStore } from "./store";
 
 const API_BASE = "/api";
@@ -172,6 +172,9 @@ export async function deleteUnit(id: number): Promise<void> {
   });
   if (!response.ok) throw new Error("Failed to delete unit");
 }
+
+// Alias para compatibilidade com módulos que importam getUnits
+export const getUnits = getAllUnits;
 
 // Processes
 export async function getAllProcesses(): Promise<Process[]> {
@@ -1239,21 +1242,150 @@ export async function updateSafetyEvent(id: number, updates: Partial<SafetyEvent
 }
 
 // Módulos 12/16/19 — Protocolos, Treinamentos, Referências
-export async function getManagedProtocols(): Promise<any[]> {
+export async function getManagedProtocols(): Promise<ManagedProtocol[]> {
   const response = await fetch(`${API_BASE}/qhealth/managed-protocols`, { headers: getAuthHeaders(false) });
   if (!response.ok) throw new Error("Failed to fetch managed protocols");
   return response.json();
 }
 
-export async function getTrainings(): Promise<any[]> {
+export async function createManagedProtocol(data: Partial<ManagedProtocol>): Promise<ManagedProtocol> {
+  const response = await fetch(`${API_BASE}/qhealth/managed-protocols`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create protocol");
+  return response.json();
+}
+
+export async function updateManagedProtocol(id: number, data: Partial<ManagedProtocol>): Promise<ManagedProtocol> {
+  const response = await fetch(`${API_BASE}/qhealth/managed-protocols/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update protocol");
+  return response.json();
+}
+
+export async function getTrainings(): Promise<Training[]> {
   const response = await fetch(`${API_BASE}/qhealth/trainings`, { headers: getAuthHeaders(false) });
   if (!response.ok) throw new Error("Failed to fetch trainings");
+  return response.json();
+}
+
+export async function createTraining(data: Partial<Training>): Promise<Training> {
+  const response = await fetch(`${API_BASE}/qhealth/trainings`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create training");
+  return response.json();
+}
+
+export async function updateTraining(id: number, data: Partial<Training>): Promise<Training> {
+  const response = await fetch(`${API_BASE}/qhealth/trainings/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update training");
   return response.json();
 }
 
 export async function getNormativeReferences(): Promise<any[]> {
   const response = await fetch(`${API_BASE}/qhealth/normative-references`, { headers: getAuthHeaders(false) });
   if (!response.ok) throw new Error("Failed to fetch normative references");
+  return response.json();
+}
+
+// SWOT
+export async function getSwotAnalyses(): Promise<SwotAnalysis[]> {
+  const response = await fetch(`${API_BASE}/qhealth/swot-analyses`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch SWOT analyses");
+  return response.json();
+}
+
+export async function createSwotAnalysis(data: InsertSwotAnalysis): Promise<SwotAnalysis> {
+  const response = await fetch(`${API_BASE}/qhealth/swot-analyses`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create SWOT analysis");
+  return response.json();
+}
+
+export async function getSwotItems(analysisId: number): Promise<SwotItem[]> {
+  const response = await fetch(`${API_BASE}/qhealth/swot-analyses/${analysisId}/items`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch SWOT items");
+  return response.json();
+}
+
+export async function createSwotItem(data: InsertSwotItem): Promise<SwotItem> {
+  const response = await fetch(`${API_BASE}/qhealth/swot-items`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create SWOT item");
+  return response.json();
+}
+
+export async function deleteSwotItem(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE}/qhealth/swot-items/${id}`, {
+    method: "DELETE", headers: getAuthHeaders(false),
+  });
+  if (!response.ok) throw new Error("Failed to delete SWOT item");
+}
+
+// BSC
+export async function getBscPerspectives(): Promise<BscPerspective[]> {
+  const response = await fetch(`${API_BASE}/qhealth/bsc-perspectives`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch BSC perspectives");
+  return response.json();
+}
+
+export async function getBscObjectives(perspectiveId?: number): Promise<BscObjective[]> {
+  const url = perspectiveId
+    ? `${API_BASE}/qhealth/bsc-objectives?perspectiveId=${perspectiveId}`
+    : `${API_BASE}/qhealth/bsc-objectives`;
+  const response = await fetch(url, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch BSC objectives");
+  return response.json();
+}
+
+export async function createBscObjective(data: InsertBscObjective): Promise<BscObjective> {
+  const response = await fetch(`${API_BASE}/qhealth/bsc-objectives`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create BSC objective");
+  return response.json();
+}
+
+export async function updateBscObjective(id: number, data: Partial<InsertBscObjective>): Promise<BscObjective> {
+  const response = await fetch(`${API_BASE}/qhealth/bsc-objectives/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update BSC objective");
+  return response.json();
+}
+
+export async function deleteBscObjective(id: number): Promise<void> {
+  await fetch(`${API_BASE}/qhealth/bsc-objectives/${id}`, {
+    method: "DELETE", headers: getAuthHeaders(false),
+  });
+}
+
+// Jornada do Paciente
+export async function getPatientJourney(): Promise<PatientJourneyStep[]> {
+  const response = await fetch(`${API_BASE}/qhealth/patient-journey`, { headers: getAuthHeaders(false) });
+  if (!response.ok) throw new Error("Failed to fetch patient journey");
+  return response.json();
+}
+
+export async function createPatientJourneyStep(data: InsertPatientJourneyStep): Promise<PatientJourneyStep> {
+  const response = await fetch(`${API_BASE}/qhealth/patient-journey`, {
+    method: "POST", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to create journey step");
+  return response.json();
+}
+
+export async function updatePatientJourneyStep(id: number, data: Partial<InsertPatientJourneyStep>): Promise<PatientJourneyStep> {
+  const response = await fetch(`${API_BASE}/qhealth/patient-journey/${id}`, {
+    method: "PUT", headers: getAuthHeaders(), body: JSON.stringify(data),
+  });
+  if (!response.ok) throw new Error("Failed to update journey step");
   return response.json();
 }
 
@@ -1266,3 +1398,5 @@ export async function getQHealthDashboard(): Promise<{
   if (!response.ok) throw new Error("Failed to fetch QHealth dashboard");
   return response.json();
 }
+
+// Unidades (para módulo Unidades de Negócio) — funções definidas no início do arquivo (getUnit, createUnit)

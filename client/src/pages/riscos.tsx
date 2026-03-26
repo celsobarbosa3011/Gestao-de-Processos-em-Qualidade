@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { printReport } from "@/lib/print-pdf";
 import { getRisks, createRisk } from "@/lib/api";
+import { useTenant } from "@/hooks/use-tenant";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -360,7 +361,7 @@ const mitigationPlans: MitigationPlan[] = [
     riskId: 10,
     riskTitle: "Ausência de higiene das mãos pré-procedimento",
     action: "Auditorias de observação direta — 10 por semana",
-    responsible: "CCIH – Dr. Paulo Ramos",
+    responsible: "SCIH – Dr. Paulo Ramos",
     deadline: "2026-06-01",
     status: "in_progress",
     progress: 35,
@@ -503,6 +504,7 @@ function RiskDot({ risk }: { risk: Risk }) {
 // ─── TAB 1: Heatmap ──────────────────────────────────────────────────────────
 
 function HeatmapTab() {
+  const { isAdmin, validatedData } = useTenant();
   const [activeFilter, setActiveFilter] = useState<string>("all");
 
   const filters = [
@@ -513,7 +515,22 @@ function HeatmapTab() {
     { key: "Estratégico", label: "Estratégico" },
   ];
 
-  const filteredRisks = activeFilter === "all" ? risks : risks.filter((r) => r.cat === activeFilter);
+  const catToLocalHeatmap = (cat: string): RiskCategory => {
+    const map: Record<string, RiskCategory> = { "Assistencial": "Assistencial", "Operacional": "Operacional", "Regulatório": "Regulatório", "Estratégico": "Estratégico" };
+    return map[cat] ?? "Operacional";
+  };
+  const validatedHeatmapRisks: typeof risks = validatedData?.riscos.map(r => ({
+    id: r.id,
+    title: r.title,
+    cat: catToLocalHeatmap(r.cat || r.category),
+    prob: r.prob ?? 3,
+    impact: r.impact_num ?? 3,
+    unit: r.category,
+    status: "identified" as RiskStatus,
+  })) ?? [];
+
+  const riskBase = isAdmin ? risks : validatedHeatmapRisks;
+  const filteredRisks = activeFilter === "all" ? riskBase : riskBase.filter((r) => r.cat === activeFilter);
 
   // Build cell map: [prob][impact] -> risks[]
   const cellMap: Record<string, Risk[]> = {};
@@ -530,7 +547,7 @@ function HeatmapTab() {
   const impactLabels = ["Insignificante", "Baixo", "Moderado", "Alto", "Catastrófico"];
   const probLabels = ["Quase Certa", "Provável", "Possível", "Improvável", "Rara"];
 
-  const criticalRisks = [...risks]
+  const criticalRisks = [...riskBase]
     .sort((a, b) => getRiskScore(b.prob, b.impact) - getRiskScore(a.prob, a.impact))
     .slice(0, 5);
 
@@ -707,6 +724,38 @@ function RiskListTab() {
     strategic: "Estratégico", regulatory: "Regulatório",
   };
 
+  // LGPD: mock data visível apenas para admin; clientes validados usam dados da avaliação
+  const { isAdmin, validatedData } = useTenant();
+
+  const probLabelToNum = (p: string): number => {
+    const map: Record<string, number> = { "Muito Alta": 5, "Alta": 4, "Média": 3, "Baixa": 2, "Muito Baixa": 1 };
+    return map[p] ?? 3;
+  };
+  const impactLabelToNum = (i: string): number => {
+    const map: Record<string, number> = { "Catastrófico": 5, "Crítico": 4, "Moderado": 3, "Menor": 2, "Insignificante": 1 };
+    return map[i] ?? 3;
+  };
+  const catToLocalFromStr = (cat: string): RiskCategory => {
+    const map: Record<string, RiskCategory> = { "Assistencial": "Assistencial", "Operacional": "Operacional", "Regulatório": "Regulatório", "Estratégico": "Estratégico" };
+    return map[cat] ?? "Operacional";
+  };
+  const statusToLocal = (s: string): RiskStatus => {
+    if (s === "Em Mitigação") return "mitigating";
+    if (s === "Mitigado") return "monitored";
+    return "identified";
+  };
+
+  const validatedRisks: typeof risks = validatedData?.riscos.map(r => ({
+    id: r.id,
+    title: r.title,
+    cat: catToLocalFromStr(r.cat || r.category),
+    prob: r.prob ?? probLabelToNum(r.probability),
+    impact: r.impact_num ?? impactLabelToNum(r.impact),
+    unit: r.category,
+    status: statusToLocal(r.status),
+    mitigation: r.mitigation,
+  })) ?? [];
+
   const baseRisks: typeof risks = (dbRisks && dbRisks.length > 0)
     ? dbRisks.map(r => ({
         id: r.id,
@@ -720,7 +769,7 @@ function RiskListTab() {
         residualImpact: r.residualImpact ?? undefined,
         controls: r.existingControls ?? undefined,
       }))
-    : risks;
+    : (isAdmin ? risks : validatedRisks);
 
   const allRisks = baseRisks;
   const units = Array.from(new Set(allRisks.map((r) => r.unit)));
@@ -1197,6 +1246,7 @@ function MitigationTab() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Riscos() {
+  const { isAdmin, validatedData } = useTenant();
   const [showHeaderNovoForm, setShowHeaderNovoForm] = useState(false);
   const [headerNovoItems, setHeaderNovoItems] = useState<typeof risks[0][]>([]);
   const [headerNovoForm, setHeaderNovoForm] = useState({ title: "", cat: "Assistencial" as RiskCategory, unit: "", prob: "3", impact: "3" });
@@ -1222,16 +1272,26 @@ export default function Riscos() {
     toast.success("Risco cadastrado com sucesso!");
   }
 
-  const totalCritical = risks.filter((r) => getRiskScore(r.prob, r.impact) >= 20).length;
-  const totalHigh = risks.filter((r) => {
+  // LGPD: KPIs usam mock apenas para admin; clientes validados usam dados da avaliação
+  const catToLocalKpi = (cat: string): RiskCategory => {
+    const m: Record<string, RiskCategory> = { "Assistencial": "Assistencial", "Operacional": "Operacional", "Regulatório": "Regulatório", "Estratégico": "Estratégico" };
+    return m[cat] ?? "Operacional";
+  };
+  const validatedKpiRisks: typeof risks = validatedData?.riscos.map(r => ({
+    id: r.id, title: r.title, cat: catToLocalKpi(r.cat || r.category),
+    prob: r.prob ?? 3, impact: r.impact_num ?? 3, unit: r.category, status: "identified" as RiskStatus,
+  })) ?? [];
+  const kpiRisks = [...(isAdmin ? risks : validatedKpiRisks), ...headerNovoItems];
+  const totalCritical = kpiRisks.filter((r) => getRiskScore(r.prob, r.impact) >= 20).length;
+  const totalHigh = kpiRisks.filter((r) => {
     const s = getRiskScore(r.prob, r.impact);
     return s >= 15 && s < 20;
   }).length;
-  const totalModerate = risks.filter((r) => {
+  const totalModerate = kpiRisks.filter((r) => {
     const s = getRiskScore(r.prob, r.impact);
     return s >= 6 && s < 15;
   }).length;
-  const totalLow = risks.filter((r) => getRiskScore(r.prob, r.impact) < 6).length;
+  const totalLow = kpiRisks.filter((r) => getRiskScore(r.prob, r.impact) < 6).length;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
@@ -1247,9 +1307,36 @@ export default function Riscos() {
             <p className="text-sm text-gray-500">Identificação, análise e mitigação de riscos assistenciais e operacionais · QHealth One 2026</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => printReport({ title: "Matriz de Gestão de Riscos", subtitle: "Riscos identificados, analisados e mitigados — QHealth One 2026", module: "Gestão de Riscos", kpis: [{ label: "Riscos Críticos", value: 3, color: "#dc2626" }, { label: "Em Mitigação", value: 5, color: "#f59e0b" }, { label: "Monitorados", value: 8, color: "#0ea5e9" }, { label: "Fechados", value: 12, color: "#10b981" }], columns: [{ label: "Risco", key: "titulo" }, { label: "Categoria", key: "cat" }, { label: "Probabilidade", key: "prob" }, { label: "Impacto", key: "impacto" }, { label: "NPR", key: "npr" }, { label: "Status", key: "status" }], rows: [{ titulo: "Falha na identificação do paciente", cat: "Assistencial", prob: "Alta", impacto: "Grave", npr: "360", status: "Mitigando" }, { titulo: "Medicamento de alta vigilância sem dupla checagem", cat: "Assistencial", prob: "Média", impacto: "Grave", npr: "270", status: "Monitorado" }, { titulo: "Falha na esterilização CME", cat: "Operacional", prob: "Baixa", impacto: "Crítico", npr: "180", status: "Monitorado" }, { titulo: "Não conformidade regulatória ANVISA", cat: "Regulatório", prob: "Média", impacto: "Moderado", npr: "120", status: "Fechado" }] })}>
+            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => printReport({
+              title: "Matriz de Gestão de Riscos",
+              subtitle: "Riscos identificados, analisados e mitigados — QHealth One 2026",
+              module: "Gestão de Riscos",
+              kpis: [
+                { label: "Riscos Críticos", value: totalCritical, color: "#dc2626" },
+                { label: "Alto Risco", value: totalHigh, color: "#f59e0b" },
+                { label: "Risco Moderado", value: totalModerate, color: "#0ea5e9" },
+                { label: "Baixo Risco", value: totalLow, color: "#10b981" },
+              ],
+              columns: [
+                { label: "Risco", key: "titulo" },
+                { label: "Categoria", key: "cat" },
+                { label: "Probabilidade", key: "prob", align: "center" as const },
+                { label: "Impacto", key: "impacto", align: "center" as const },
+                { label: "Score", key: "score", align: "center" as const },
+                { label: "Status", key: "status" },
+              ],
+              rows: kpiRisks.slice(0, 50).map(r => ({
+                titulo: r.title,
+                cat: r.cat,
+                prob: String(r.prob),
+                impacto: String(r.impact),
+                score: String(getRiskScore(r.prob, r.impact)),
+                status: r.status === "identified" ? "Identificado" : r.status === "mitigating" ? "Em Mitigação" : "Monitorado",
+              })),
+              customContent: `<p>Relatório gerado em ${new Date().toLocaleDateString("pt-BR")}.</p>`,
+            })}>
               <Download className="w-3.5 h-3.5" />
-              Exportar
+              Exportar PDF
             </Button>
             <Button size="sm" className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs" onClick={() => setShowHeaderNovoForm(true)}>
               <Plus className="w-3.5 h-3.5" />

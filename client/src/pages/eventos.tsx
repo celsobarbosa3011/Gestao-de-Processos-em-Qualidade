@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTenant } from "@/hooks/use-tenant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { printNSPForm } from "@/lib/print-pdf";
@@ -110,9 +111,9 @@ const CAPA_ITEMS: CAPAItem[] = [
   {
     esCode: "ES-2026-07",
     cause: "Falha no processo de esterilização por ausência de indicadores biológicos no pacote",
-    corrective: "Rastreamento e reprocessamento de todos os materiais do lote. Comunicação ao CCIH.",
+    corrective: "Rastreamento e reprocessamento de todos os materiais do lote. Comunicação ao SCIH.",
     preventive: "Revisão do POP de esterilização. Calibração dos equipamentos CME. Indicadores 100%.",
-    responsible: "Coord. CME + CCIH",
+    responsible: "Coord. CME + SCIH",
     deadline: "15/04/2026",
     status: "Em andamento",
   },
@@ -544,10 +545,311 @@ function NovaNotificacaoDialog({ open, onClose, onSuccess }: { open: boolean; on
   );
 }
 
+// ─── Protocolo de Londres ─────────────────────────────────────────────────────
+
+const FATORES_CONTRIBUINTES = [
+  {
+    categoria: "PACIENTE",
+    fatores: ["Complexidade / Gravidade", "Doenças de Base", "Fatores psicossociais"],
+  },
+  {
+    categoria: "TAREFA",
+    fatores: [
+      "Disponibilidade e uso dos protocolos",
+      "Tomada de decisão (tempo e assertividade)",
+      "Disponibilidade e clareza no papel de cada membro da equipe",
+    ],
+  },
+  {
+    categoria: "INDIVIDUAIS DOS PROFISSIONAIS",
+    fatores: ["Conhecimento e Habilidade", "Competência técnica", "Saúde física e mental"],
+  },
+  {
+    categoria: "EQUIPE",
+    fatores: [
+      "Comunicação, verbal e ou escrita",
+      "Estrutura do time (consistência / liderança)",
+      "Ajuda da Supervisão / Coordenação / Gerência",
+    ],
+  },
+  {
+    categoria: "AMBIENTE DE TRABALHO",
+    fatores: ["Equipamentos / Área física", "Apoio da equipe administrativa", "Medicamentos / Materiais", "Ambiente de trabalho"],
+  },
+  {
+    categoria: "ORGANIZACIONAIS E ADMINISTRATIVOS",
+    fatores: ["Restrições financeiras", "Estrutura organizacional — Políticas, padrões e objetivos", "Cultura de segurança e prioridades"],
+  },
+  {
+    categoria: "FATORES DO CONTEXTO DA INSTITUIÇÃO",
+    fatores: ["Políticas", "Normativas", "Regras"],
+  },
+];
+
+interface LondresPlanoRow { acao: string; responsavel: string; prazo: string; status: string; }
+
+function ProtocoloLondresDialog({
+  open, onClose, eventCode,
+}: { open: boolean; onClose: () => void; eventCode?: string }) {
+  // — Seção 1: Identificação —
+  const [setor, setSetor] = useState("");
+  const [etiqueta, setEtiqueta] = useState("");
+  const [dataEvento, setDataEvento] = useState("");
+  const [dataNotificacao, setDataNotificacao] = useState("");
+
+  // — Seção 2: Descrição —
+  const [processosEnvolvidos, setProcessosEnvolvidos] = useState("");
+  const [grupoTrabalho, setGrupoTrabalho] = useState("");
+  const [eventoIdentificado, setEventoIdentificado] = useState("");
+  const [relatorioCronologico, setRelatorioCronologico] = useState("");
+  const [tipoOcorrencia, setTipoOcorrencia] = useState("");
+
+  // — Seção 3: Classificação do Adverso —
+  const [classificacaoAdverso, setClassificacaoAdverso] = useState<"Leve" | "Moderado" | "Grave" | "Óbito" | "">("");
+
+  // — Seção 4: Fatores contribuintes — { categoria: fator: análise }
+  const [fatoresAnalise, setFatoresAnalise] = useState<Record<string, Record<string, string>>>({});
+
+  // — Seção 5: Plano de ação —
+  const [planos, setPlanos] = useState<LondresPlanoRow[]>([
+    { acao: "", responsavel: "", prazo: "", status: "" },
+    { acao: "", responsavel: "", prazo: "", status: "" },
+    { acao: "", responsavel: "", prazo: "", status: "" },
+  ]);
+
+  const setFatorAnalise = (categoria: string, fator: string, valor: string) => {
+    setFatoresAnalise(prev => ({
+      ...prev,
+      [categoria]: { ...(prev[categoria] ?? {}), [fator]: valor },
+    }));
+  };
+
+  const updatePlano = (i: number, field: keyof LondresPlanoRow, val: string) => {
+    const next = [...planos]; next[i] = { ...next[i], [field]: val }; setPlanos(next);
+  };
+
+  const handlePrint = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>Protocolo de Londres — ${eventCode ?? ""}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #000; margin: 20px; }
+        h1 { font-size: 13px; text-align: center; font-weight: bold; margin-bottom: 4px; }
+        h2 { font-size: 11px; font-weight: bold; background: #eee; padding: 3px 6px; margin: 10px 0 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        td, th { border: 1px solid #999; padding: 4px 6px; vertical-align: top; font-size: 10px; }
+        th { background: #ddd; font-weight: bold; text-align: left; }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .field { margin-bottom: 6px; }
+        .label { font-weight: bold; font-size: 10px; color: #444; }
+        .value { border: 1px solid #ccc; min-height: 20px; padding: 2px 4px; font-size: 10px; }
+        @media print { body { margin: 0; } }
+      </style></head><body>
+      <h1>ANÁLISE DE EVENTOS COM DANOS GRAVES E/OU ÓBITO<br>(PROTOCOLO DE LONDRES)</h1>
+      <p style="text-align:center;font-size:10px;">Evento: ${eventCode ?? "—"} | Impresso em: ${new Date().toLocaleString("pt-BR")}</p>
+      <table>
+        <tr><th>Setor</th><td>${setor}</td><th>Data do Evento</th><td>${dataEvento}</td></tr>
+        <tr><th>Data da Notificação</th><td>${dataNotificacao}</td><th>Classificação</th><td>${classificacaoAdverso}</td></tr>
+      </table>
+      <h2>Processos Envolvidos</h2><div class="value">${processosEnvolvidos}</div>
+      <h2>Grupo de Trabalho</h2><div class="value">${grupoTrabalho}</div>
+      <h2>Evento Identificado</h2><div class="value">${eventoIdentificado}</div>
+      <h2>Relatório Cronológico</h2><div class="value">${relatorioCronologico}</div>
+      <h2>Tipo de Ocorrência / Evento</h2><div class="value">${tipoOcorrencia}</div>
+      <h2>Fatores Contribuintes</h2>
+      <table><thead><tr><th>Categoria</th><th>Fator</th><th>Análise</th></tr></thead><tbody>
+      ${FATORES_CONTRIBUINTES.map(cat => cat.fatores.map(f =>
+        `<tr><td>${cat.categoria}</td><td>${f}</td><td>${fatoresAnalise[cat.categoria]?.[f] ?? ""}</td></tr>`
+      ).join("")).join("")}
+      </tbody></table>
+      <h2>Ações Planejadas</h2>
+      <table><thead><tr><th>Plano de Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr></thead><tbody>
+      ${planos.map(p => `<tr><td>${p.acao}</td><td>${p.responsavel}</td><td>${p.prazo}</td><td>${p.status}</td></tr>`).join("")}
+      </tbody></table>
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+        {/* Header */}
+        <DialogHeader className="px-6 pt-5 pb-3 border-b bg-red-50 sticky top-0 z-10">
+          <DialogTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <AlertOctagon className="w-4 h-4 text-red-600" />
+            ANÁLISE DE EVENTOS COM DANOS GRAVES E/OU ÓBITO — PROTOCOLO DE LONDRES
+            {eventCode && <span className="ml-2 text-xs font-mono text-red-600 bg-red-100 px-2 py-0.5 rounded">{eventCode}</span>}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="px-6 py-5 space-y-6">
+
+          {/* ── SEÇÃO 1: Identificação ── */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs font-semibold text-slate-600">SETOR</Label>
+                <Input value={setor} onChange={e => setSetor(e.target.value)} className="h-8 text-xs mt-1" placeholder="Ex.: UTI, Centro Cirúrgico..." />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-600">DATA DO EVENTO</Label>
+                <Input type="date" value={dataEvento} onChange={e => setDataEvento(e.target.value)} className="h-8 text-xs mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs font-semibold text-slate-600">DATA DA NOTIFICAÇÃO</Label>
+                <Input type="date" value={dataNotificacao} onChange={e => setDataNotificacao(e.target.value)} className="h-8 text-xs mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-slate-600">ETIQUETA (Dados do Paciente)</Label>
+              <Textarea
+                value={etiqueta}
+                onChange={e => setEtiqueta(e.target.value)}
+                placeholder="Nome, prontuário, data de nascimento, leito..."
+                className="mt-1 text-xs min-h-[108px] resize-none border-dashed border-2 border-slate-300"
+              />
+            </div>
+          </div>
+
+          {/* ── SEÇÃO 2: Descrição ── */}
+          <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
+            <div>
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wide">PROCESSOS ENVOLVIDOS</Label>
+              <p className="text-[10px] text-slate-500 mb-1">Processos de trabalho / Ferramentas / Protocolos</p>
+              <Textarea value={processosEnvolvidos} onChange={e => setProcessosEnvolvidos(e.target.value)} className="text-xs min-h-[56px] resize-none bg-white" />
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wide">GRUPO DE TRABALHO</Label>
+              <p className="text-[10px] text-slate-500 mb-1">Quais equipes estavam envolvidas no atendimento ao paciente</p>
+              <Textarea value={grupoTrabalho} onChange={e => setGrupoTrabalho(e.target.value)} className="text-xs min-h-[56px] resize-none bg-white" />
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wide">EVENTO IDENTIFICADO</Label>
+              <p className="text-[10px] text-slate-500 mb-1">O que aconteceu?</p>
+              <Textarea value={eventoIdentificado} onChange={e => setEventoIdentificado(e.target.value)} className="text-xs min-h-[80px] resize-none bg-white" />
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wide">RELATÓRIO CRONOLÓGICO</Label>
+              <p className="text-[10px] text-slate-500 mb-1">História do Paciente da admissão até o momento do desfecho do atendimento</p>
+              <Textarea value={relatorioCronologico} onChange={e => setRelatorioCronologico(e.target.value)} className="text-xs min-h-[100px] resize-none bg-white" />
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wide">TIPO DE OCORRÊNCIA / EVENTO</Label>
+              <Textarea value={tipoOcorrencia} onChange={e => setTipoOcorrencia(e.target.value)} className="text-xs min-h-[56px] resize-none bg-white mt-1" placeholder="Descreva o tipo de ocorrência..." />
+            </div>
+          </div>
+
+          {/* ── SEÇÃO 3: Classificação ADVERSO ── */}
+          <div className="border rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide">EVENTO ADVERSO — Classificação</p>
+              <div className="flex gap-2">
+                {(["Leve", "Moderado", "Grave", "Óbito"] as const).map(cls => (
+                  <button
+                    key={cls}
+                    onClick={() => setClassificacaoAdverso(cls)}
+                    className={cn(
+                      "px-3 py-1 rounded text-xs font-semibold border transition-all",
+                      classificacaoAdverso === cls
+                        ? cls === "Óbito" ? "bg-red-700 border-red-700 text-white"
+                          : cls === "Grave" ? "bg-red-500 border-red-500 text-white"
+                          : cls === "Moderado" ? "bg-orange-500 border-orange-500 text-white"
+                          : "bg-amber-400 border-amber-400 text-white"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-400"
+                    )}
+                  >
+                    {cls}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── SEÇÃO 4: Fatores Contribuintes ── */}
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide text-center bg-slate-100 py-1.5 rounded mb-3">
+                ANÁLISE DO EVENTO: FATORES RELACIONADOS AO CUIDADO (FATORES CONTRIBUINTES)
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      <th className="border border-slate-300 px-3 py-2 text-left font-bold w-1/3">Categoria / Fator</th>
+                      <th className="border border-slate-300 px-3 py-2 text-left font-bold">Análise / Descrição</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {FATORES_CONTRIBUINTES.map(cat => (
+                      cat.fatores.map((fator, fi) => (
+                        <tr key={`${cat.categoria}-${fi}`} className="hover:bg-slate-50">
+                          <td className="border border-slate-300 px-3 py-1.5 align-top">
+                            {fi === 0 && (
+                              <span className="font-bold text-slate-700 uppercase text-[10px] block mb-0.5">{cat.categoria}</span>
+                            )}
+                            <span className="text-slate-600 text-[11px]">{fator}</span>
+                          </td>
+                          <td className="border border-slate-300 px-1 py-1">
+                            <Textarea
+                              value={fatoresAnalise[cat.categoria]?.[fator] ?? ""}
+                              onChange={e => setFatorAnalise(cat.categoria, fator, e.target.value)}
+                              className="min-h-[36px] text-xs resize-none border-none shadow-none p-1 focus:ring-0"
+                              placeholder="Descreva a análise deste fator..."
+                            />
+                          </td>
+                        </tr>
+                      ))
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* ── SEÇÃO 5: Ações Planejadas ── */}
+          <div className="space-y-2 border rounded-lg p-4">
+            <p className="text-xs font-bold text-slate-700 uppercase tracking-wide text-center mb-2">AÇÕES PLANEJADAS</p>
+            <div className="grid grid-cols-4 gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wide border-b pb-1">
+              <span>Plano de Ação</span><span>Responsável</span><span>Prazo</span><span>Status</span>
+            </div>
+            {planos.map((row, i) => (
+              <div key={i} className="grid grid-cols-4 gap-2">
+                <Input value={row.acao} onChange={e => updatePlano(i, "acao", e.target.value)} placeholder="Descreva a ação..." className="h-8 text-xs" />
+                <Input value={row.responsavel} onChange={e => updatePlano(i, "responsavel", e.target.value)} placeholder="Responsável" className="h-8 text-xs" />
+                <Input type="date" value={row.prazo} onChange={e => updatePlano(i, "prazo", e.target.value)} className="h-8 text-xs" />
+                <select value={row.status} onChange={e => updatePlano(i, "status", e.target.value)} className="h-8 text-xs border rounded-md px-2 bg-white">
+                  <option value="">Status</option>
+                  <option>Pendente</option><option>Em andamento</option><option>Concluído</option><option>Atrasado</option>
+                </select>
+              </div>
+            ))}
+            <Button variant="outline" size="sm" className="text-xs h-7 gap-1 mt-1" onClick={() => setPlanos(p => [...p, { acao: "", responsavel: "", prazo: "", status: "" }])}>
+              <Plus className="w-3 h-3" /> Adicionar linha
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-3 border-t bg-slate-50 sticky bottom-0 gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-8" onClick={onClose}>Fechar</Button>
+          <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={handlePrint}>
+            <Download className="w-3.5 h-3.5" /> Imprimir / PDF
+          </Button>
+          <Button size="sm" className="text-xs h-8 gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => { toast.success("Protocolo de Londres registrado com sucesso!"); onClose(); }}>
+            <CheckCircle2 className="w-3.5 h-3.5" /> Salvar Análise
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── TAB 1: Fila de Notificações ──────────────────────────────────────────────
 
 function FilaNotificacoes() {
   const [showDialog, setShowDialog] = useState(false);
+  const [showLondres, setShowLondres] = useState(false);
+  const [selectedEventCode, setSelectedEventCode] = useState<string | undefined>(undefined);
   const qc = useQueryClient();
   const { data: dbEvents } = useQuery({
     queryKey: ["safety-events"],
@@ -576,13 +878,15 @@ function FilaNotificacoes() {
     };
   };
 
+  const { isAdmin } = useTenant();
   const events: SafetyEvent[] = (dbEvents && dbEvents.length > 0)
     ? dbEvents.map(mapDbToDisplay)
-    : EVENTS;
+    : (isAdmin ? EVENTS : []);
 
   return (
     <div className="space-y-4">
       <NovaNotificacaoDialog open={showDialog} onClose={() => setShowDialog(false)} onSuccess={() => qc.invalidateQueries({ queryKey: ["safety-events"] })} />
+      <ProtocoloLondresDialog open={showLondres} onClose={() => setShowLondres(false)} eventCode={selectedEventCode} />
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">Fila de notificações do período — RDC 63 / Notivisa</p>
         <Button size="sm" className="h-8 gap-1 bg-red-600 hover:bg-red-700 text-white text-xs" onClick={() => setShowDialog(true)}>
@@ -642,7 +946,7 @@ function FilaNotificacoes() {
                           <Eye className="w-3.5 h-3.5" /> Ver
                         </Button>
                         {ev.category === "Sentinel" && (
-                          <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => toast.info("Abrindo análise de evento sentinela...")}>
+                          <Button size="sm" className="h-7 px-2 text-xs gap-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => { setSelectedEventCode(ev.code); setShowLondres(true); }}>
                             <Activity className="w-3.5 h-3.5" /> Analisar
                           </Button>
                         )}
@@ -663,8 +967,16 @@ function FilaNotificacoes() {
 
 function AnaliseCausaRaiz() {
   const [conclusion, setConclusion] = useState("");
+  const { isAdmin } = useTenant();
 
-  const event = EVENTS[0]; // ES-2026-08
+  const event = isAdmin ? EVENTS[0] : null;
+
+  if (!event) return (
+    <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+      <AlertOctagon className="w-10 h-10 mb-3 opacity-30" />
+      <p className="text-sm">Nenhum evento registrado. Registre um evento para iniciar a análise de causa raiz.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -754,16 +1066,21 @@ const RDC63_CHECKLIST = [
 ];
 
 function DashboardRegulatorio() {
+  const { isAdmin } = useTenant();
   const notivisaRate = 67;
+
+  const displayPieData = isAdmin ? PIE_DATA : [];
+  const displayBarData = isAdmin ? BAR_DATA : [];
+  const displayTrendData = isAdmin ? TREND_DATA : [];
 
   return (
     <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Notivisa — Conformidade" value={`${notivisaRate}%`} sub="meta: 100%" color="border-l-amber-500" />
-        <KpiCard label="Prazo médio de resolução" value="8,4 dias" sub="meta: ≤ 10 dias" color="border-l-blue-500" />
-        <KpiCard label="Taxa de sub-notificação" value="Est. 32%" sub="benchmarking PROQUALIS" color="border-l-orange-500" />
-        <KpiCard label="RDC 63 — Itens atendidos" value={`${RDC63_CHECKLIST.filter(c => c.ok).length}/${RDC63_CHECKLIST.length}`} color="border-l-emerald-500" />
+        <KpiCard label="Notivisa — Conformidade" value={isAdmin ? `${notivisaRate}%` : "—"} sub={isAdmin ? "meta: 100%" : ""} color="border-l-amber-500" />
+        <KpiCard label="Prazo médio de resolução" value={isAdmin ? "8,4 dias" : "—"} sub={isAdmin ? "meta: ≤ 10 dias" : ""} color="border-l-blue-500" />
+        <KpiCard label="Taxa de sub-notificação" value={isAdmin ? "Est. 32%" : "—"} sub={isAdmin ? "benchmarking PROQUALIS" : ""} color="border-l-orange-500" />
+        <KpiCard label="RDC 63 — Itens atendidos" value={isAdmin ? `${RDC63_CHECKLIST.filter(c => c.ok).length}/${RDC63_CHECKLIST.length}` : "—"} color="border-l-emerald-500" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -777,8 +1094,8 @@ function DashboardRegulatorio() {
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {PIE_DATA.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                <Pie data={displayPieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
+                  {displayPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]} />
                 <Legend />
@@ -796,7 +1113,7 @@ function DashboardRegulatorio() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={BAR_DATA} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <BarChart data={displayBarData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="unit" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
@@ -819,7 +1136,7 @@ function DashboardRegulatorio() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={TREND_DATA} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+            <LineChart data={displayTrendData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} domain={[0, 20]} />
@@ -871,6 +1188,9 @@ function DashboardRegulatorio() {
 // ─── TAB 4: CAPA ──────────────────────────────────────────────────────────────
 
 function CAPATab() {
+  const { isAdmin } = useTenant();
+  const displayCapaItems = isAdmin ? CAPA_ITEMS : [];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -882,14 +1202,14 @@ function CAPATab() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <KpiCard label="Em andamento" value={CAPA_ITEMS.filter(c => c.status === "Em andamento").length} color="border-l-blue-500" />
-        <KpiCard label="Atrasadas"    value={CAPA_ITEMS.filter(c => c.status === "Atrasada").length}     color="border-l-red-500" />
-        <KpiCard label="Concluídas"   value={CAPA_ITEMS.filter(c => c.status === "Concluída").length}    color="border-l-emerald-500" />
+        <KpiCard label="Em andamento" value={displayCapaItems.filter(c => c.status === "Em andamento").length} color="border-l-blue-500" />
+        <KpiCard label="Atrasadas"    value={displayCapaItems.filter(c => c.status === "Atrasada").length}     color="border-l-red-500" />
+        <KpiCard label="Concluídas"   value={displayCapaItems.filter(c => c.status === "Concluída").length}    color="border-l-emerald-500" />
       </div>
 
       {/* CAPA Cards */}
       <div className="space-y-4">
-        {CAPA_ITEMS.map(item => (
+        {displayCapaItems.map(item => (
           <Card
             key={item.esCode}
             className={cn(
@@ -983,6 +1303,8 @@ function CAPATab() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Eventos() {
+  const { isAdmin } = useTenant();
+
   return (
     <div className="p-6 space-y-6 max-w-screen-xl mx-auto">
       {/* Page header */}
@@ -1001,18 +1323,18 @@ export default function Eventos() {
             <Shield className="w-3 h-3 text-indigo-500" /> RDC 63/2011
           </Badge>
           <Badge variant="outline" className="text-xs gap-1 text-red-600 border-red-300">
-            <AlertOctagon className="w-3 h-3" /> 1 Sentinela ativo
+            <AlertOctagon className="w-3 h-3" /> {isAdmin ? "1" : "0"} Sentinela ativo
           </Badge>
         </div>
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard label="Total este mês"       value={12}  sub="Mar/2026"         color="border-l-blue-500" />
-        <KpiCard label="Quasi-erros"          value={7}   sub="sem dano"         color="border-l-slate-400" />
-        <KpiCard label="Eventos adversos"     value={4}   sub="com dano"         color="border-l-orange-500" />
-        <KpiCard label="Eventos sentinela"    value={1}   sub="análise urgente"  color="border-l-red-600" blink />
-        <KpiCard label="Notivisa pendentes"   value={3}   sub="envio obrigatório" color="border-l-amber-500" />
+        <KpiCard label="Total este mês"       value={isAdmin ? 12 : 0}  sub="Mar/2026"         color="border-l-blue-500" />
+        <KpiCard label="Quasi-erros"          value={isAdmin ? 7 : 0}   sub="sem dano"         color="border-l-slate-400" />
+        <KpiCard label="Eventos adversos"     value={isAdmin ? 4 : 0}   sub="com dano"         color="border-l-orange-500" />
+        <KpiCard label="Eventos sentinela"    value={isAdmin ? 1 : 0}   sub="análise urgente"  color="border-l-red-600" blink />
+        <KpiCard label="Notivisa pendentes"   value={isAdmin ? 3 : 0}   sub="envio obrigatório" color="border-l-amber-500" />
       </div>
 
       {/* Tabs */}

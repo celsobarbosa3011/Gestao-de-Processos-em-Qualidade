@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useTenant } from "@/hooks/use-tenant";
 import { printReport } from "@/lib/print-pdf";
-import { getCommissions } from "@/lib/api";
+import { getCommissions, createCommission } from "@/lib/api";
 import {
   Users, Calendar, FileText, Plus, ArrowRight, CheckCircle2,
   AlertCircle, Clock, ChevronRight, MoreHorizontal, Building2,
@@ -30,7 +31,7 @@ const commissions = [
     description: "Responsável pela promoção e monitoramento da segurança do paciente.",
   },
   {
-    id: 2, code: "CCIH", name: "Comissão de Controle de Infecção Hospitalar", icon: <Activity className="w-5 h-5" />,
+    id: 2, code: "SCIH", name: "Comissão de Controle de Infecção Hospitalar", icon: <Activity className="w-5 h-5" />,
     color: "emerald", regulation: "Portaria MS 2616/1998", members: 12, frequency: "Mensal",
     lastMeeting: "2026-03-05", nextMeeting: "2026-03-27", status: "active",
     pendingDeliberations: 2, completedDeliberations: 18,
@@ -123,7 +124,7 @@ const commissions = [
 ];
 
 const recentMeetings = [
-  { commissionId: 2, name: "CCIH", date: "05/03/2026", type: "Ordinária", attendees: 10, deliberations: 3, status: "completed" },
+  { commissionId: 2, name: "SCIH", date: "05/03/2026", type: "Ordinária", attendees: 10, deliberations: 3, status: "completed" },
   { commissionId: 3, name: "SCIH", date: "10/03/2026", type: "Ordinária", attendees: 6, deliberations: 2, status: "completed" },
   { commissionId: 1, name: "NSP", date: "28/02/2026", type: "Ordinária", attendees: 7, deliberations: 4, status: "completed" },
   { commissionId: 5, name: "COBIO", date: "01/03/2026", type: "Ordinária", attendees: 8, deliberations: 0, status: "completed" },
@@ -132,7 +133,7 @@ const recentMeetings = [
 
 const upcomingMeetings = [
   { commissionId: 1, name: "NSP", date: "25/03/2026", type: "Ordinária", location: "Sala 3 — 14h00" },
-  { commissionId: 2, name: "CCIH", date: "27/03/2026", type: "Extraordinária", location: "Auditório — 10h00" },
+  { commissionId: 2, name: "SCIH", date: "27/03/2026", type: "Extraordinária", location: "Auditório — 10h00" },
   { commissionId: 4, name: "CPRON", date: "28/03/2026", type: "Ordinária", location: "Sala 1 — 16h00" },
   { commissionId: 5, name: "COBIO", date: "01/04/2026", type: "Ordinária", location: "Sala 2 — 14h30" },
   { commissionId: 6, name: "CEM", date: "10/04/2026", type: "Ordinária", location: "Sala 4 — 17h00" },
@@ -141,8 +142,8 @@ const upcomingMeetings = [
 const deliberations = [
   { id: 1, commission: "NSP", date: "28/02/2026", description: "Implantar protocolo de identificação dupla em todas as unidades", responsible: "Enf. Carla Santos", deadline: "2026-03-30", status: "pending", priority: "high", actionPlanId: 1 },
   { id: 2, commission: "NSP", date: "28/02/2026", description: "Notificação de evento sentinela ES-2026-08 no Notivisa", responsible: "Qual. Maria", deadline: "2026-03-20", status: "overdue", priority: "critical", actionPlanId: 9 },
-  { id: 3, commission: "CCIH", date: "05/03/2026", description: "Bundle de higiene das mãos na UTI — aumento para meta de 95%", responsible: "CCIH", deadline: "2026-04-30", status: "in_progress", priority: "high" },
-  { id: 4, commission: "CCIH", date: "05/03/2026", description: "Treinamento de precauções de contato para equipe do isolamento", responsible: "SCIH", deadline: "2026-04-15", status: "pending", priority: "medium" },
+  { id: 3, commission: "SCIH", date: "05/03/2026", description: "Bundle de higiene das mãos na UTI — aumento para meta de 95%", responsible: "SCIH", deadline: "2026-04-30", status: "in_progress", priority: "high" },
+  { id: 4, commission: "SCIH", date: "05/03/2026", description: "Treinamento de precauções de contato para equipe do isolamento", responsible: "SCIH", deadline: "2026-04-15", status: "pending", priority: "medium" },
   { id: 5, commission: "CPRON", date: "20/02/2026", description: "Padronizar folha de admissão com campos obrigatórios completos", responsible: "Coord. Enfermagem", deadline: "2026-04-01", status: "in_progress", priority: "medium" },
   { id: 6, commission: "CFT", date: "15/02/2026", description: "Revisão da lista de medicamentos padronizados — inclusão de novos antibióticos", responsible: "Farm. Pedro", deadline: "2026-05-01", status: "pending", priority: "medium" },
 ];
@@ -173,8 +174,12 @@ const deliberationStatusLabel = (status: string) => {
 
 export default function Comissoes() {
   const [, navigate] = useLocation();
+  const { isAdmin } = useTenant();
   const [selectedCommission, setSelectedCommission] = useState<typeof commissions[0] | null>(null);
   const [activeTab, setActiveTab] = useState("lista");
+  const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoForm, setNovoForm] = useState({ name: "", type: "NSP", description: "", meetingFrequency: "Mensal" });
+  const qc = useQueryClient();
 
   const { data: dbCommissions } = useQuery({
     queryKey: ["commissions"],
@@ -182,7 +187,24 @@ export default function Comissoes() {
     staleTime: 60_000,
   });
 
-  // Map DB commissions to display format when available, fallback to mock
+  const createMutation = useMutation({
+    mutationFn: createCommission,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["commissions"] });
+      setNovoForm({ name: "", type: "NSP", description: "", meetingFrequency: "Mensal" });
+      setShowNovoForm(false);
+      toast.success("Comissão criada com sucesso!");
+    },
+    onError: () => toast.error("Erro ao criar comissão."),
+  });
+
+  function handleNovoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!novoForm.name.trim()) { toast.error("Informe o nome da comissão."); return; }
+    createMutation.mutate({ name: novoForm.name, type: novoForm.type, description: novoForm.description, meetingFrequency: novoForm.meetingFrequency, active: true } as any);
+  }
+
+  // Map DB commissions to display format when available, fallback to mock (admin only — LGPD)
   const displayCommissions = (dbCommissions && dbCommissions.length > 0)
     ? dbCommissions.map(c => ({
         id: c.id,
@@ -200,7 +222,11 @@ export default function Comissoes() {
         completedDeliberations: 0,
         description: c.description || "",
       }))
-    : commissions;
+    : (isAdmin ? commissions : []);
+
+  const displayUpcomingMeetings = isAdmin ? upcomingMeetings : [];
+  const displayDeliberations = isAdmin ? deliberations : [];
+  const displayRecentMeetings = isAdmin ? recentMeetings : [];
 
   const totalPending = displayCommissions.reduce((a, c) => a + c.pendingDeliberations, 0);
   const totalCompleted = displayCommissions.reduce((a, c) => a + c.completedDeliberations, 0);
@@ -226,18 +252,63 @@ export default function Comissoes() {
             <Calendar className="w-3.5 h-3.5" />
             Agenda Anual
           </Button>
-          <Button size="sm" className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => toast.info("Criação de nova comissão será habilitada em breve")}>
+          <Button size="sm" className="h-8 gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => setShowNovoForm(v => !v)}>
             <Plus className="w-3.5 h-3.5" />
             Nova Comissão
           </Button>
         </div>
       </div>
 
+      {/* Nova Comissão Form */}
+      {showNovoForm && (
+        <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-5">
+          <p className="text-sm font-semibold text-emerald-800 mb-3 flex items-center gap-2"><Users className="w-4 h-4" /> Cadastrar Nova Comissão</p>
+          <form onSubmit={handleNovoSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-medium text-slate-600">Nome da Comissão *</label>
+              <input value={novoForm.name} onChange={e => setNovoForm(f => ({ ...f, name: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Ex.: Comissão de Controle de Infecção Hospitalar (CCIH)" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Tipo</label>
+              <select value={novoForm.type} onChange={e => setNovoForm(f => ({ ...f, type: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                <option value="NSP">NSP — Núcleo de Segurança do Paciente</option>
+                <option value="CCIH">CCIH — Controle de Infecção Hospitalar</option>
+                <option value="CFT">CFT — Farmácia e Terapêutica</option>
+                <option value="CEP">CEP — Ética em Pesquisa</option>
+                <option value="CME">CME — Central de Material e Esterilização</option>
+                <option value="CIH">CIH — Humanização</option>
+                <option value="CIPA">CIPA — Prevenção de Acidentes</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Frequência de Reuniões</label>
+              <select value={novoForm.meetingFrequency} onChange={e => setNovoForm(f => ({ ...f, meetingFrequency: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                <option value="Semanal">Semanal</option>
+                <option value="Quinzenal">Quinzenal</option>
+                <option value="Mensal">Mensal</option>
+                <option value="Bimestral">Bimestral</option>
+                <option value="Trimestral">Trimestral</option>
+                <option value="Semestral">Semestral</option>
+              </select>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-medium text-slate-600">Descrição / Objetivo</label>
+              <input value={novoForm.description} onChange={e => setNovoForm(f => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300" placeholder="Ex.: Responsável por monitorar e controlar infecções hospitalares..." />
+            </div>
+            <div className="flex gap-2 sm:col-span-2 justify-end pt-1">
+              <button type="button" onClick={() => setShowNovoForm(false)} className="px-4 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+              <button type="submit" disabled={createMutation.isPending} className="px-4 py-2 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg disabled:opacity-50">{createMutation.isPending ? "Salvando..." : "Criar Comissão"}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Comissões Ativas", value: displayCommissions.length, color: "text-emerald-600", bg: "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800" },
-          { label: "Pendentes de Reunião", value: upcomingMeetings.length, color: "text-sky-600", bg: "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-800" },
+          { label: "Pendentes de Reunião", value: displayUpcomingMeetings.length, color: "text-sky-600", bg: "bg-sky-50 border-sky-200 dark:bg-sky-950/30 dark:border-sky-800" },
           { label: "Deliberações Abertas", value: totalPending, color: "text-amber-600", bg: "bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800" },
           { label: "Deliberações Resolvidas", value: totalCompleted, color: "text-slate-700", bg: "bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700" },
         ].map(k => (
@@ -310,7 +381,7 @@ export default function Comissoes() {
                     <div className="flex items-center justify-between pt-1">
                       <div className="text-[11px] text-slate-500">
                         Próxima: <span className="font-semibold text-slate-700 dark:text-slate-300">
-                          {upcomingMeetings.find(m => m.commissionId === c.id)?.date || "—"}
+                          {displayUpcomingMeetings.find(m => m.commissionId === c.id)?.date || "—"}
                         </span>
                       </div>
                       {c.pendingDeliberations > 0 && (
@@ -349,7 +420,7 @@ export default function Comissoes() {
               </CardHeader>
               <CardContent className="px-5 pb-5">
                 <div className="space-y-3">
-                  {upcomingMeetings.map((m, i) => {
+                  {displayUpcomingMeetings.map((m, i) => {
                     const commission = commissions.find(c => c.commissionId === m.commissionId || c.id === m.commissionId);
                     const colors = commission ? colorMap[commission.color] : colorMap.slate;
                     return (
@@ -385,7 +456,7 @@ export default function Comissoes() {
               </CardHeader>
               <CardContent className="px-5 pb-5">
                 <div className="space-y-3">
-                  {recentMeetings.map((m, i) => (
+                  {displayRecentMeetings.map((m, i) => (
                     <div key={i} className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
                       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0", colorMap[commissions.find(c => c.id === m.commissionId)?.color || "slate"].icon)}>
                         {m.name}
@@ -422,7 +493,7 @@ export default function Comissoes() {
                   <ClipboardList className="w-4 h-4 text-amber-500" />
                   Deliberações em Aberto
                 </CardTitle>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => printReport({ title: "Deliberações da Comissão", subtitle: "Atas e deliberações registradas — QHealth One 2026", module: "Comissões", columns: [{ label: "Data", key: "data" }, { label: "Comissão", key: "comissao" }, { label: "Deliberação", key: "delib" }, { label: "Responsável", key: "resp" }, { label: "Status", key: "status" }], rows: [{ data: "15/03/2026", comissao: "NSP", delib: "Implantação de checklist cirúrgico OMS em todos os CCs", resp: "Dir. Médico", status: "Em andamento" }, { data: "10/03/2026", comissao: "CCIH", delib: "Reforço do protocolo de higienização de mãos — Meta 85%", resp: "Coord. CCIH", status: "Concluído" }, { data: "05/03/2026", comissao: "CFT", delib: "Padronização de 12 novos medicamentos no formulário", resp: "Farm. Chefe", status: "Em andamento" }, { data: "01/03/2026", comissao: "CIPA", delib: "Instalação de sinalização de segurança em todas as alas", resp: "RH / SESMT", status: "Concluído" }] })}>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => printReport({ title: "Deliberações da Comissão", subtitle: "Atas e deliberações registradas — QHealth One 2026", module: "Comissões", columns: [{ label: "Data", key: "data" }, { label: "Comissão", key: "comissao" }, { label: "Deliberação", key: "delib" }, { label: "Responsável", key: "resp" }, { label: "Status", key: "status" }], rows: [{ data: "15/03/2026", comissao: "NSP", delib: "Implantação de checklist cirúrgico OMS em todos os CCs", resp: "Dir. Médico", status: "Em andamento" }, { data: "10/03/2026", comissao: "SCIH", delib: "Reforço do protocolo de higienização de mãos — Meta 85%", resp: "Coord. SCIH", status: "Concluído" }, { data: "05/03/2026", comissao: "CFT", delib: "Padronização de 12 novos medicamentos no formulário", resp: "Farm. Chefe", status: "Em andamento" }, { data: "01/03/2026", comissao: "CIPA", delib: "Instalação de sinalização de segurança em todas as alas", resp: "RH / SESMT", status: "Concluído" }] })}>
                   <Download className="w-3 h-3" />
                   Exportar
                 </Button>
@@ -430,7 +501,7 @@ export default function Comissoes() {
             </CardHeader>
             <CardContent className="px-5 pb-5">
               <div className="space-y-3">
-                {deliberations.map((d) => (
+                {displayDeliberations.map((d) => (
                   <div key={d.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -482,7 +553,7 @@ export default function Comissoes() {
               <span className="px-4 text-center">Ata</span>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {recentMeetings.map((m, i) => (
+              {displayRecentMeetings.map((m, i) => (
                 <div key={i} className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-0 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <div className="px-2">
                     <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", colorMap[commissions.find(c => c.id === m.commissionId)?.color || "slate"].badge)}>

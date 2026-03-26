@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { useTenant } from "@/hooks/use-tenant";
 import { printReport } from "@/lib/print-pdf";
 import { getGutItems, createGutItem } from "@/lib/api";
 import {
@@ -29,7 +30,7 @@ const gutItems = [
   { id: 5, title: "Ausência de treinamento em suporte avançado de vida na UTI", origin: "Diagnóstico", originCode: "Ciclo Mar/26", unit: "UTI", chapter: "Cap. 2 — Pessoas", gravity: 4, urgency: 4, tendency: 3, status: "open", responsible: "RH", aiJustification: "Equipe de plantão sem certificação BLS/ACLS vigente." },
   { id: 6, title: "Checklist de cirurgia segura não aplicado em 30% dos procedimentos", origin: "Auditoria", originCode: "AUD-CC-01", unit: "CC", chapter: "Cap. 5 — Segurança", gravity: 5, urgency: 3, tendency: 3, status: "open", responsible: "Coord. CC", aiJustification: "OMS exige 100% de aplicação. Risco de evento sentinela." },
   { id: 7, title: "Sistema de backup de dados sem teste há 6 meses", origin: "Risco", originCode: "RSK-012", unit: "TI", chapter: "Cap. 6 — Infraestrutura", gravity: 4, urgency: 4, tendency: 2, status: "open", responsible: "TI", aiJustification: "Risco de perda de dados críticos de pacientes." },
-  { id: 8, title: "Taxa de higiene das mãos abaixo de 80% na UTI", origin: "Indicador", originCode: "IND-SEG-001", unit: "UTI", chapter: "Cap. 5 — Segurança", gravity: 4, urgency: 4, tendency: 3, status: "in_progress", responsible: "CCIH", aiJustification: "Correlação com aumento de IRAS. Bundles CCIH em implantação." },
+  { id: 8, title: "Taxa de higiene das mãos abaixo de 80% na UTI", origin: "Indicador", originCode: "IND-SEG-001", unit: "UTI", chapter: "Cap. 5 — Segurança", gravity: 4, urgency: 4, tendency: 3, status: "in_progress", responsible: "SCIH", aiJustification: "Correlação com aumento de IRAS. Bundles SCIH em implantação." },
   { id: 9, title: "Regimento do NSP sem revisão há 3 anos", origin: "Comissão", originCode: "NSP-Mar/26", unit: "NSP", chapter: "Cap. 1 — Liderança", gravity: 3, urgency: 4, tendency: 2, status: "open", responsible: "NSP", aiJustification: "RDC 36/2013 exige revisão anual do regimento." },
   { id: 10, title: "Ausência de mapa de risco na Farmácia", origin: "ONA", originCode: "Req. 6.2.1", unit: "Farm", chapter: "Cap. 6 — Infraestrutura", gravity: 3, urgency: 3, tendency: 3, status: "resolved", responsible: "Farm. Pedro", aiJustification: "Requisito do Nível 1 já em resolução." },
 ];
@@ -60,13 +61,9 @@ const RatingDots = ({ value, max = 5, color }: { value: number; max?: number; co
   </div>
 );
 
-const chartData = gutItems
-  .map(i => ({ ...i, score: gutScore(i.gravity, i.urgency, i.tendency) }))
-  .sort((a, b) => b.score - a.score)
-  .slice(0, 8)
-  .map(i => ({ name: i.title.slice(0, 25) + "...", score: i.score, unit: i.unit }));
 
 export default function MatrizGUT() {
+  const { isAdmin, validatedData } = useTenant();
   const [, navigate] = useLocation();
   const [selectedItem, setSelectedItem] = useState<typeof gutItems[0] | null>(null);
   const [sortBy, setSortBy] = useState<"score" | "gravity" | "urgency" | "tendency">("score");
@@ -113,15 +110,39 @@ export default function MatrizGUT() {
     } as any);
   }
 
-  // Use real data from DB when available, else fallback to mock
-  const baseItems = (dbGutItems && dbGutItems.length > 0)
-    ? dbGutItems.map(i => ({
-        ...i,
+  // LGPD: clientes validados usam dados da avaliação ONA
+  const validatedGutItems = validatedData?.gutItems?.map((i: any) => ({
+    id: i.id,
+    title: i.title,
+    origin: i.origin || "Avaliação ONA",
+    originCode: i.originCode || "ONA",
+    unit: i.unit || i.category || "—",
+    chapter: i.chapter || "Cap. 1",
+    gravity: i.gravity,
+    urgency: i.urgency,
+    tendency: i.tendency,
+    status: i.status === "Pendente" ? "open" : i.status === "Em andamento" ? "in_progress" : "resolved",
+    responsible: i.responsible || "—",
+    aiJustification: i.aiJustification || "Item derivado da avaliação ONA 2026.",
+  })) ?? [];
+
+  // Use real data from DB when available, else fallback to mock or validated
+  const baseItems: typeof gutItems = (dbGutItems && dbGutItems.length > 0)
+    ? (dbGutItems.map(i => ({
+        ...(i as any),
         originCode: (i as any).originCode || "DB",
         chapter: (i as any).chapter || "Cap. 1",
+        unit: (i as any).unit || "—",
+        responsible: (i as any).responsible || "—",
         aiJustification: (i as any).aiJustification || "Item do banco de dados.",
-      }))
-    : gutItems;
+      })) as typeof gutItems)
+    : (isAdmin ? gutItems : (validatedGutItems as typeof gutItems));
+
+  const displayChartData = baseItems
+    .map(i => ({ ...i, score: gutScore(i.gravity, i.urgency, i.tendency) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8)
+    .map(i => ({ name: i.title.slice(0, 25) + "...", score: gutScore(i.gravity, i.urgency, i.tendency), unit: i.unit }));
 
   const sortedItems = baseItems
     .filter(i => filterOrigin === "all" || i.origin === filterOrigin)
@@ -154,9 +175,40 @@ export default function MatrizGUT() {
           <p className="text-slate-500 text-sm">Priorização estratégica por Gravidade × Urgência × Tendência</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => printReport({ title: "Matriz de Priorização GUT", subtitle: "Gravidade × Urgência × Tendência — QHealth One 2026", module: "Matriz GUT", columns: [{ label: "Problema / Risco", key: "prob" }, { label: "G", key: "g", align: "center" }, { label: "U", key: "u", align: "center" }, { label: "T", key: "t", align: "center" }, { label: "GUT", key: "gut", align: "center" }, { label: "Prioridade", key: "prio" }], rows: [{ prob: "Falha na identificação do paciente", g: "5", u: "5", t: "4", gut: "100", prio: "🔴 Crítica" }, { prob: "Medicamento alta vigilância sem dupla checagem", g: "5", u: "4", t: "4", gut: "80", prio: "🔴 Crítica" }, { prob: "Taxa IACS UTI acima da meta", g: "4", u: "4", t: "4", gut: "64", prio: "🟠 Alta" }, { prob: "Falta de leitos UTI", g: "4", u: "3", t: "3", gut: "36", prio: "🟡 Média" }, { prob: "Treinamentos ONA pendentes", g: "3", u: "4", t: "3", gut: "36", prio: "🟡 Média" }, { prob: "Manutenção preventiva atrasada", g: "3", u: "3", t: "3", gut: "27", prio: "🟢 Baixa" }] })}>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => {
+            const score = (g: number, u: number, t: number) => g * u * t;
+            printReport({
+              title: "Matriz de Priorização GUT",
+              subtitle: "Gravidade × Urgência × Tendência — QHealth One 2026",
+              module: "Matriz GUT",
+              kpis: [
+                { label: "Itens Críticos (≥75)", value: criticalCount, color: "#dc2626" },
+                { label: "Alta Prioridade (≥40)", value: highCount, color: "#f59e0b" },
+                { label: "Total de Itens", value: sortedItems.length, color: "#0ea5e9" },
+              ],
+              columns: [
+                { label: "Problema / Oportunidade", key: "prob" },
+                { label: "Unidade", key: "unit" },
+                { label: "G", key: "g", align: "center" as const },
+                { label: "U", key: "u", align: "center" as const },
+                { label: "T", key: "t", align: "center" as const },
+                { label: "Score GUT", key: "gut", align: "center" as const },
+                { label: "Status", key: "status" },
+              ],
+              rows: sortedItems.map(i => ({
+                prob: i.title,
+                unit: i.unit || "—",
+                g: String(i.gravity),
+                u: String(i.urgency),
+                t: String(i.tendency),
+                gut: String(score(i.gravity, i.urgency, i.tendency)),
+                status: i.status === "open" ? "Pendente" : i.status === "in_progress" ? "Em andamento" : "Resolvido",
+              })),
+              customContent: `<p>Relatório gerado em ${new Date().toLocaleDateString("pt-BR")}.</p>`,
+            });
+          }}>
             <Download className="w-3.5 h-3.5" />
-            Exportar
+            Exportar PDF
           </Button>
           <Button size="sm" className="h-8 gap-1.5 text-xs bg-amber-500 hover:bg-amber-600 text-white border-0" onClick={() => setShowNovoForm(true)}>
             <Plus className="w-3.5 h-3.5" />
@@ -457,17 +509,19 @@ export default function MatrizGUT() {
             </CardHeader>
             <CardContent className="px-2 pb-4">
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
+                <BarChart data={displayChartData} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" strokeOpacity={0.4} />
                   <XAxis type="number" domain={[0, 125]} tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" tick={false} axisLine={false} tickLine={false} width={0} />
                   <Tooltip
-                    contentStyle={{ background: "#1e293b", border: "none", borderRadius: 8, fontSize: 11 }}
+                    contentStyle={{ background: "#1e293b", border: "none", borderRadius: 8, fontSize: 11, color: "#e2e8f0" }}
+                    labelStyle={{ color: "#94a3b8" }}
+                    itemStyle={{ color: "#e2e8f0" }}
                     formatter={(v: any) => [`GUT: ${v}`, ""]}
                     labelFormatter={(_, p) => p[0]?.payload?.name || ""}
                   />
                   <Bar dataKey="score" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                    {chartData.map((entry, i) => (
+                    {displayChartData.map((entry, i) => (
                       <Cell key={i} fill={entry.score >= 75 ? "#ef4444" : entry.score >= 40 ? "#f97316" : "#f59e0b"} />
                     ))}
                   </Bar>

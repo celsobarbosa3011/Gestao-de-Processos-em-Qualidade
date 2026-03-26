@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useTenant } from "@/hooks/use-tenant";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getQHealthDocuments, createQHealthDocument } from "@/lib/api";
 import { printReport } from "@/lib/print-pdf";
 import {
   BookOpen, Plus, Search, Filter, Download, ChevronRight,
@@ -78,10 +81,10 @@ const documents: PolicyDoc[] = [
     description: "Define os princípios e regras para coleta, tratamento, armazenamento e compartilhamento de dados pessoais de pacientes e colaboradores.",
   },
   {
-    id: 6, code: "REG-002", title: "Regimento Interno da CCIH",
+    id: 6, code: "REG-002", title: "Regimento Interno da SCIH",
     type: "Regimento", status: "Vigente", version: "3.0",
     approvedDate: "2025-04-10", nextReview: "2026-04-10",
-    responsible: "CCIH", scope: "Comissão de Controle de Infecção",
+    responsible: "SCIH", scope: "Comissão de Controle de Infecção",
     isONA: true, category: "Comissão",
     description: "Estrutura, composição e responsabilidades da Comissão de Controle de Infecção Hospitalar conforme Portaria MS 2616/1998.",
   },
@@ -144,13 +147,61 @@ function typeMeta(t: DocType) {
 
 export default function Politicas() {
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+  const { isAdmin } = useTenant();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
   const [selected, setSelected] = useState<PolicyDoc | null>(null);
   const [showNovoForm, setShowNovoForm] = useState(false);
+  const [novoTitulo, setNovoTitulo] = useState("");
+  const [novoTipo, setNovoTipo] = useState("Política");
+  const [novoResponsavel, setNovoResponsavel] = useState("");
 
-  const filtered = documents.filter((d) => {
+  // ── DB integration ───────────────────────────────────────────────────────
+  const { data: dbDocs } = useQuery({
+    queryKey: ["qhealth-documents", "policy"],
+    queryFn: () => getQHealthDocuments({ type: "policy" }),
+    staleTime: 120_000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createQHealthDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["qhealth-documents"] });
+      toast.success("Documento criado com sucesso!");
+      setShowNovoForm(false);
+      setNovoTitulo(""); setNovoTipo("Política"); setNovoResponsavel("");
+    },
+    onError: () => toast.error("Erro ao criar documento"),
+  });
+
+  const TYPE_MAP: Record<string, DocType> = {
+    policy: "Política", regulation: "Regimento", manual: "Manual", pop: "POP", norm: "Norma",
+  };
+  const STATUS_MAP: Record<string, DocStatus> = {
+    approved: "Vigente", review: "Em revisão", draft: "Rascunho", expired: "Vencida",
+  };
+
+  const baseDocuments: PolicyDoc[] = (dbDocs && dbDocs.length > 0)
+    ? dbDocs.map((d) => ({
+        id: d.id,
+        code: d.code ?? d.id.toString(),
+        title: d.title,
+        type: TYPE_MAP[d.type as string] ?? "Política",
+        status: STATUS_MAP[d.status as string] ?? "Rascunho",
+        version: "1.0",
+        approvedDate: d.reviewDate ?? d.createdAt ?? "",
+        nextReview: "",
+        responsible: "",
+        scope: "",
+        isONA: false,
+        description: d.description ?? "",
+        category: TYPE_MAP[d.type as string] ?? "Política",
+      }))
+    : (isAdmin ? documents : []);
+
+  const filtered = baseDocuments.filter((d) => {
     const matchSearch =
       d.title.toLowerCase().includes(search.toLowerCase()) ||
       d.code.toLowerCase().includes(search.toLowerCase());
@@ -159,10 +210,10 @@ export default function Politicas() {
     return matchSearch && matchStatus && matchType;
   });
 
-  const vigente = documents.filter((d) => d.status === "Vigente").length;
-  const emRevisao = documents.filter((d) => d.status === "Em revisão").length;
-  const vencida = documents.filter((d) => d.status === "Vencida").length;
-  const onaCount = documents.filter((d) => d.isONA).length;
+  const vigente = baseDocuments.filter((d) => d.status === "Vigente").length;
+  const emRevisao = baseDocuments.filter((d) => d.status === "Em revisão").length;
+  const vencida = baseDocuments.filter((d) => d.status === "Vencida").length;
+  const onaCount = baseDocuments.filter((d) => d.isONA).length;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -210,11 +261,11 @@ export default function Politicas() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Título</label>
-                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Título do documento" />
+                  <input value={novoTitulo} onChange={e => setNovoTitulo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Título do documento" />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Tipo</label>
-                  <select className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                  <select value={novoTipo} onChange={e => setNovoTipo(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
                     <option>Política</option>
                     <option>Regimento</option>
                     <option>Manual</option>
@@ -224,15 +275,24 @@ export default function Politicas() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-slate-600 block mb-1">Responsável</label>
-                  <input className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nome do responsável" />
+                  <input value={novoResponsavel} onChange={e => setNovoResponsavel(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nome do responsável" />
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button size="sm" variant="outline" className="border-slate-200 text-slate-600 text-xs" onClick={() => setShowNovoForm(false)}>
                   Cancelar
                 </Button>
-                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs" onClick={() => { toast.success("Criado com sucesso!"); setShowNovoForm(false); }}>
-                  Salvar
+                <Button
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                  disabled={createMutation.isPending}
+                  onClick={() => {
+                    if (!novoTitulo.trim()) return toast.error("Informe o título");
+                    const TYPE_TO_DB: Record<string, string> = { "Política": "policy", "Regimento": "regulation", "Manual": "manual", "POP": "pop", "Norma": "norm" };
+                    createMutation.mutate({ title: novoTitulo.trim(), type: TYPE_TO_DB[novoTipo] ?? "policy", status: "draft", unitId: 1 } as any);
+                  }}
+                >
+                  {createMutation.isPending ? "Salvando…" : "Salvar"}
                 </Button>
               </div>
             </CardContent>
