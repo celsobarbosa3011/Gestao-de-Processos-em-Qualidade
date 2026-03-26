@@ -1052,6 +1052,22 @@ export class DatabaseStorage implements IStorage {
         console.log('[init] Default admin created: admin@mediflow.com / admin123');
       }
 
+      // Ensure demo user Sarah exists (even if admin already existed)
+      const sarahExists = await this.getProfileByEmail('sarah@mediflow.com');
+      if (!sarahExists) {
+        const { hashPassword } = await import('./password');
+        const hashedSarah = await hashPassword('sarah123');
+        await this.createProfile({
+          name: 'Sarah Silva',
+          email: 'sarah@mediflow.com',
+          password: hashedSarah,
+          role: 'user',
+          unit: 'Hospital Santa Lucia',
+          status: 'active',
+        });
+        console.log('[init] Demo user created: sarah@mediflow.com / sarah123');
+      }
+
       // Check if default priorities exist
       const existingPriorities = await this.getAllPriorities();
       if (existingPriorities.length === 0) {
