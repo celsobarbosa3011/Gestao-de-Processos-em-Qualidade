@@ -1492,6 +1492,7 @@ export default function Indicadores() {
               <p className="text-sm">Dashboard BSC disponível após cadastro de indicadores.</p>
             </div>
           ) : (
+          <>
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Dashboard BSC — Balanced Scorecard</h2>
@@ -1636,6 +1637,7 @@ export default function Indicadores() {
               </div>
             </CardContent>
           </Card>
+          </>
           )}
         </TabsContent>
 
@@ -1647,6 +1649,7 @@ export default function Indicadores() {
               <p className="text-sm">Benchmark entre unidades disponível após cadastro de indicadores.</p>
             </div>
           ) : (
+          <>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h2 className="text-lg font-semibold">Benchmark entre Unidades</h2>
@@ -1809,6 +1812,7 @@ export default function Indicadores() {
               );
             })}
           </div>
+          </>
           )}
         </TabsContent>
       </Tabs>

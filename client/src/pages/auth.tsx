@@ -123,6 +123,7 @@ export default function AuthPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen grid lg:grid-cols-2">
       <div 
         className="hidden lg:flex flex-col justify-between p-12 text-white relative overflow-hidden"
@@ -439,5 +440,6 @@ export default function AuthPage() {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

@@ -583,6 +583,7 @@ export default function Treinamentos() {
                 <p className="text-sm">Dados por unidade disponíveis após cadastro de treinamentos.</p>
               </div>
             ) : (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {[
                 { label: "Unidades ≥ 85%", value: unitCompletion.filter((u) => u.pct >= 85).length, color: "text-emerald-700", bg: "bg-emerald-50", icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" /> },
@@ -626,6 +627,7 @@ export default function Treinamentos() {
                 );
               })}
             </div>
+            </>
             )}
           </TabsContent>
 
