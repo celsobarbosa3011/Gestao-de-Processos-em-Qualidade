@@ -106,6 +106,12 @@ const SetorForm = lazy(() => import("@/pages/setor-form"));
 
 // Auditoria Inteligente ONA 2026
 const AuditoriaInteligente = lazy(() => import("@/pages/auditoria-inteligente"));
+const CulturaSeguranca = lazy(() => import("@/pages/cultura-seguranca"));
+
+// Módulos novos — completude para produção
+const Ouvidoria = lazy(() => import("@/pages/ouvidoria"));
+const EngenhariaClinica = lazy(() => import("@/pages/engenharia-clinica"));
+const Fornecedores = lazy(() => import("@/pages/fornecedores"));
 
 // Admin pages — gerenciamento avançado
 const AdminUsersPage = lazy(() => import("@/pages/admin/users"));
@@ -265,6 +271,14 @@ function Router() {
 
           {/* Módulo 21 — IA ONA Copilot */}
           <Route path="/ia-copilot" component={IACopilot} />
+
+          {/* Módulo — Cultura de Segurança */}
+          <Route path="/cultura-seguranca" component={CulturaSeguranca} />
+
+          {/* Módulos novos — completude para produção */}
+          <Route path="/ouvidoria" component={Ouvidoria} />
+          <Route path="/engenharia-clinica" component={EngenhariaClinica} />
+          <Route path="/fornecedores" component={Fornecedores} />
 
           {/* Módulo 22 — Administração */}
           <Route path="/administracao" component={Administracao} />

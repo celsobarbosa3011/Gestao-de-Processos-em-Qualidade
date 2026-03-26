@@ -15,12 +15,12 @@ authRouter.post("/login", async (req, res) => {
         const email = (req.body.email || '').trim().toLowerCase();
         const password = (req.body.password || '').toString().trim();
 
-        console.log(`[auth] Login attempt for email: "${email}"`);
+        console.log(`[auth] Login attempt`);
 
         const profile = await storage.getProfileByEmail(email);
 
         if (!profile) {
-            console.log(`[auth] No profile found for email: "${email}"`);
+            console.log(`[auth] Login failed — email not found`);
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
@@ -68,12 +68,32 @@ authRouter.post("/login", async (req, res) => {
 
         const mustChange = profile.mustChangePassword || usedProvisionalPassword;
 
+        // Lookup unitId from units table (profile.unit pode ser ID numérico ou nome)
+        const parsedUnitId = profile.unit ? parseInt(profile.unit, 10) : NaN;
+        let resolvedUnitId: number | null = null;
+        if (!isNaN(parsedUnitId)) {
+            resolvedUnitId = parsedUnitId; // já é um ID numérico
+        } else if (profile.unit) {
+            // Tenta buscar pelo nome/CNPJ
+            try {
+                const allUnits = await storage.getAllUnits();
+                const match = allUnits.find((u: any) =>
+                    u.cnpj === profile.unit ||
+                    u.nomeFantasia?.toLowerCase() === profile.unit?.toLowerCase() ||
+                    u.razaoSocial?.toLowerCase() === profile.unit?.toLowerCase()
+                );
+                resolvedUnitId = match ? match.id : null;
+            } catch { resolvedUnitId = null; }
+        }
+
         // Generate JWT token
         const token = generateToken({
             userId: profile.id,
             email: profile.email,
             role: profile.role,
             mustChangePassword: mustChange,
+            unitId: profile.role === "admin" ? null : resolvedUnitId,
+            unitLabel: profile.unit ?? undefined,
         });
 
         // Don't send password back

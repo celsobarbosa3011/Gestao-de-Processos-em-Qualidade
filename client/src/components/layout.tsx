@@ -14,7 +14,7 @@ import {
   Calendar, Filter, User, Layers, Store, CreditCard,
   Palette, KeyRound, Workflow, SlidersHorizontal, ListTodo,
   LayoutTemplate, Tag, ScrollText as ScrollTextIcon, ClipboardCheck, Grid2X2, Cable,
-  Lock, ChevronUp
+  Lock, ChevronUp, Wrench, Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -64,12 +64,16 @@ const navGroups: NavGroup[] = [
       { label: "Riscos", path: "/riscos", icon: <AlertTriangle className="w-4 h-4" /> },
       { label: "Indicadores", path: "/indicadores", icon: <BarChart3 className="w-4 h-4" /> },
       { label: "Gestão Operacional", path: "/gestao-operacional", icon: <CheckSquare className="w-4 h-4" /> },
+      { label: "Engenharia Clínica", path: "/engenharia-clinica", icon: <Wrench className="w-4 h-4" /> },
+      { label: "Fornecedores", path: "/fornecedores", icon: <Package className="w-4 h-4" /> },
     ],
   },
   {
     label: "Clínico",
     items: [
       { label: "Governança Clínica", path: "/governanca-clinica", icon: <Stethoscope className="w-4 h-4" /> },
+      { label: "Cultura de Segurança", path: "/cultura-seguranca", icon: <ShieldCheck className="w-4 h-4" /> },
+      { label: "Ouvidoria & Satisfação", path: "/ouvidoria", icon: <MessageSquare className="w-4 h-4" /> },
       { label: "Comissões", path: "/comissoes", icon: <Users className="w-4 h-4" /> },
       { label: "Jornada do Paciente", path: "/jornada-paciente", icon: <Map className="w-4 h-4" /> },
       { label: "Protocolos Gerenciados", path: "/protocolos", icon: <Pill className="w-4 h-4" /> },

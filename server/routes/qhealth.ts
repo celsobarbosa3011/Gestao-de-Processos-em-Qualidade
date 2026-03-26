@@ -5,6 +5,7 @@
  */
 
 import { Router } from "express";
+import type { Request } from "express";
 import { db } from "../storage";
 import {
   diagnosticCycles, diagnosticItems, gutItems,
@@ -14,11 +15,26 @@ import {
   documents, documentReadings,
   commissions, commissionMeetings, commissionDeliberations,
   actionPlans, actionPlanTasks,
-  safetyEvents, managedProtocols, trainings, normativeReferences
+  safetyEvents, managedProtocols, trainings, normativeReferences,
+  swotAnalyses, swotItems, bscPerspectives, bscObjectives, patientJourneySteps
 } from "../../shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
+import { verifyToken } from "../auth";
 
 const router = Router();
+
+// ────────────────────────────────────────────────────────────────────────────
+// LGPD / Multi-tenant helper
+// Retorna o unitId do usuário logado quando ele não é admin.
+// Quando admin (ou sem token), retorna null → sem filtro → vê tudo.
+// ────────────────────────────────────────────────────────────────────────────
+function getRequesterUnitId(req: Request): number | null {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const payload = verifyToken(authHeader.substring(7));
+  if (!payload || payload.role === "admin") return null;
+  return payload.unitId ?? null;
+}
 
 // ============================================================
 // MÓDULO 2 — Diagnóstico Institucional
@@ -193,7 +209,10 @@ router.post("/ona-evidences", async (req, res) => {
 // GET /api/qhealth/risks
 router.get("/risks", async (req, res) => {
   try {
-    const allRisks = await db.select().from(risks).orderBy(desc(risks.createdAt));
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(risks);
+    const allRisks = await (unitId ? query.where(eq(risks.unitId, unitId)) : query)
+      .orderBy(desc(risks.createdAt));
     const withScore = allRisks.map(r => ({
       ...r,
       inherentScore: r.probability * r.impact,
@@ -246,7 +265,10 @@ router.get("/risks/:id/mitigations", async (req, res) => {
 // GET /api/qhealth/commissions
 router.get("/commissions", async (req, res) => {
   try {
-    const all = await db.select().from(commissions).orderBy(commissions.name);
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(commissions);
+    const all = await (unitId ? query.where(eq(commissions.unitId, unitId)) : query)
+      .orderBy(commissions.name);
     res.json(all);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch commissions" });
@@ -330,6 +352,29 @@ router.get("/indicators/:id/values", async (req, res) => {
   }
 });
 
+// POST /api/qhealth/indicators
+router.post("/indicators", async (req, res) => {
+  try {
+    const [indicator] = await db.insert(indicators).values(req.body).returning();
+    res.status(201).json(indicator);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create indicator" });
+  }
+});
+
+// PUT /api/qhealth/indicators/:id
+router.put("/indicators/:id", async (req, res) => {
+  try {
+    const [indicator] = await db.update(indicators)
+      .set(req.body)
+      .where(eq(indicators.id, parseInt(req.params.id)))
+      .returning();
+    res.json(indicator);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update indicator" });
+  }
+});
+
 // POST /api/qhealth/indicator-values
 router.post("/indicator-values", async (req, res) => {
   try {
@@ -347,8 +392,11 @@ router.post("/indicator-values", async (req, res) => {
 // GET /api/qhealth/documents
 router.get("/documents", async (req, res) => {
   try {
-    const { type, status, unitId } = req.query;
-    let docs = await db.select().from(documents).orderBy(desc(documents.updatedAt));
+    const { type, status } = req.query;
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(documents);
+    let docs = await (unitId ? query.where(eq(documents.unitId, unitId)) : query)
+      .orderBy(desc(documents.updatedAt));
     if (type) docs = docs.filter(d => d.type === type);
     if (status) docs = docs.filter(d => d.status === status);
     res.json(docs);
@@ -401,8 +449,11 @@ router.post("/documents/:id/readings", async (req, res) => {
 // GET /api/qhealth/action-plans
 router.get("/action-plans", async (req, res) => {
   try {
-    const { status, unitId, responsibleId, origin } = req.query;
-    let plans = await db.select().from(actionPlans).orderBy(desc(actionPlans.createdAt));
+    const { status, origin } = req.query;
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(actionPlans);
+    let plans = await (unitId ? query.where(eq(actionPlans.unitId, unitId)) : query)
+      .orderBy(desc(actionPlans.createdAt));
     if (status) plans = plans.filter(p => p.status === status);
     if (origin) plans = plans.filter(p => p.origin === origin);
     res.json(plans);
@@ -454,7 +505,10 @@ router.get("/action-plans/:id/tasks", async (req, res) => {
 router.get("/safety-events", async (req, res) => {
   try {
     const { status, category } = req.query;
-    let events = await db.select().from(safetyEvents).orderBy(desc(safetyEvents.occurrenceDate));
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(safetyEvents);
+    let events = await (unitId ? query.where(eq(safetyEvents.unitId, unitId)) : query)
+      .orderBy(desc(safetyEvents.occurrenceDate));
     if (status) events = events.filter(e => e.status === status);
     if (category) events = events.filter(e => e.category === category);
     res.json(events);
@@ -468,7 +522,7 @@ router.post("/safety-events", async (req, res) => {
   try {
     const eventData = {
       ...req.body,
-      code: `${req.body.category === 'sentinel' ? 'ES' : req.body.category === 'adverse_event' ? 'EA' : 'QE'}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 100)).padStart(2, '0')}`,
+      code: `${req.body.category === 'sentinel' ? 'ES' : req.body.category === 'adverse_event' ? 'EA' : 'QE'}-${new Date().getFullYear()}-${Date.now().toString().slice(-5)}`,
     };
     const [event] = await db.insert(safetyEvents).values(eventData).returning();
     res.status(201).json(event);
@@ -504,6 +558,29 @@ router.get("/managed-protocols", async (req, res) => {
   }
 });
 
+// POST /api/qhealth/managed-protocols
+router.post("/managed-protocols", async (req, res) => {
+  try {
+    const [protocol] = await db.insert(managedProtocols).values(req.body).returning();
+    res.status(201).json(protocol);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create protocol" });
+  }
+});
+
+// PUT /api/qhealth/managed-protocols/:id
+router.put("/managed-protocols/:id", async (req, res) => {
+  try {
+    const [protocol] = await db.update(managedProtocols)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(managedProtocols.id, parseInt(req.params.id)))
+      .returning();
+    res.json(protocol);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update protocol" });
+  }
+});
+
 // ============================================================
 // MÓDULO 16 — Treinamentos
 // ============================================================
@@ -515,6 +592,29 @@ router.get("/trainings", async (req, res) => {
     res.json(all);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch trainings" });
+  }
+});
+
+// POST /api/qhealth/trainings
+router.post("/trainings", async (req, res) => {
+  try {
+    const [training] = await db.insert(trainings).values(req.body).returning();
+    res.status(201).json(training);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create training" });
+  }
+});
+
+// PUT /api/qhealth/trainings/:id
+router.put("/trainings/:id", async (req, res) => {
+  try {
+    const [training] = await db.update(trainings)
+      .set(req.body)
+      .where(eq(trainings.id, parseInt(req.params.id)))
+      .returning();
+    res.json(training);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update training" });
   }
 });
 
@@ -531,6 +631,163 @@ router.get("/normative-references", async (req, res) => {
     res.json(refs);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch normative references" });
+  }
+});
+
+// ============================================================
+// MÓDULO — Análise SWOT
+// ============================================================
+
+// GET /api/qhealth/swot-analyses
+router.get("/swot-analyses", async (req, res) => {
+  try {
+    const unitId = getRequesterUnitId(req);
+    const query = db.select().from(swotAnalyses);
+    const analyses = await (unitId ? query.where(eq(swotAnalyses.unitId, unitId)) : query)
+      .orderBy(desc(swotAnalyses.createdAt));
+    res.json(analyses);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch SWOT analyses" });
+  }
+});
+
+// POST /api/qhealth/swot-analyses
+router.post("/swot-analyses", async (req, res) => {
+  try {
+    const [analysis] = await db.insert(swotAnalyses).values(req.body).returning();
+    res.status(201).json(analysis);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create SWOT analysis" });
+  }
+});
+
+// GET /api/qhealth/swot-analyses/:id/items
+router.get("/swot-analyses/:id/items", async (req, res) => {
+  try {
+    const items = await db.select().from(swotItems)
+      .where(eq(swotItems.analysisId, parseInt(req.params.id)))
+      .orderBy(swotItems.quadrant, swotItems.order);
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch SWOT items" });
+  }
+});
+
+// POST /api/qhealth/swot-items
+router.post("/swot-items", async (req, res) => {
+  try {
+    const [item] = await db.insert(swotItems).values(req.body).returning();
+    res.status(201).json(item);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create SWOT item" });
+  }
+});
+
+// DELETE /api/qhealth/swot-items/:id
+router.delete("/swot-items/:id", async (req, res) => {
+  try {
+    await db.delete(swotItems).where(eq(swotItems.id, parseInt(req.params.id)));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete SWOT item" });
+  }
+});
+
+// ============================================================
+// MÓDULO — Planejamento BSC
+// ============================================================
+
+// GET /api/qhealth/bsc-perspectives
+router.get("/bsc-perspectives", async (req, res) => {
+  try {
+    const perspectives = await db.select().from(bscPerspectives).orderBy(bscPerspectives.order);
+    res.json(perspectives);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch BSC perspectives" });
+  }
+});
+
+// GET /api/qhealth/bsc-objectives
+router.get("/bsc-objectives", async (req, res) => {
+  try {
+    const { perspectiveId } = req.query;
+    let objectives = await db.select().from(bscObjectives).orderBy(desc(bscObjectives.createdAt));
+    if (perspectiveId) {
+      objectives = objectives.filter(o => o.perspectiveId === parseInt(perspectiveId as string));
+    }
+    res.json(objectives);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch BSC objectives" });
+  }
+});
+
+// POST /api/qhealth/bsc-objectives
+router.post("/bsc-objectives", async (req, res) => {
+  try {
+    const [objective] = await db.insert(bscObjectives).values(req.body).returning();
+    res.status(201).json(objective);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create BSC objective" });
+  }
+});
+
+// PUT /api/qhealth/bsc-objectives/:id
+router.put("/bsc-objectives/:id", async (req, res) => {
+  try {
+    const [objective] = await db.update(bscObjectives)
+      .set({ ...req.body, updatedAt: new Date() })
+      .where(eq(bscObjectives.id, parseInt(req.params.id)))
+      .returning();
+    res.json(objective);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update BSC objective" });
+  }
+});
+
+// DELETE /api/qhealth/bsc-objectives/:id
+router.delete("/bsc-objectives/:id", async (req, res) => {
+  try {
+    await db.delete(bscObjectives).where(eq(bscObjectives.id, parseInt(req.params.id)));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete BSC objective" });
+  }
+});
+
+// ============================================================
+// MÓDULO — Jornada do Paciente
+// ============================================================
+
+// GET /api/qhealth/patient-journey
+router.get("/patient-journey", async (req, res) => {
+  try {
+    const steps = await db.select().from(patientJourneySteps).orderBy(patientJourneySteps.order);
+    res.json(steps);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch patient journey" });
+  }
+});
+
+// POST /api/qhealth/patient-journey
+router.post("/patient-journey", async (req, res) => {
+  try {
+    const [step] = await db.insert(patientJourneySteps).values(req.body).returning();
+    res.status(201).json(step);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create journey step" });
+  }
+});
+
+// PUT /api/qhealth/patient-journey/:id
+router.put("/patient-journey/:id", async (req, res) => {
+  try {
+    const [step] = await db.update(patientJourneySteps)
+      .set(req.body)
+      .where(eq(patientJourneySteps.id, parseInt(req.params.id)))
+      .returning();
+    res.json(step);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update journey step" });
   }
 });
 
