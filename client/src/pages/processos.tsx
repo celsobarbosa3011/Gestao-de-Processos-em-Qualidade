@@ -265,8 +265,8 @@ export default function ProcessosPage() {
   const [novoProcesso, setNovoProcesso] = useState({ name: "", sector: "", type: "POP", responsible: "" });
   const [extraProcesses, setExtraProcesses] = useState<HospitalProcess[]>([]);
 
-  // LGPD: mock data visível apenas para admin — usuário regular começa com lista vazia
-  const baseMock: HospitalProcess[] = isAdmin ? processes : [];
+  // Sistema limpo: sem dados mock para nenhum usuário
+  const baseMock: HospitalProcess[] = [];
   const allProcesses = [...baseMock, ...extraProcesses];
   const [selectedProcess, setSelectedProcess] = useState<HospitalProcess | null>(
     allProcesses.length > 0 ? allProcesses[0] : null

@@ -251,7 +251,7 @@ export default function Protocolos() {
         description: p.description || p.name,
         alerts: [],
       }))
-    : (isAdmin ? protocols : []);
+    : [];
 
   const filtered = baseProtocols.filter((p) => {
     const matchSearch =

@@ -529,7 +529,7 @@ function HeatmapTab() {
     status: "identified" as RiskStatus,
   })) ?? [];
 
-  const riskBase = isAdmin ? risks : validatedHeatmapRisks;
+  const riskBase = validatedHeatmapRisks;
   const filteredRisks = activeFilter === "all" ? riskBase : riskBase.filter((r) => r.cat === activeFilter);
 
   // Build cell map: [prob][impact] -> risks[]
@@ -769,7 +769,7 @@ function RiskListTab() {
         residualImpact: r.residualImpact ?? undefined,
         controls: r.existingControls ?? undefined,
       }))
-    : (isAdmin ? risks : validatedRisks);
+    : validatedRisks;
 
   const allRisks = baseRisks;
   const units = Array.from(new Set(allRisks.map((r) => r.unit)));
@@ -1281,7 +1281,7 @@ export default function Riscos() {
     id: r.id, title: r.title, cat: catToLocalKpi(r.cat || r.category),
     prob: r.prob ?? 3, impact: r.impact_num ?? 3, unit: r.category, status: "identified" as RiskStatus,
   })) ?? [];
-  const kpiRisks = [...(isAdmin ? risks : validatedKpiRisks), ...headerNovoItems];
+  const kpiRisks = [...validatedKpiRisks, ...headerNovoItems];
   const totalCritical = kpiRisks.filter((r) => getRiskScore(r.prob, r.impact) >= 20).length;
   const totalHigh = kpiRisks.filter((r) => {
     const s = getRiskScore(r.prob, r.impact);

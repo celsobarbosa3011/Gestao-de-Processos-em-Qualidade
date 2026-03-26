@@ -382,15 +382,15 @@ export default function JornadaPaciente() {
           steps: byType[j.tipo].length > 0 ? byType[j.tipo] : j.steps,
         }));
       })()
-    : (isAdmin ? journeys : []);
+    : [];
 
   const journey = baseJourneys.find(j => j.tipo === selectedJourney) ?? null;
-  const displayRupturas = isAdmin ? rupturas : [];
+  const displayRupturas: typeof rupturas = [];
   const filteredRupturas = ruptureFilter === "todos"
     ? displayRupturas
     : displayRupturas.filter(r => r.nivel === ruptureFilter);
 
-  const displayHandoffs = isAdmin ? handoffs : [];
+  const displayHandoffs: typeof handoffs = [];
   const openRupturas = displayRupturas.filter(r => r.status !== "resolvida").length;
   const criticalRupturas = displayRupturas.filter(r => r.nivel === "critico" && r.status !== "resolvida").length;
   const avgSatisfacao = baseJourneys.length > 0
@@ -426,7 +426,7 @@ export default function JornadaPaciente() {
               <div>
                 <p className="text-sm text-gray-500">Jornadas Mapeadas</p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">{baseJourneys.length}</p>
-                <p className="text-xs text-gray-400 mt-1">{isAdmin ? "Eletivo · Urgência · Emergência" : "Nenhuma jornada mapeada"}</p>
+                <p className="text-xs text-gray-400 mt-1">{"Nenhuma jornada mapeada"}</p>
               </div>
               <div className="p-2 bg-blue-100 rounded-lg">
                 <UserCheck className="w-5 h-5 text-blue-600" />

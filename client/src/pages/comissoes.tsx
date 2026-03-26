@@ -222,11 +222,11 @@ export default function Comissoes() {
         completedDeliberations: 0,
         description: c.description || "",
       }))
-    : (isAdmin ? commissions : []);
+    : [];
 
-  const displayUpcomingMeetings = isAdmin ? upcomingMeetings : [];
-  const displayDeliberations = isAdmin ? deliberations : [];
-  const displayRecentMeetings = isAdmin ? recentMeetings : [];
+  const displayUpcomingMeetings: typeof upcomingMeetings = [];
+  const displayDeliberations: typeof deliberations = [];
+  const displayRecentMeetings: typeof recentMeetings = [];
 
   const totalPending = displayCommissions.reduce((a, c) => a + c.pendingDeliberations, 0);
   const totalCompleted = displayCommissions.reduce((a, c) => a + c.completedDeliberations, 0);

@@ -157,8 +157,8 @@ export default function Comunicacao() {
   const [filterType, setFilterType] = useState("all");
   const [showNovoForm, setShowNovoForm] = useState(false);
 
-  const displayMessages = isAdmin ? messages : [];
-  const displayMeetings = isAdmin ? meetings : [];
+  const displayMessages: typeof messages = [];
+  const displayMeetings: typeof meetings = [];
 
   const filtered = displayMessages.filter((m) => {
     const matchSearch = m.title.toLowerCase().includes(search.toLowerCase());

@@ -635,7 +635,7 @@ export default function GestaoOperacional() {
         total: 0,
         description: p.description || undefined,
       }))
-    : (isAdmin ? plans : []);
+    : [];
 
   const totalPlans = displayPlans.length;
   const onTime = displayPlans.filter((p) => p.status !== "overdue" && p.status !== "near").length;

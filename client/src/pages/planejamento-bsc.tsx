@@ -231,7 +231,7 @@ export default function PlanejamentoBSC() {
           deadline: o.deadline ?? mock.deadline,
         };
       })
-    : (isAdmin ? objectives : []);
+    : [];
 
   const filtered = baseObjectives.filter(
     (o) => filterPerspective === "all" || o.perspective === filterPerspective

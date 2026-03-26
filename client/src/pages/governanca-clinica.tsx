@@ -159,10 +159,10 @@ export default function GovernancaClinical() {
         lastUpdate: "—",
         history: [0, 0, 0, 0, 0, 0],
       }))
-    : (isAdmin ? clinicalIndicators : []);
+    : [];
 
-  const displayAlerts = isAdmin ? alerts : [];
-  const displayUnitRanking = isAdmin ? unitRanking : [];
+  const displayAlerts: typeof alerts = [];
+  const displayUnitRanking: typeof unitRanking = [];
 
   const filtered = displayIndicators.filter(
     (i) => filterCat === "all" || i.category === filterCat

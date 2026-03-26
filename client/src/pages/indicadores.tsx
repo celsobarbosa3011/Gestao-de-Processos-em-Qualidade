@@ -1020,22 +1020,22 @@ export default function Indicadores() {
   const dbMapped = dbIndicators && dbIndicators.length > 0 ? dbIndicators.map(mapDbIndicator) : null;
   const displayIndicators = dbMapped
     ? dbMapped
-    : (isAdmin ? allIndicators : [...validatedOna, ...validatedSeg, ...validatedQualidadeOp].map(toDisplayFormat));
+    : [...validatedOna, ...validatedSeg, ...validatedQualidadeOp].map(toDisplayFormat);
   const displayOnaIndicators = dbMapped
     ? dbMapped.filter(i => i.layer === "ONA")
-    : (isAdmin ? onaIndicators : validatedOna.map(toDisplayFormat));
+    : validatedOna.map(toDisplayFormat);
   const displaySegurancaIndicators = dbMapped
     ? dbMapped.filter(i => i.layer === "Segurança")
-    : (isAdmin ? segurancaIndicators : validatedSeg.map(toDisplayFormat));
+    : validatedSeg.map(toDisplayFormat);
   const displayAnsIndicators = dbMapped
     ? dbMapped.filter(i => i.layer === "ANS")
-    : (isAdmin ? ansIndicators : []);
+    : [];
   const displayQualidadeOpIndicators = dbMapped
     ? dbMapped.filter(i => i.layer === "Qualidade Operacional")
-    : (isAdmin ? qualidadeOpIndicators : validatedQualidadeOp.map(toDisplayFormat));
+    : validatedQualidadeOp.map(toDisplayFormat);
   const displayExperienciaIndicators = dbMapped
     ? dbMapped.filter(i => i.layer === "Experiência do Paciente")
-    : (isAdmin ? experienciaIndicators : []);
+    : [];
   const [showNovoForm, setShowNovoForm] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState("todas");
   const [selectedPeriod, setSelectedPeriod] = useState("mar-2026");

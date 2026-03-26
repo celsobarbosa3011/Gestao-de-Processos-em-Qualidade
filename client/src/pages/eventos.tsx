@@ -881,7 +881,7 @@ function FilaNotificacoes() {
   const { isAdmin } = useTenant();
   const events: SafetyEvent[] = (dbEvents && dbEvents.length > 0)
     ? dbEvents.map(mapDbToDisplay)
-    : (isAdmin ? EVENTS : []);
+    : [];
 
   return (
     <div className="space-y-4">
@@ -969,7 +969,7 @@ function AnaliseCausaRaiz() {
   const [conclusion, setConclusion] = useState("");
   const { isAdmin } = useTenant();
 
-  const event = isAdmin ? EVENTS[0] : null;
+  const event = null;
 
   if (!event) return (
     <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -1069,18 +1069,18 @@ function DashboardRegulatorio() {
   const { isAdmin } = useTenant();
   const notivisaRate = 67;
 
-  const displayPieData = isAdmin ? PIE_DATA : [];
-  const displayBarData = isAdmin ? BAR_DATA : [];
-  const displayTrendData = isAdmin ? TREND_DATA : [];
+  const displayPieData: typeof PIE_DATA = [];
+  const displayBarData: typeof BAR_DATA = [];
+  const displayTrendData: typeof TREND_DATA = [];
 
   return (
     <div className="space-y-4">
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Notivisa — Conformidade" value={isAdmin ? `${notivisaRate}%` : "—"} sub={isAdmin ? "meta: 100%" : ""} color="border-l-amber-500" />
-        <KpiCard label="Prazo médio de resolução" value={isAdmin ? "8,4 dias" : "—"} sub={isAdmin ? "meta: ≤ 10 dias" : ""} color="border-l-blue-500" />
-        <KpiCard label="Taxa de sub-notificação" value={isAdmin ? "Est. 32%" : "—"} sub={isAdmin ? "benchmarking PROQUALIS" : ""} color="border-l-orange-500" />
-        <KpiCard label="RDC 63 — Itens atendidos" value={isAdmin ? `${RDC63_CHECKLIST.filter(c => c.ok).length}/${RDC63_CHECKLIST.length}` : "—"} color="border-l-emerald-500" />
+        <KpiCard label="Notivisa — Conformidade" value="—" sub="" color="border-l-amber-500" />
+        <KpiCard label="Prazo médio de resolução" value="—" sub="" color="border-l-blue-500" />
+        <KpiCard label="Taxa de sub-notificação" value="—" sub="" color="border-l-orange-500" />
+        <KpiCard label="RDC 63 — Itens atendidos" value="—" color="border-l-emerald-500" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1189,7 +1189,7 @@ function DashboardRegulatorio() {
 
 function CAPATab() {
   const { isAdmin } = useTenant();
-  const displayCapaItems = isAdmin ? CAPA_ITEMS : [];
+  const displayCapaItems: typeof CAPA_ITEMS = [];
 
   return (
     <div className="space-y-4">
@@ -1323,18 +1323,18 @@ export default function Eventos() {
             <Shield className="w-3 h-3 text-indigo-500" /> RDC 63/2011
           </Badge>
           <Badge variant="outline" className="text-xs gap-1 text-red-600 border-red-300">
-            <AlertOctagon className="w-3 h-3" /> {isAdmin ? "1" : "0"} Sentinela ativo
+            <AlertOctagon className="w-3 h-3" /> 0 Sentinela ativo
           </Badge>
         </div>
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard label="Total este mês"       value={isAdmin ? 12 : 0}  sub="Mar/2026"         color="border-l-blue-500" />
-        <KpiCard label="Quasi-erros"          value={isAdmin ? 7 : 0}   sub="sem dano"         color="border-l-slate-400" />
-        <KpiCard label="Eventos adversos"     value={isAdmin ? 4 : 0}   sub="com dano"         color="border-l-orange-500" />
-        <KpiCard label="Eventos sentinela"    value={isAdmin ? 1 : 0}   sub="análise urgente"  color="border-l-red-600" blink />
-        <KpiCard label="Notivisa pendentes"   value={isAdmin ? 3 : 0}   sub="envio obrigatório" color="border-l-amber-500" />
+        <KpiCard label="Total este mês"       value={0}  sub="Mar/2026"         color="border-l-blue-500" />
+        <KpiCard label="Quasi-erros"          value={0}   sub="sem dano"         color="border-l-slate-400" />
+        <KpiCard label="Eventos adversos"     value={0}   sub="com dano"         color="border-l-orange-500" />
+        <KpiCard label="Eventos sentinela"    value={0}   sub="análise urgente"  color="border-l-red-600" blink />
+        <KpiCard label="Notivisa pendentes"   value={0}   sub="envio obrigatório" color="border-l-amber-500" />
       </div>
 
       {/* Tabs */}

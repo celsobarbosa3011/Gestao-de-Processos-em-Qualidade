@@ -225,7 +225,7 @@ export default function Treinamentos() {
         cargaHoraria: 4,
         description: t.description || t.title,
       }))
-    : (isAdmin ? trainings : []);
+    : [];
 
   const filtered = baseTrainings.filter((t) => {
     const matchSearch =

@@ -226,8 +226,8 @@ export default function HomeExecutiva() {
     staleTime: 60_000,
   });
 
-  // LGPD: fallback com mock apenas para admin; novos clientes começam com zeros reais
-  const fallback = (mockVal: string) => dashData ? undefined : (isAdmin ? mockVal : "0");
+  // Sistema limpo: sem dados mock — sempre "0" quando não há dados reais
+  const fallback = (_mockVal: string) => dashData ? undefined : "0";
 
   // Build live KPI values using validated data when available (non-admin with assessment)
   const validatedOnaScore = validatedData?.scores;
@@ -242,7 +242,7 @@ export default function HomeExecutiva() {
   const liveKpiCards = [
     {
       title: "Score ONA Global",
-      value: dashData ? `${dashData.onaScore.overall}%` : (validatedOnaScore ? `${validatedOnaScore.overall}%` : (isAdmin ? "71%" : "0%")),
+      value: dashData ? `${dashData.onaScore.overall}%` : (validatedOnaScore ? `${validatedOnaScore.overall}%` : "0%"),
       trend: +3.2,
       icon: <Award className="w-5 h-5" />,
       color: "sky",
@@ -255,7 +255,7 @@ export default function HomeExecutiva() {
     },
     {
       title: "Total Planos de Ação",
-      value: dashData ? String(dashData.actionPlans) : (isAdmin ? "18" : (validatedData ? String(validatedCapaCount) : "0")),
+      value: dashData ? String(dashData.actionPlans) : (validatedData ? String(validatedCapaCount) : "0"),
       trend: -4,
       icon: <AlertTriangle className="w-5 h-5" />,
       color: "red",
@@ -264,7 +264,7 @@ export default function HomeExecutiva() {
     },
     {
       title: "Riscos Cadastrados",
-      value: dashData ? String(dashData.risks) : (isAdmin ? "7" : (validatedData ? String(validatedRiscoCount) : "0")),
+      value: dashData ? String(dashData.risks) : (validatedData ? String(validatedRiscoCount) : "0"),
       trend: -1,
       icon: <AlertCircle className="w-5 h-5" />,
       color: "orange",
@@ -273,7 +273,7 @@ export default function HomeExecutiva() {
     },
     {
       title: "Eventos de Segurança",
-      value: dashData ? String(dashData.safetyEvents) : (isAdmin ? "12" : "0"),
+      value: dashData ? String(dashData.safetyEvents) : "0",
       trend: -3,
       icon: <Activity className="w-5 h-5" />,
       color: "purple",
@@ -282,7 +282,7 @@ export default function HomeExecutiva() {
     },
     {
       title: "Documentos Cadastrados",
-      value: dashData ? String(dashData.documents) : (isAdmin ? "23" : (validatedData ? String(validatedPoliticaCount) : "0")),
+      value: dashData ? String(dashData.documents) : (validatedData ? String(validatedPoliticaCount) : "0"),
       trend: +2,
       icon: <FileText className="w-5 h-5" />,
       color: "amber",
@@ -291,11 +291,11 @@ export default function HomeExecutiva() {
     },
     {
       title: "Indicadores no Alvo",
-      value: isAdmin ? "68%" : (validatedData && validatedIndTotal > 0 ? `${Math.round((validatedIndOnTarget / validatedIndTotal) * 100)}%` : "0%"),
+      value: validatedData && validatedIndTotal > 0 ? `${Math.round((validatedIndOnTarget / validatedIndTotal) * 100)}%` : "0%",
       trend: +5,
       icon: <BarChart3 className="w-5 h-5" />,
       color: "emerald",
-      sub: isAdmin ? "34 de 50 indicadores" : (validatedData ? `${validatedIndOnTarget} de ${validatedIndTotal} indicadores` : "Cadastre indicadores para medir"),
+      sub: validatedData ? `${validatedIndOnTarget} de ${validatedIndTotal} indicadores` : "Cadastre indicadores para medir",
       path: "/indicadores",
     },
   ];
@@ -304,16 +304,16 @@ export default function HomeExecutiva() {
     ? { ...onaScoreData, level1: dashData.onaScore.level1, level2: dashData.onaScore.level2, level3: dashData.onaScore.level3, overall: dashData.onaScore.overall }
     : (validatedOnaScore
       ? { level1: validatedOnaScore.n1, level2: validatedOnaScore.n2, level3: validatedOnaScore.n3, overall: validatedOnaScore.overall, trend: 0 }
-      : (isAdmin ? onaScoreData : { level1: 0, level2: 0, level3: 0, overall: 0, trend: 0 }));
+      : { level1: 0, level2: 0, level3: 0, overall: 0, trend: 0 });
 
-  // LGPD: mock data only visible to admin
-  const displayUnitRanking = isAdmin ? unitRanking : [];
-  const displayTopRisks = isAdmin ? topRisks : [];
-  const displayTopActions = isAdmin ? topActions : [];
-  const displayCommissionAgenda = isAdmin ? commissionAgenda : [];
-  const displayOnaLevelProgress = isAdmin ? onaLevelProgress : [];
-  const displayIndicatorTrend = isAdmin ? indicatorTrend : [];
-  const displayRadarData = isAdmin ? radarData : (validatedData?.radarData ?? []);
+  // Sistema limpo: sem dados mock para nenhum usuário
+  const displayUnitRanking: typeof unitRanking = [];
+  const displayTopRisks: typeof topRisks = [];
+  const displayTopActions: typeof topActions = [];
+  const displayCommissionAgenda: typeof commissionAgenda = [];
+  const displayOnaLevelProgress: typeof onaLevelProgress = [];
+  const displayIndicatorTrend: typeof indicatorTrend = [];
+  const displayRadarData = validatedData?.radarData ?? [];
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
@@ -694,9 +694,9 @@ export default function HomeExecutiva() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Requisitos com gap", value: isAdmin ? "28" : (validatedData ? String(validatedData.gaps.length) : "0"), color: "text-red-400" },
-                  { label: "Evidências sugeridas", value: isAdmin ? "14" : (validatedData ? String(validatedData.politicas.length) : "0"), color: "text-sky-400" },
-                  { label: "Score previsto (90d)", value: isAdmin ? "76%" : (validatedData ? `${Math.min(100, validatedData.scores.overall + 8)}%` : "—"), color: "text-emerald-400" },
+                  { label: "Requisitos com gap", value: validatedData ? String(validatedData.gaps.length) : "0", color: "text-red-400" },
+                  { label: "Evidências sugeridas", value: validatedData ? String(validatedData.politicas.length) : "0", color: "text-sky-400" },
+                  { label: "Score previsto (90d)", value: validatedData ? `${Math.min(100, validatedData.scores.overall + 8)}%` : "—", color: "text-emerald-400" },
                 ].map(item => (
                   <div key={item.label} className="text-center rounded-lg bg-slate-800/40 p-2.5">
                     <p className={cn("text-xl font-bold", item.color)}>{item.value}</p>

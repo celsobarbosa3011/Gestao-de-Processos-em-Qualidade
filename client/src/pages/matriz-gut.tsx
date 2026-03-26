@@ -136,7 +136,7 @@ export default function MatrizGUT() {
         responsible: (i as any).responsible || "—",
         aiJustification: (i as any).aiJustification || "Item do banco de dados.",
       })) as typeof gutItems)
-    : (isAdmin ? gutItems : (validatedGutItems as typeof gutItems));
+    : (validatedGutItems as typeof gutItems);
 
   const displayChartData = baseItems
     .map(i => ({ ...i, score: gutScore(i.gravity, i.urgency, i.tendency) }))

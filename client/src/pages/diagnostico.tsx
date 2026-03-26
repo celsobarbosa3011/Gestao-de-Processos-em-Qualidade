@@ -392,15 +392,15 @@ export default function Diagnostico() {
         status: statusMap[c.status] ?? "Rascunho",
         progress: 0, total: 0, adherent: 0, partial: 0, nonAdherent: 0,
       }))
-    : (isAdmin ? mockCycles : []);
+    : [];
 
-  const visibleRequirements = (isAdmin ? mockRequirements : []).filter(
+  const visibleRequirements = ([] as typeof mockRequirements).filter(
     (r) => r.chapter === selectedChapter
   );
 
   // Chapter progress computed from user answers (not from hardcoded mock values)
   function computedChapterPct(chapterId: number): number {
-    const chapterReqs = (isAdmin ? mockRequirements : []).filter(r => r.chapter === chapterId);
+    const chapterReqs = ([] as typeof mockRequirements).filter(r => r.chapter === chapterId);
     if (chapterReqs.length === 0) return 0;
     const answered = chapterReqs.filter(r => answers[r.id]?.status != null).length;
     return Math.round((answered / chapterReqs.length) * 100);
@@ -422,7 +422,7 @@ export default function Diagnostico() {
   }
 
   const totalAnswered = Object.values(answers).filter((a) => a.status !== null).length;
-  const totalReqs = (isAdmin ? mockRequirements : []).length;
+  const totalReqs = 0;
   const overallProgress = totalReqs > 0 ? Math.round((totalAnswered / totalReqs) * 100) : 0;
 
   return (
@@ -481,11 +481,11 @@ export default function Diagnostico() {
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-              <span>{isAdmin ? "6 unidades avaliadas" : "0 unidades avaliadas"}</span>
+              <span>{"0 unidades avaliadas"}</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm text-slate-600">
               <span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />
-              <span>{isAdmin ? `${mockRequirements.length} requisitos ONA mapeados` : "0 requisitos mapeados"}</span>
+              <span>{"0 requisitos mapeados"}</span>
             </div>
           </div>
         </div>
