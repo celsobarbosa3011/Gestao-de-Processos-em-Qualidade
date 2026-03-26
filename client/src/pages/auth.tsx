@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Eye, EyeOff, UserPlus, LogIn } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff, UserPlus, LogIn, KeyRound, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { login as apiLogin, register as apiRegister } from "@/lib/api";
 import { useBrandingConfig } from "@/hooks/use-branding";
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Email inválido" }),
@@ -38,6 +40,9 @@ export default function AuthPage() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const appName = branding?.appName || 'UP - Qualidade em Saúde';
 
@@ -99,6 +104,22 @@ export default function AuthPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleForgotPassword() {
+    if (!forgotEmail.trim()) {
+      toast.error("Informe seu e-mail cadastrado.");
+      return;
+    }
+    setForgotLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    setForgotLoading(false);
+    setShowForgot(false);
+    setForgotEmail("");
+    toast.success(
+      `Se o e-mail "${forgotEmail.trim()}" estiver cadastrado, o administrador do sistema poderá redefinir sua senha em Administração → Usuários & Perfis.`,
+      { duration: 8000 }
+    );
   }
 
   return (
@@ -211,9 +232,18 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <Button 
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-primary underline underline-offset-2"
+                          onClick={() => setShowForgot(true)}
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </div>
+                      <Button
                         data-testid="button-login"
-                        type="submit" 
+                        type="submit"
                         className="w-full h-12 text-base rounded-full"
                         disabled={isLoading}
                       >
@@ -223,20 +253,10 @@ export default function AuthPage() {
                   </Form>
                 </CardContent>
                 <CardFooter className="flex flex-col gap-2 bg-muted/30 p-3 sm:p-4 rounded-b-lg border-t text-xs text-muted-foreground text-center">
-                  <p>Credenciais de demonstração:</p>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-center font-mono">
-                    <span 
-                      className="cursor-pointer hover:text-primary" 
-                      onClick={() => {
-                        loginForm.setValue('email', 'admin@mediflow.com');
-                        loginForm.setValue('password', 'admin123');
-                      }}
-                      data-testid="demo-admin"
-                    >
-                      admin@mediflow.com
-                    </span>
-                    <span 
-                      className="cursor-pointer hover:text-primary" 
+                  <p>Conta de demonstração:</p>
+                  <div className="flex justify-center font-mono">
+                    <span
+                      className="cursor-pointer hover:text-primary"
                       onClick={() => {
                         loginForm.setValue('email', 'sarah@mediflow.com');
                         loginForm.setValue('password', 'sarah123');
@@ -375,5 +395,49 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+
+    {/* Dialog — Esqueci minha senha */}
+    <Dialog open={showForgot} onOpenChange={setShowForgot}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <KeyRound className="w-4 h-4 text-primary" />
+            </div>
+            <DialogTitle>Recuperar Senha</DialogTitle>
+          </div>
+          <DialogDescription>
+            Informe seu e-mail cadastrado. O administrador do sistema receberá a solicitação e poderá redefinir sua senha.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="forgot-email">E-mail</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="seu@email.com"
+                className="pl-9"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleForgotPassword()}
+              />
+            </div>
+          </div>
+          <Button
+            className="w-full"
+            onClick={handleForgotPassword}
+            disabled={forgotLoading}
+          >
+            {forgotLoading ? "Enviando..." : "Solicitar redefinição"}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Sem acesso ao e-mail? Contate o administrador diretamente em <span className="font-medium">Administração → Usuários & Perfis</span>.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
