@@ -387,7 +387,7 @@ export default function AdminUsersPage() {
                       <SelectContent>
                         {units.length > 0 ? (
                           units.map((unit) => (
-                            <SelectItem key={unit.id} value={unit.nomeFantasia || unit.razaoSocial}>
+                            <SelectItem key={unit.id} value={String(unit.id)}>
                               {unit.nomeFantasia || unit.razaoSocial}
                             </SelectItem>
                           ))
@@ -643,7 +643,7 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{user.unit}</TableCell>
+                  <TableCell>{units.find(u => String(u.id) === user.unit)?.nomeFantasia || units.find(u => String(u.id) === user.unit)?.razaoSocial || user.unit}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="uppercase text-[10px] tracking-wide font-semibold">
                       {user.role}

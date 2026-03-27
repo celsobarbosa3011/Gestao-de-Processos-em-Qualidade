@@ -181,7 +181,7 @@ export default function CompleteProfilePage() {
                         <SelectContent>
                           {units.length > 0 ? (
                             units.map((unit) => (
-                              <SelectItem key={unit.id} value={unit.nomeFantasia || unit.razaoSocial}>
+                              <SelectItem key={unit.id} value={String(unit.id)}>
                                 {unit.nomeFantasia || unit.razaoSocial}
                               </SelectItem>
                             ))
