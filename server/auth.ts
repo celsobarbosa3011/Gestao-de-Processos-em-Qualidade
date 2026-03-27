@@ -9,6 +9,10 @@ export interface JwtPayload {
   email: string;
   role: string;
   mustChangePassword: boolean;
+  /** ID numérico da unidade/empresa do usuário (null = admin sem empresa fixa) */
+  unitId?: number | null;
+  /** Texto livre do campo unit (departamento/empresa) */
+  unitLabel?: string;
 }
 
 declare global {

@@ -705,7 +705,7 @@ export type RiskMitigation = typeof riskMitigations.$inferSelect;
 export const commissions = pgTable("commissions", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // NSP, CCIH, SCIH, Prontuarios, Obitos, Etica, Farmacia, Protocolos, Residuos, Humanizacao
+  type: text("type").notNull(), // NSP, SCIH, SCIH, Prontuarios, Obitos, Etica, Farmacia, Protocolos, Residuos, Humanizacao
   unitId: integer("unit_id").references(() => units.id),
   regimentUrl: text("regiment_url"),
   regulationRef: text("regulation_ref"), // RDC or normative reference
@@ -961,3 +961,91 @@ export const normativeReferences = pgTable("normative_references", {
 });
 
 export type NormativeReference = typeof normativeReferences.$inferSelect;
+
+// ============================================================
+// MÓDULO — Análise SWOT
+// ============================================================
+export const swotAnalyses = pgTable("swot_analyses", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  unitId: integer("unit_id").references(() => units.id),
+  period: text("period").notNull().default('2026'),
+  status: text("status").notNull().default('draft'), // draft, completed
+  createdBy: varchar("created_by").references(() => profiles.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSwotAnalysisSchema = createInsertSchema(swotAnalyses).omit({ id: true, createdAt: true, updatedAt: true });
+export type SwotAnalysis = typeof swotAnalyses.$inferSelect;
+export type InsertSwotAnalysis = z.infer<typeof insertSwotAnalysisSchema>;
+
+export const swotItems = pgTable("swot_items", {
+  id: serial("id").primaryKey(),
+  analysisId: integer("analysis_id").notNull().references(() => swotAnalyses.id, { onDelete: 'cascade' }),
+  quadrant: text("quadrant").notNull(), // strength, weakness, opportunity, threat
+  description: text("description").notNull(),
+  impact: text("impact").notNull().default('medium'), // low, medium, high
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertSwotItemSchema = createInsertSchema(swotItems).omit({ id: true, createdAt: true });
+export type SwotItem = typeof swotItems.$inferSelect;
+export type InsertSwotItem = z.infer<typeof insertSwotItemSchema>;
+
+// ============================================================
+// MÓDULO — Planejamento BSC
+// ============================================================
+export const bscPerspectives = pgTable("bsc_perspectives", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull(), // financial, customer, internal, learning
+  color: text("color").notNull().default('#3B82F6'),
+  unitId: integer("unit_id").references(() => units.id),
+  order: integer("order").notNull().default(0),
+});
+
+export const bscObjectives = pgTable("bsc_objectives", {
+  id: serial("id").primaryKey(),
+  perspectiveId: integer("perspective_id").notNull().references(() => bscPerspectives.id, { onDelete: 'cascade' }),
+  title: text("title").notNull(),
+  description: text("description"),
+  target: text("target"),
+  currentValue: text("current_value"),
+  unit: text("unit").notNull().default('%'),
+  status: text("status").notNull().default('on_track'), // on_track, at_risk, behind, achieved
+  responsible: text("responsible"),
+  deadline: timestamp("deadline"),
+  weight: integer("weight").notNull().default(1),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertBscObjectiveSchema = createInsertSchema(bscObjectives).omit({ id: true, createdAt: true, updatedAt: true });
+export type BscPerspective = typeof bscPerspectives.$inferSelect;
+export type BscObjective = typeof bscObjectives.$inferSelect;
+export type InsertBscObjective = z.infer<typeof insertBscObjectiveSchema>;
+
+// ============================================================
+// MÓDULO — Políticas & Regimentos (reusa tabela documents com type='Policy'|'Regulation')
+// Tabela de itens de jornada do paciente
+// ============================================================
+export const patientJourneySteps = pgTable("patient_journey_steps", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  phase: text("phase").notNull(), // admission, triage, diagnosis, treatment, discharge, followup
+  description: text("description"),
+  responsible: text("responsible"),
+  avgDurationMinutes: integer("avg_duration_minutes").notNull().default(30),
+  slaMinutes: integer("sla_minutes").notNull().default(60),
+  status: text("status").notNull().default('active'),
+  bottleneck: boolean("bottleneck").notNull().default(false),
+  unitId: integer("unit_id").references(() => units.id),
+  order: integer("order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPatientJourneyStepSchema = createInsertSchema(patientJourneySteps).omit({ id: true, createdAt: true });
+export type PatientJourneyStep = typeof patientJourneySteps.$inferSelect;
+export type InsertPatientJourneyStep = z.infer<typeof insertPatientJourneyStepSchema>;
